@@ -152,22 +152,22 @@
   <section id="boxscores">
     <div class="sec-head"><h2>This Weekend · Box Scores</h2><span class="sub">Auto-resolved from the roster pipeline · links go live as results post</span></div>
     <div id="boxscore-grid" class="grid g2">
-      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519937">
+      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519937&printPage=1">
         <div class="day">Sat 27 Jun · 4:45 PM</div>
         <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
         <div class="meta"><b>Avondale, Auckland</b> · Box score →</div>
       </a>
-      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519939">
+      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519939&printPage=1">
         <div class="day">Sat 27 Jun · 5:10 PM</div>
         <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
         <div class="meta"><b>Christchurch</b> · Box score →</div>
       </a>
-      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519940">
+      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519940&printPage=1">
         <div class="day">Sun 28 Jun · 5:10 PM</div>
         <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
         <div class="meta"><b>Christchurch</b> · Box score →</div>
       </a>
-      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519938">
+      <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519938&printPage=1">
         <div class="day">Sun 28 Jun · 6:00 PM</div>
         <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
         <div class="meta"><b>Avondale, Auckland</b> · Box score →</div>
@@ -350,8 +350,11 @@ async function loadBoxscores(){
       const inner = `<div class="day">${when}</div>
         <div class="match">${g.away} <span>@</span> ${g.home}</div>
         <div class="meta"><b>${g.venue||''}</b>${g.gameid ? ' · Box score →' : ' · box score TBC'}</div>`;
-      return g.boxscore_url
-        ? `<a class="game card" target="_blank" rel="noopener" href="${g.boxscore_url}">${inner}</a>`
+      const url = g.boxscore_url
+        ? (g.boxscore_url.includes('printPage') ? g.boxscore_url : g.boxscore_url + '&printPage=1')
+        : null;
+      return url
+        ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
         : `<div class="game card" style="opacity:.55">${inner}</div>`;
     }).join('');
   }catch(_){ /* keep static fallback */ }
