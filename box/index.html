@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>NZIHL Box Score</title>
+<style>
+  html,body{margin:0;height:100%;background:#0f1115;}
+  #stage{position:fixed;inset:0;}
+  iframe{position:absolute;inset:0;width:100%;height:100%;border:0;
+         background:#fff;opacity:0;transition:opacity .25s ease;}
+  iframe.show{opacity:1;}
+  #msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+       color:#cbd2dc;font:500 16px/1.5 -apple-system,Segoe UI,Inter,sans-serif;
+       text-align:center;padding:24px;}
+  #msg a{color:#7db2ff;}
+  /* tiny live dot, bottom-right, unobtrusive */
+  #dot{position:fixed;right:10px;bottom:9px;width:8px;height:8px;border-radius:50%;
+       background:#36d399;box-shadow:0 0 0 0 rgba(54,211,153,.6);
+       animation:pulse 2.4s ease-out infinite;z-index:5;opacity:.85;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(54,211,153,.6)}
+                   70%{box-shadow:0 0 0 9px rgba(54,211,153,0)}
+                   100%{box-shadow:0 0 0 0 rgba(54,211,153,0)}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <iframe id="fa" referrerpolicy="no-referrer" title="Box score"></iframe>
+  <iframe id="fb" referrerpolicy="no-referrer" title="Box score"></iframe>
+</div>
+<div id="dot" title="Auto-refreshing"></div>
+<div id="msg"></div>
+<script>
+(function(){
+  var p = new URLSearchParams(location.search);
+  var g = p.get('g') || p.get('gameid');
+  var lg = (p.get('l') || p.get('league') || '').toLowerCase();
+  var isW = p.get('w') === '1' || lg.charAt(0) === 'w' || lg === 'nzwihl';
+  var secs = Math.max(8, parseInt(p.get('s'), 10) || 25);   // refresh cadence, min 8s
+
+  var msg = document.getElementById('msg');
+  if(!g){
+    document.getElementById('dot').style.display = 'none';
+    msg.style.display = 'flex';
+    msg.innerHTML = 'Add a game id to the URL, e.g. <br><code>?g=2519939</code>' +
+                    ' &nbsp;(add <code>&amp;w=1</code> for NZWIHL).';
+    return;
+  }
+
+  var clientid = isW ? 7132 : 7131;
+  var leagueid = isW ? 35501 : 35499;
+  function src(){
+    return 'https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=' + clientid +
+           '&leagueid=' + leagueid + '&gameid=' + encodeURIComponent(g) +
+           '&printPage=1&_=' + Date.now();   // cache-bust each load
+  }
+  document.title = 'Box Score · ' + g;
+
+  var frames = [document.getElementById('fa'), document.getElementById('fb')];
+  var active = 0;
+
+  function load(){
+    var next = frames[1 - active];
+    next.onload = function(){
+      next.classList.add('show');
+      frames[active].classList.remove('show');
+      active = 1 - active;
+    };
+    next.src = src();   // load into the hidden frame, then swap on ready
+  }
+
+  load();
+  setInterval(load, secs * 1000);
+  // re-sync when the tab regains focus
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) load();
+  });
+})();
+</script>
+</body>
+</html>
