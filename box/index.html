@@ -7,16 +7,20 @@
 <style>
   html,body{margin:0;height:100%;background:#0f1115;}
   #stage{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
-         width:100%;max-width:1000px;box-sizing:border-box;
+         width:100%;max-width:1000px;box-sizing:border-box;overflow:hidden;
          border:6px solid #fff;background:#fff;}
   iframe{position:absolute;inset:0;width:100%;height:100%;border:0;
          background:#fff;opacity:0;transition:opacity .25s ease;}
   iframe.show{opacity:1;}
+  /* team logos overlaid in the top corners of the card */
+  .tlogo{position:absolute;top:16px;height:92px;width:auto;max-width:120px;
+         object-fit:contain;display:none;z-index:4;pointer-events:none;}
+  .tlogo.away{left:18px;}
+  .tlogo.home{right:18px;}
   #msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
        color:#cbd2dc;font:500 16px/1.5 -apple-system,Segoe UI,Inter,sans-serif;
        text-align:center;padding:24px;}
   #msg a{color:#7db2ff;}
-  /* tiny live dot, bottom-right, unobtrusive */
   #dot{position:absolute;right:10px;bottom:9px;width:8px;height:8px;border-radius:50%;
        background:#36d399;box-shadow:0 0 0 0 rgba(54,211,153,.6);
        animation:pulse 2.4s ease-out infinite;z-index:5;opacity:.85;}
@@ -29,6 +33,8 @@
 <div id="stage">
   <iframe id="fa" title="Box score"></iframe>
   <iframe id="fb" title="Box score"></iframe>
+  <img id="logoAway" class="tlogo away" alt="">
+  <img id="logoHome" class="tlogo home" alt="">
   <div id="dot" title="Auto-refreshing"></div>
 </div>
 <div id="msg"></div>
@@ -60,7 +66,6 @@
 
   var frames = [document.getElementById('fa'), document.getElementById('fb')];
   var active = 0;
-
   function load(){
     var next = frames[1 - active];
     next.onload = function(){
@@ -70,13 +75,38 @@
     };
     next.src = src();   // load into the hidden frame, then swap on ready
   }
-
   load();
   setInterval(load, secs * 1000);
-  // re-sync when the tab regains focus
-  document.addEventListener('visibilitychange', function(){
-    if(!document.hidden) load();
-  });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) load(); });
+
+  // ---- team logos: nzihl omits them from the print view, so overlay them ourselves.
+  // Team identity comes from the roster pipeline's boxscores.json (matched by gameid).
+  var LOGO_BASE = 'https://www.nzihl.com/media/leagues/6795/graphics/';
+  var LOGOS = {
+    'Dunedin Thunder':'thunder.png',
+    'Canterbury Red Devils':'reddevils.png',
+    'Botany Swarm':'swarm.png',
+    'SkyCity Stampede':'stampede.png',
+    'Pure NZ Admirals':'PureNZAdmirals2000x2000.jpg'
+  };
+  var FEEDS = [
+    'https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json',
+    'https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json'
+  ];
+  function place(id, team){
+    var fn = LOGOS[team]; if(!fn) return;
+    var el = document.getElementById(id);
+    el.src = LOGO_BASE + fn; el.style.display = 'block';
+  }
+  Promise.all(FEEDS.map(function(u){
+    return fetch(u, {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  })).then(function(all){
+    var game = null;
+    all.forEach(function(d){ if(d && d.games) d.games.forEach(function(gm){ if(String(gm.gameid) === String(g)) game = gm; }); });
+    if(!game) return;
+    place('logoAway', game.away);
+    place('logoHome', game.home);
+  }).catch(function(){});
 })();
 </script>
 </body>
