@@ -146,8 +146,8 @@
 
   <!-- THIS WEEKEND · BOX SCORES -->
   <section id="boxscores">
-    <div class="sec-head"><h2>This Weekend · Box Scores</h2><span class="sub">NZIHL · 27–28 Jun · links go live as results are posted</span></div>
-    <div class="grid g2">
+    <div class="sec-head"><h2>This Weekend · Box Scores</h2><span class="sub">Auto-resolved from the roster pipeline · links go live as results post</span></div>
+    <div id="boxscore-grid" class="grid g2">
       <a class="game card" target="_blank" rel="noopener" href="https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=7131&leagueid=35499&gameid=2519937">
         <div class="day">Sat 27 Jun · 4:45 PM</div>
         <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
@@ -321,6 +321,38 @@ async function loadRosters(repo, elId){
 }
 loadRosters('nzihl-broadcast-rosters','ros-nzihl');
 loadRosters('nzwihl-broadcast-rosters','ros-nzwihl');
+
+// live box-score links — auto-resolved by the roster pipeline (boxscores.json).
+// Falls back to the static cards already in #boxscore-grid if the fetch fails.
+const BOXSCORE_SOURCES = [
+  "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",
+  "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json",
+];
+async function loadBoxscores(){
+  try{
+    const data = await Promise.all(BOXSCORE_SOURCES.map(u =>
+      fetch(u, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(()=>null)));
+    const games = [];
+    data.forEach(d => { if(d && Array.isArray(d.games)) d.games.forEach(g => games.push({...g, league:d.league})); });
+    if(!games.length) return;  // keep the static fallback
+    games.sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
+    const fmt = g => {
+      try{ return new Date(g.datetime).toLocaleDateString('en-NZ',
+        {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }
+      catch(_){ return g.date; }
+    };
+    document.getElementById('boxscore-grid').innerHTML = games.map(g => {
+      const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
+      const inner = `<div class="day">${when}</div>
+        <div class="match">${g.away} <span>@</span> ${g.home}</div>
+        <div class="meta"><b>${g.venue||''}</b>${g.gameid ? ' · Box score →' : ' · box score TBC'}</div>`;
+      return g.boxscore_url
+        ? `<a class="game card" target="_blank" rel="noopener" href="${g.boxscore_url}">${inner}</a>`
+        : `<div class="game card" style="opacity:.55">${inner}</div>`;
+    }).join('');
+  }catch(_){ /* keep static fallback */ }
+}
+loadBoxscores();
 
 // copy-to-clipboard
 const toast = document.getElementById('toast');
