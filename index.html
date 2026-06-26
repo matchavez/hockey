@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NZ Hockey Broadcast Assets</title>
+<meta name="description" content="Portal to NZIHL & NZWIHL broadcast assets — standings, rosters, UP NEXT graphics, DVD loops, brand.">
+<link rel="icon" href="https://matchavez.com/nzihl-broadcast-assets/assets/league/NZIHL-White-2000.png">
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#141619; --panel2:#1b1e22; --line:#2a2e34;
+    --txt:#f3f4f6; --muted:#9aa3ad; --gold:#f7be11; --accent:#3aa0ff;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--txt);
+    font-family:Inter,-apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;
+    line-height:1.5; }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:0 16px; }
+
+  header.hero{ padding:34px 0 18px; border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 300px at 50% -120px, rgba(247,190,17,.10), transparent); }
+  .hero h1{ font-size:clamp(22px,4vw,34px); font-weight:800; margin:0; letter-spacing:.01em; }
+  .hero .tag{ color:var(--muted); margin-top:6px; font-size:14px; }
+  .hero .logos{ display:flex; gap:18px; align-items:center; margin-bottom:14px; }
+  .hero .logos img{ height:34px; width:auto; opacity:.95; }
+
+  nav.jump{ position:sticky; top:0; z-index:5; background:rgba(10,11,13,.86);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  nav.jump .wrap{ display:flex; gap:6px; overflow-x:auto; padding:9px 16px; }
+  nav.jump a{ white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--muted);
+    padding:5px 11px; border-radius:999px; border:1px solid transparent; }
+  nav.jump a:hover{ color:var(--txt); border-color:var(--line); background:var(--panel); }
+
+  section{ padding:26px 0 6px; }
+  .sec-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:14px; }
+  .sec-head h2{ font-size:18px; font-weight:800; margin:0; }
+  .sec-head .sub{ font-size:12.5px; color:var(--muted); }
+  .grid{ display:grid; gap:12px; }
+  .g2{ grid-template-columns:repeat(2,1fr); }
+  .g3{ grid-template-columns:repeat(3,1fr); }
+  @media(max-width:760px){ .g3{ grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:520px){ .g2,.g3{ grid-template-columns:1fr; } }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px; }
+  .card h3{ margin:0 0 4px; font-size:14.5px; font-weight:700; }
+  .card p{ margin:0; font-size:12.5px; color:var(--muted); }
+
+  .standings{ display:grid; gap:14px; grid-template-columns:1fr 1fr; }
+  @media(max-width:680px){ .standings{ grid-template-columns:1fr; } }
+  .standings figure{ margin:0; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; overflow:hidden; }
+  .standings img{ display:block; width:100%; height:auto; background:#000; }
+  .standings figcaption{ display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding:10px 12px; font-size:12.5px; }
+  .standings figcaption b{ font-weight:700; }
+
+  .btn{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:6px 11px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt); cursor:pointer; }
+  .btn:hover{ border-color:#3a3f47; }
+  .btn.gold{ background:var(--gold); color:#1a1500; border-color:var(--gold); }
+  .links{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+
+  .team{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--panel); border:1px solid var(--line); border-radius:11px;
+    padding:9px 11px; }
+  .team .nm{ font-size:13px; font-weight:600; min-width:0; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .team .acts{ display:flex; gap:6px; flex:0 0 auto; }
+  .pill{ font-size:11px; font-weight:600; padding:4px 9px; border-radius:7px;
+    border:1px solid var(--line); background:var(--panel2); }
+  .pill:hover{ border-color:#3a3f47; }
+
+  .league-label{ font-size:11px; font-weight:800; letter-spacing:.14em; color:var(--muted);
+    text-transform:uppercase; margin:8px 2px 8px; }
+
+  #rosters .roster-col{ background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:14px; }
+  .roster-item{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 0; border-bottom:1px dashed var(--line); }
+  .roster-item:last-child{ border-bottom:0; }
+  .roster-item .f{ font-size:12.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .muted-note{ color:var(--muted); font-size:12px; }
+
+  footer{ margin-top:30px; border-top:1px solid var(--line); padding:20px 0 40px;
+    color:var(--muted); font-size:12.5px; }
+  footer a{ color:var(--accent); }
+  code{ background:var(--panel2); border:1px solid var(--line); border-radius:6px;
+    padding:1px 6px; font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--txt); }
+
+  #toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px);
+    background:#fff; color:#000; font-size:12.5px; font-weight:700; padding:9px 16px;
+    border-radius:20px; opacity:0; pointer-events:none; transition:all .2s ease; z-index:30; }
+  #toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="logos">
+      <img src="https://matchavez.com/nzihl-broadcast-assets/assets/league/NZIHL-White-2000.png" alt="NZIHL">
+      <img src="https://matchavez.com/nzihl-broadcast-assets/assets/league/NZWIHL-Logo-White-1000px.png" alt="NZWIHL">
+    </div>
+    <h1>NZ Hockey Broadcast Assets</h1>
+    <div class="tag">One place for every NZIHL &amp; NZWIHL broadcast asset — standings, rosters, UP NEXT graphics, loops and brand. Most update automatically.</div>
+  </div>
+</header>
+
+<nav class="jump">
+  <div class="wrap">
+    <a href="#standings">Standings</a>
+    <a href="#rosters">Rosters</a>
+    <a href="#upnext">UP NEXT</a>
+    <a href="#loops">DVD Loops</a>
+    <a href="#brand">Brand</a>
+    <a href="#logos">Logos</a>
+    <a href="#hotlinks">Hotlinks</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- STANDINGS -->
+  <section id="standings">
+    <div class="sec-head"><h2>Live Standings</h2><span class="sub">Auto-rebuilt nightly · 1920×1080 PNG</span></div>
+    <div class="standings">
+      <figure>
+        <a id="nzihl-stand-link" target="_blank" rel="noopener"><img id="nzihl-stand" alt="NZIHL standings"></a>
+        <figcaption><b>NZIHL</b><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">Copy hotlink</button></figcaption>
+      </figure>
+      <figure>
+        <a id="nzwihl-stand-link" target="_blank" rel="noopener"><img id="nzwihl-stand" alt="NZWIHL standings"></a>
+        <figcaption><b>NZWIHL</b><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">Copy hotlink</button></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ROSTERS -->
+  <section id="rosters">
+    <div class="sec-head"><h2>Game-Day Rosters</h2><span class="sub">Latest fixture PDFs · auto-published per game</span></div>
+    <div class="grid g2">
+      <div class="roster-col">
+        <div class="league-label">NZIHL</div>
+        <div id="ros-nzihl"><p class="muted-note">Loading latest…</p></div>
+        <div class="links"><a class="btn" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters/releases">All NZIHL rosters →</a></div>
+      </div>
+      <div class="roster-col">
+        <div class="league-label">NZWIHL</div>
+        <div id="ros-nzwihl"><p class="muted-note">Loading latest…</p></div>
+        <div class="links"><a class="btn" target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters/releases">All NZWIHL rosters →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- UP NEXT -->
+  <section id="upnext">
+    <div class="sec-head"><h2>UP NEXT Graphics</h2><span class="sub">Per-matchup hero / lower-third overlays · download the team pack</span></div>
+    <div class="league-label">NZIHL</div>
+    <div id="upnext-nzihl" class="grid g3"></div>
+    <div class="league-label">NZWIHL</div>
+    <div id="upnext-nzwihl" class="grid g3"></div>
+  </section>
+
+  <!-- DVD LOOPS -->
+  <section id="loops">
+    <div class="sec-head"><h2>DVD Bounce Loops</h2><span class="sub">Seamless bouncing-logo MP4s · 4 corner variants per team (1080p50)</span></div>
+    <div id="loops-grid" class="grid g3"></div>
+  </section>
+
+  <!-- BRAND -->
+  <section id="brand">
+    <div class="sec-head"><h2>Brand &amp; Style</h2><span class="sub">Colours, logos and usage rules</span></div>
+    <div class="grid g2">
+      <a class="card" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">
+        <h3>2026 Colour Style Guide →</h3>
+        <p>Full per-team palettes, logo plates, scorebug and cross-league usage rules.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-hex-cheat-sheet.html">
+        <h3>Hex Cheat Sheet →</h3>
+        <p>Phone-friendly, tap-to-copy hex codes for every team.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- LOGOS -->
+  <section id="logos">
+    <div class="sec-head"><h2>Logos</h2><span class="sub">Team &amp; league marks used in the graphics</span></div>
+    <div class="grid g2">
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/tree/main/assets/logos">
+        <h3>Team logos →</h3>
+        <p>High-res PNG team marks (white &amp; full-colour) for both leagues.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/tree/main/assets/league">
+        <h3>League marks →</h3>
+        <p>NZIHL &amp; NZWIHL white logos.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- HOTLINKS -->
+  <section id="hotlinks">
+    <div class="sec-head"><h2>OBS / vMix Hotlinks</h2><span class="sub">Browser-source URLs that always show the current graphic</span></div>
+    <div class="card">
+      <div class="roster-item"><span class="f"><code>NZIHL Standings</code></span><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">Copy</button></div>
+      <div class="roster-item"><span class="f"><code>NZWIHL Standings</code></span><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">Copy</button></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Source repos:
+    <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets">nzihl-broadcast-assets</a> ·
+    <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters">nzihl-broadcast-rosters</a> ·
+    <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">nzwihl-broadcast-rosters</a>
+    <div style="margin-top:8px">matchavez.com/hockey</div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+const ASSETS = "https://matchavez.com/nzihl-broadcast-assets";
+const enc = s => encodeURIComponent(s);
+
+const NZIHL = [
+  {nm:"Pure NZ Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals"},
+  {nm:"Botany Swarm", up:"Botany Swarm", dvd:"BotanySwarm"},
+  {nm:"SkyCity Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede"},
+  {nm:"Dunedin Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder"},
+  {nm:"Auckland Mako", up:"Auckland Mako", dvd:"AucklandMako"},
+  {nm:"Canterbury Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils"},
+];
+const NZWIHL = [
+  {nm:"Auckland Steel", up:"Auckland Steel", dvd:"AucklandSteel"},
+  {nm:"Canterbury Inferno", up:"Canterbury Inferno", dvd:"CanterburyInferno"},
+  {nm:"Dunedin Thunder Women", up:"Dunedin Thunder Women", dvd:"DunedinThunderWomen"},
+  {nm:"Wakatipu Wild", up:"Wakatipu Wild", dvd:"WakatipuWild"},
+];
+
+// cache-busted standings
+const v = Date.now();
+document.getElementById('nzihl-stand').src  = `${ASSETS}/NZIHL_Standings.png?v=${v}`;
+document.getElementById('nzwihl-stand').src = `${ASSETS}/NZWIHL_Standings.png?v=${v}`;
+document.getElementById('nzihl-stand-link').href  = `${ASSETS}/NZIHL_Standings.png`;
+document.getElementById('nzwihl-stand-link').href = `${ASSETS}/NZWIHL_Standings.png`;
+
+// UP NEXT team cards
+function upCard(t){
+  const zip = `${ASSETS}/up-next/zips/${enc(t.up)}.zip`;
+  const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/up-next/${enc(t.up)}`;
+  return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
+    <a class="pill" href="${zip}">Zip</a>
+    <a class="pill" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
+}
+document.getElementById('upnext-nzihl').innerHTML  = NZIHL.map(upCard).join('');
+document.getElementById('upnext-nzwihl').innerHTML = NZWIHL.map(upCard).join('');
+
+// DVD loop team cards
+function dvdCard(t){
+  const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${t.dvd}`;
+  return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
+    <a class="pill" target="_blank" rel="noopener" href="${browse}">4 loops →</a></span></div>`;
+}
+document.getElementById('loops-grid').innerHTML = [...NZIHL,...NZWIHL].map(dvdCard).join('');
+
+// live latest roster releases
+async function loadRosters(repo, elId){
+  const el = document.getElementById(elId);
+  try{
+    const r = await fetch(`https://api.github.com/repos/matchavez/${repo}/releases/latest`);
+    if(!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    const assets = (d.assets||[]).filter(a=>a.name.toLowerCase().endsWith('.pdf'));
+    if(!assets.length){ el.innerHTML = `<p class="muted-note">No PDF in latest release.</p>`; return; }
+    el.innerHTML = assets.map(a=>{
+      const label = a.name.replace(/\.pdf$/i,'').replace(/_/g,' ');
+      return `<div class="roster-item"><span class="f">${label}</span>
+        <a class="btn" href="${a.browser_download_url}">PDF</a></div>`;
+    }).join('');
+  }catch(e){
+    el.innerHTML = `<p class="muted-note">Couldn’t load live — <a style="color:var(--accent)" target="_blank" rel="noopener" href="https://github.com/matchavez/${repo}/releases/latest">open latest release →</a></p>`;
+  }
+}
+loadRosters('nzihl-broadcast-rosters','ros-nzihl');
+loadRosters('nzwihl-broadcast-rosters','ros-nzwihl');
+
+// copy-to-clipboard
+const toast = document.getElementById('toast');
+function flash(msg){ toast.textContent = msg; toast.classList.add('on');
+  clearTimeout(flash._t); flash._t = setTimeout(()=>toast.classList.remove('on'),1200); }
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-copy]'); if(!b) return;
+  const txt = b.getAttribute('data-copy');
+  (navigator.clipboard?.writeText(txt) ?? Promise.reject()).then(()=>flash('Copied URL')).catch(()=>{
+    const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select();
+    try{document.execCommand('copy');}catch(_){} t.remove(); flash('Copied URL');
+  });
+});
+</script>
+</body>
+</html>
