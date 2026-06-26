@@ -21,6 +21,9 @@
 
   header.hero{ padding:34px 0 18px; border-bottom:1px solid var(--line);
     background:radial-gradient(1200px 300px at 50% -120px, rgba(247,190,17,.10), transparent); }
+  .hero .home{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600;
+    color:var(--muted); margin-bottom:10px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); }
+  .hero .home:hover{ color:var(--txt); border-color:#3a3f47; background:var(--panel); }
   .hero h1{ font-size:clamp(22px,4vw,34px); font-weight:800; margin:0; letter-spacing:.01em; }
   .hero .tag{ color:var(--muted); margin-top:6px; font-size:14px; }
   .hero .logos{ display:flex; gap:18px; align-items:center; margin-bottom:14px; }
@@ -109,6 +112,7 @@
 
 <header class="hero">
   <div class="wrap">
+    <a class="home" href="https://matchavez.com">&larr; matchavez.com</a>
     <h1>NZ Hockey Broadcast Assets</h1>
     <div class="tag">One place for every NZIHL &amp; NZWIHL broadcast asset — standings, rosters, Up Next graphics, loops and brand. Most update automatically.</div>
   </div>
@@ -250,7 +254,7 @@
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets">nzihl-broadcast-assets</a> ·
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters">nzihl-broadcast-rosters</a> ·
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">nzwihl-broadcast-rosters</a>
-    <div style="margin-top:8px">matchavez.com/hockey</div>
+    <div style="margin-top:8px"><a href="https://matchavez.com">matchavez.com</a> / hockey</div>
   </div>
 </footer>
 
