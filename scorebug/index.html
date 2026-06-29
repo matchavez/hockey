@@ -96,8 +96,19 @@
 // Until set, the scorebug still shows; the test buttons use sample data.
 let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";   // Cloudflare CORS proxy (worker.js)
 
-// The Singular scorebug output (Christchurch). Override with ?bug=<url>.
-let SCOREBUG_SRC = "https://app.singular.live/output/7wvd7ZPATlYl3NoLxtxmkF";
+// The Singular scorebug output is PER-BROADCAST, not per-team. Red Devils + Inferno share the
+// Christchurch (Alpine Ice) output; the other 8 clubs each use a DIFFERENT one.
+// *** BEFORE PUBLISHING any non-Christchurch club, fill its output id below (or pass ?bug=<id|url>). ***
+const BUG_CHC = "7wvd7ZPATlYl3NoLxtxmkF";          // Christchurch — Red Devils + Inferno ONLY
+const BUGMAP = {
+  "canterbury-red-devils": BUG_CHC,
+  "canterbury-inferno":    BUG_CHC,
+  // TODO @publish — different Singular output per club (uncomment + fill, or use ?bug=):
+  // "dunedin-thunder":"", "botany-swarm":"", "pure-nz-admirals":"", "skycity-stampede":"",
+  // "auckland-steel":"", "dunedin-thunder-women":"", "wakatipu-wild":"",
+};
+const SINGULAR = v => /^https?:/.test(v) ? v : "https://app.singular.live/output/"+v;
+let SCOREBUG_SRC = SINGULAR(BUG_CHC);   // resolved per-team in start(); ?bug= overrides
 
 // Scorebug placement / crop. The red scoreline's top-left = (cropX,cropY) -> page (x,y).
 // Callouts ABOVE the red bar are clipped out; penalty drop-downs below are kept.
@@ -133,7 +144,7 @@ const vis=id=>REG[id]||DEFV;
 /* ====================== URL OVERRIDES ====================== */
 const Q=new URLSearchParams(location.search);
 if(Q.get("worker")) WORKER=Q.get("worker");
-if(Q.get("bug"))    SCOREBUG_SRC=Q.get("bug");
+if(Q.get("bug"))    SCOREBUG_SRC=SINGULAR(Q.get("bug"));
 if(Q.get("bs")){const a=Q.get("bs").split(",").map(Number);
   if(a.length>=1&&a[0])BUG.scale=a[0]; if(a.length>=3){BUG.x=a[1];BUG.y=a[2];}
   if(a.length>=5){BUG.clipW=a[3];BUG.clipH=a[4];}}
@@ -339,6 +350,13 @@ function fitWindow(){document.getElementById("stage").style.transform="scale("+M
 addEventListener("resize",fitWindow);
 
 async function start(){
+  // pick this club's Singular scorebug (per-broadcast). ?bug= already won above if present.
+  const teamSlug = slug(Q.get("team")||"canterbury-red-devils");
+  let bugFallback=false;
+  if(!Q.get("bug")){
+    if(BUGMAP[teamSlug]) SCOREBUG_SRC=SINGULAR(BUGMAP[teamSlug]);
+    else { SCOREBUG_SRC=SINGULAR(BUG_CHC); bugFallback=true; }   // unmapped club — needs its own id before publish
+  }
   fitWindow(); placeBug();
   if(TESTMODE){ document.getElementById("test").style.display="flex";
     document.getElementById("diag").style.display="block";
@@ -346,7 +364,8 @@ async function start(){
     document.getElementById("tPen").onclick=testPen; }
   TARGET=await resolveTarget();
   const diag=document.getElementById("diag");
-  if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+(TARGET?("game "+TARGET.gid):"no-game"); }
+  if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+(TARGET?("game "+TARGET.gid):"no-game")
+    + (bugFallback?"  ·  ⚠ DEFAULT scorebug — set "+teamSlug+"'s Singular id before publish":""); }
   if(TARGET&&WORKER){ await tick();
     const t0=Date.now();
     const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }
