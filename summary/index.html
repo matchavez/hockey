@@ -101,7 +101,8 @@ const SHOT="https://www.nzihl.com/media/leagues/6795/graphics/";
 // team visuals keyed by nzihl teamID
 const REG={
  // dark = official Half-Dark "Scorebug BG" per 2026 style guide (used for the header wash vectors)
- "674110":{code:"ADM", ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", venue:"Avondale Skate & Sport, Auckland"},
+ // Admirals: primary Admiral Navy for chips/accent bars; score numeral uses Admiral Blue #2F6FE0 (lightened navy, legibility on the dark stage — per style guide).
+ "674110":{code:"ADM", ink:"#081D48", sc:"#2F6FE0", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", venue:"Avondale Skate & Sport, Auckland"},
  "675633":{code:"CRD", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", venue:"Alpine Ice, Christchurch"},
  "675634":{code:"DUN", ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", venue:"Dunedin Ice Stadium"},
  "675635":{code:"SCS", ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", venue:"Queenstown Ice Arena"},
@@ -189,7 +190,7 @@ function parse(html){
 
 // ---- render (v9 visuals) ----------------------------------------------
 let LEAGUE_NAME="New Zealand Ice Hockey League", VENUE="";
-function teamObj(p){const v=vis(p.teamID);return {teamID:p.teamID,name:p.name,code:v.code||p.code,ink:v.ink,dark:v.dark,logo:v.logo,sog:p.sog,pp:p.pp,pim:p.pim,line:p.line,tot:p.tot};}
+function teamObj(p){const v=vis(p.teamID);return {teamID:p.teamID,name:p.name,code:v.code||p.code,ink:v.ink,sc:v.sc||v.ink,dark:v.dark,logo:v.logo,sog:p.sog,pp:p.pp,pim:p.pim,line:p.line,tot:p.tot};}
 function washVectors(a,h){document.getElementById("wash").style.background=
   `linear-gradient(90deg, ${a.dark} 0%, ${a.dark} 6%, transparent 42%),`+
   `linear-gradient(270deg, ${h.dark} 0%, ${h.dark} 6%, transparent 42%)`;}
@@ -219,7 +220,7 @@ function render(P){
   document.getElementById("date").textContent=P.date;
   document.getElementById("divider").innerHTML=`<span>${LEAGUE_NAME}</span>`+(VENUE?`<span class="sep">|</span><span>${VENUE}</span>`:"");
   const sA=document.getElementById("sA"),sB=document.getElementById("sB");
-  sA.textContent=A.tot; sA.style.color=A.ink; sB.textContent=H.tot; sB.style.color=H.ink;
+  sA.textContent=A.tot; sA.style.color=A.sc; sB.textContent=H.tot; sB.style.color=H.sc;
   const keys=P.pcols.length?P.pcols:["1","2","3"];
   document.getElementById("pgrid").innerHTML="<tr><th></th>"+keys.map(k=>`<th>${k}</th>`).join("")+"<th>T</th></tr>"+
     [A,H].map(t=>`<tr><td class="lbl"><span class="chip" style="background:${t.ink}"></span>${t.code||""}</td>`+
