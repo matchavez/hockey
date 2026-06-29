@@ -348,13 +348,17 @@ async function loadBoxscores(){
         {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }
       catch(_){ return g.date; }
     };
+    // Known gameids for games the roster pipeline hasn't filled yet (manifest gameid=null).
+    // Keyed "away|home|date". Self-clears once the pipeline publishes the id (g.gameid wins).
+    const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
     document.getElementById('boxscore-grid').innerHTML = games.map(g => {
+      const gid = g.gameid || KNOWN_GIDS[[g.away,g.home,g.date].join('|')] || null;
       const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
       const inner = `<div class="day">${when}</div>
         <div class="match">${g.away} <span>@</span> ${g.home}</div>
-        <div class="meta"><b>${g.venue||''}</b>${g.gameid ? ' · Game summary →' : ' · game summary TBC'}</div>`;
-      const url = g.gameid
-        ? 'summary/?g=' + g.gameid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '')
+        <div class="meta"><b>${g.venue||''}</b>${gid ? ' · Game summary →' : ' · game summary TBC'}</div>`;
+      const url = gid
+        ? 'summary/?g=' + gid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '')
         : null;
       return url
         ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
