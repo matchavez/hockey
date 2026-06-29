@@ -174,7 +174,7 @@ function parse(html){
     return items;
   }
   const ssH=findH(/SCORING SUMMARY/i),psH=findH(/PENALTY SUMMARY/i),skH=findH(/SKATERS/i);
-  const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\(([^)]*)\)\s*$/);
+  const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\((.*)\)\s*$/);
     const who=m?m[2].trim():o.c[0];const id=teamOfName(who);
     return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",tag:(o.c[1]||"").replace(/G$/,"").trim(),teamID:id};}):[];
   const pens=psH?section(psH,skH).map(o=>{
