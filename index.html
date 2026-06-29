@@ -224,7 +224,10 @@
   <!-- DVD LOOPS -->
   <section id="loops">
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/dvd_loops.gif" alt=""><span class="sec-txt"><h2>DVD Bounce Loops</h2><span class="sub">Seamless bouncing-logo MP4s · 4 corner variants per team (1080p50)</span></span></div>
-    <div id="loops-grid" class="grid g3"></div>
+    <div class="league-label">NZIHL</div>
+    <div id="loops-nzihl" class="grid g3"></div>
+    <div class="league-label">NZWIHL</div>
+    <div id="loops-nzwihl" class="grid g3"></div>
   </section>
 
   <!-- LOGOS -->
@@ -264,19 +267,21 @@ const ASSETS = "https://matchavez.com/nzihl-broadcast-assets";
 const enc = s => encodeURIComponent(s);
 
 const NZIHL = [
-  {nm:"Pure NZ Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals"},
-  {nm:"Botany Swarm", up:"Botany Swarm", dvd:"BotanySwarm"},
-  {nm:"SkyCity Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede"},
-  {nm:"Dunedin Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder"},
-  {nm:"Auckland Mako", up:"Auckland Mako", dvd:"AucklandMako"},
-  {nm:"Canterbury Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils"},
+  {nm:"Pure NZ Admirals", nick:"Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals"},
+  {nm:"Botany Swarm", nick:"Swarm", up:"Botany Swarm", dvd:"BotanySwarm"},
+  {nm:"SkyCity Stampede", nick:"Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede"},
+  {nm:"Dunedin Thunder", nick:"Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder"},
+  {nm:"Auckland Mako", nick:"Mako", up:"Auckland Mako", dvd:"AucklandMako"},
+  {nm:"Canterbury Red Devils", nick:"Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils"},
 ];
 const NZWIHL = [
-  {nm:"Auckland Steel", up:"Auckland Steel", dvd:"AucklandSteel"},
-  {nm:"Canterbury Inferno", up:"Canterbury Inferno", dvd:"CanterburyInferno"},
-  {nm:"Dunedin Thunder Women", up:"Dunedin Thunder Women", dvd:"DunedinThunderWomen"},
-  {nm:"Wakatipu Wild", up:"Wakatipu Wild", dvd:"WakatipuWild"},
+  {nm:"Auckland Steel", nick:"Steel", up:"Auckland Steel", dvd:"AucklandSteel"},
+  {nm:"Canterbury Inferno", nick:"Inferno", up:"Canterbury Inferno", dvd:"CanterburyInferno"},
+  {nm:"Dunedin Thunder Women", nick:"Thunder", up:"Dunedin Thunder Women", dvd:"DunedinThunderWomen"},
+  {nm:"Wakatipu Wild", nick:"Wild", up:"Wakatipu Wild", dvd:"WakatipuWild"},
 ];
+// one consistent order for every team list: alphabetical by team nickname, subdivided by league
+[NZIHL, NZWIHL].forEach(a => a.sort((x,y) => x.nick.localeCompare(y.nick)));
 
 // cache-busted standings
 const v = Date.now();
@@ -306,7 +311,8 @@ function dvdCard(t){
     <a class="pill" href="${zip}">Zip</a>
     <a class="pill" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
 }
-document.getElementById('loops-grid').innerHTML = [...NZIHL,...NZWIHL].map(dvdCard).join('');
+document.getElementById('loops-nzihl').innerHTML  = NZIHL.map(dvdCard).join('');
+document.getElementById('loops-nzwihl').innerHTML = NZWIHL.map(dvdCard).join('');
 
 // live latest roster releases
 async function loadRosters(repo, elId){
