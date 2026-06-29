@@ -153,25 +153,25 @@
   <section id="boxscores">
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Live Game Summary</h2><span class="sub">Auto-resolved from the roster pipeline · links go live as results post</span></span></div>
     <div id="boxscore-grid" class="grid g2">
-      <a class="game card" target="_blank" rel="noopener" href="box/?g=2519937">
+      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519937">
         <div class="day">Sat 27 Jun · 4:45 PM</div>
         <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
-        <div class="meta"><b>Avondale, Auckland</b> · Box score →</div>
+        <div class="meta"><b>Avondale, Auckland</b> · Game summary →</div>
       </a>
-      <a class="game card" target="_blank" rel="noopener" href="box/?g=2519939">
+      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519939">
         <div class="day">Sat 27 Jun · 5:10 PM</div>
         <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
-        <div class="meta"><b>Christchurch</b> · Box score →</div>
+        <div class="meta"><b>Christchurch</b> · Game summary →</div>
       </a>
-      <a class="game card" target="_blank" rel="noopener" href="box/?g=2519940">
+      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519940">
         <div class="day">Sun 28 Jun · 5:10 PM</div>
         <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
-        <div class="meta"><b>Christchurch</b> · Box score →</div>
+        <div class="meta"><b>Christchurch</b> · Game summary →</div>
       </a>
-      <a class="game card" target="_blank" rel="noopener" href="box/?g=2519938">
+      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519938">
         <div class="day">Sun 28 Jun · 6:00 PM</div>
         <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
-        <div class="meta"><b>Avondale, Auckland</b> · Box score →</div>
+        <div class="meta"><b>Avondale, Auckland</b> · Game summary →</div>
       </a>
     </div>
   </section>
@@ -352,9 +352,9 @@ async function loadBoxscores(){
       const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
       const inner = `<div class="day">${when}</div>
         <div class="match">${g.away} <span>@</span> ${g.home}</div>
-        <div class="meta"><b>${g.venue||''}</b>${g.gameid ? ' · Box score →' : ' · box score TBC'}</div>`;
+        <div class="meta"><b>${g.venue||''}</b>${g.gameid ? ' · Game summary →' : ' · game summary TBC'}</div>`;
       const url = g.gameid
-        ? 'box/?g=' + g.gameid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '')
+        ? 'summary/?g=' + g.gameid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '')
         : null;
       return url
         ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
