@@ -209,9 +209,18 @@ function penEl(x,ink){const el=document.createElement("div");el.className="pen";
     <span class="pwho"><div class="pname"><span class="no">${x.no?'#'+x.no:''}</span><span class="nmt">${x.who}</span></div>
       <div class="psub"><span class="pinf">${x.inf}</span><span class="ppim">${x.dur}</span><span class="ptime">${x.t}</span></div></span>`;
   el.querySelector(".nmt").dataset.full=x.who;return el;}
+// Per-matchup accent overrides — when two teams' accents would clash (same hue), one swaps.
+// Botany Swarm (674109) vs Canterbury Red Devils (675633): Swarm Rose #C2455A reads too close
+// to Devil Red #E5242B, so Swarm reverts to Swarm Honey #F7AF28 for THIS matchup only. (Mat 2026-06-30)
+function applyMatchupAccents(A,H){
+  const ids=[A.teamID,H.teamID];
+  if(ids.includes("674109") && ids.includes("675633")){ (A.teamID==="674109"?A:H).ink="#F7AF28"; }
+}
 function render(P){
   const A=teamObj(P.away), H=teamObj(P.home);
-  const inkOf=id=>vis(id).ink;
+  applyMatchupAccents(A,H);
+  const INK={[A.teamID]:A.ink, [H.teamID]:H.ink};
+  const inkOf=id=>INK[id]||vis(id).ink;
   washVectors(A,H);
   setLogo(document.getElementById("logoA"),A); setLogo(document.getElementById("logoB"),H);
   document.getElementById("nameA").textContent=A.name; document.getElementById("nameB").textContent=H.name;
