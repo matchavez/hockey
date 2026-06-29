@@ -12,7 +12,7 @@
   html,body{background:#000;font-family:Inter,-apple-system,Segoe UI,sans-serif;font-feature-settings:"tnum" 1,"cv05" 1;-webkit-font-smoothing:antialiased;}
   #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
   #stage{width:1840px;height:1000px;flex:0 0 auto;position:relative;color:var(--fg);background:var(--bg);overflow:hidden;display:flex;flex-direction:column;}
-  #wash{position:absolute;left:0;top:0;width:100%;height:230px;z-index:0;pointer-events:none;filter:blur(48px);opacity:.6;}
+  #wash{position:absolute;left:0;top:0;width:100%;height:230px;z-index:0;pointer-events:none;filter:blur(48px);opacity:.6;clip-path:inset(0);}
   /* live "scraping" indicator — hidden + still by default; only pulses while a box-score fetch is in flight (see tick()) */
   .livedot{position:absolute;top:16px;left:22px;z-index:6;width:14px;height:14px;border-radius:50%;background:#5fe39a;box-shadow:0 0 0 0 rgba(95,227,154,.6);opacity:0;transition:opacity .2s ease;}
   .livedot.scraping{opacity:1;animation:pl 2.2s ease-out infinite;}
