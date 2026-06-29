@@ -37,7 +37,9 @@
   nav.jump a:hover{ color:var(--txt); border-color:var(--line); background:var(--panel); }
 
   section{ padding:26px 0 6px; }
-  .sec-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:14px; }
+  .sec-head{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .sec-thumb{ width:96px; height:54px; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#000; flex:0 0 auto; }
+  .sec-head .sec-txt{ min-width:0; }
   .sec-head h2{ font-size:18px; font-weight:800; margin:0; }
   .sec-head .sub{ font-size:12.5px; color:var(--muted); }
   .grid{ display:grid; gap:12px; }
@@ -69,7 +71,7 @@
 
   .team{ display:flex; align-items:center; justify-content:space-between; gap:8px;
     background:var(--panel); border:1px solid var(--line); border-radius:11px;
-    padding:9px 11px; }
+    padding:6px 10px; }
   .team .nm{ font-size:13px; font-weight:600; min-width:0; overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap; }
   .team .acts{ display:flex; gap:6px; flex:0 0 auto; }
@@ -121,13 +123,12 @@
 <nav class="jump">
   <div class="wrap">
     <a href="#standings">Standings</a>
-    <a href="#boxscores">Box Scores</a>
+    <a href="#boxscores">Live Game Summary</a>
     <a href="#rosters">Rosters</a>
     <a href="#brand">Brand</a>
     <a href="#upnext">Up Next</a>
     <a href="#loops">DVD Loops</a>
     <a href="#logos">Logos</a>
-    <a href="#hotlinks">Hotlinks</a>
   </div>
 </nav>
 
@@ -135,22 +136,22 @@
 
   <!-- STANDINGS -->
   <section id="standings">
-    <div class="sec-head"><h2>Live Standings</h2><span class="sub">Auto-rebuilt nightly · 1920×1080 PNG</span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/standings.png" alt=""><span class="sec-txt"><h2>Live Standings</h2><span class="sub">Auto-rebuilt nightly · 1920×1080 PNG</span></span></div>
     <div class="standings">
       <figure>
         <a id="nzihl-stand-link" target="_blank" rel="noopener"><img id="nzihl-stand" alt="NZIHL standings"></a>
-        <figcaption><b>NZIHL</b><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">Copy hotlink</button></figcaption>
+        <figcaption><b>NZIHL</b><span class="acts"><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">1920×1080</button><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
       <figure>
         <a id="nzwihl-stand-link" target="_blank" rel="noopener"><img id="nzwihl-stand" alt="NZWIHL standings"></a>
-        <figcaption><b>NZWIHL</b><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">Copy hotlink</button></figcaption>
+        <figcaption><b>NZWIHL</b><span class="acts"><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">1920×1080</button><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
     </div>
   </section>
 
   <!-- THIS WEEKEND · BOX SCORES -->
   <section id="boxscores">
-    <div class="sec-head"><h2>This Weekend · Box Scores</h2><span class="sub">Auto-resolved from the roster pipeline · links go live as results post</span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Live Game Summary</h2><span class="sub">Auto-resolved from the roster pipeline · links go live as results post</span></span></div>
     <div id="boxscore-grid" class="grid g2">
       <a class="game card" target="_blank" rel="noopener" href="box/?g=2519937">
         <div class="day">Sat 27 Jun · 4:45 PM</div>
@@ -177,7 +178,7 @@
 
   <!-- ROSTERS -->
   <section id="rosters">
-    <div class="sec-head"><h2>Game-Day Rosters</h2><span class="sub">Latest fixture PDFs · auto-published per game</span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/rosters.png" alt=""><span class="sec-txt"><h2>Game-Day Rosters</h2><span class="sub">Latest fixture PDFs · auto-published per game</span></span></div>
     <div class="grid g2">
       <div class="roster-col">
         <div class="league-label">NZIHL</div>
@@ -194,12 +195,16 @@
 
   <!-- BRAND -->
   <section id="brand">
-    <div class="sec-head"><h2>Brand &amp; Style</h2><span class="sub">Colours, logos and usage rules</span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/brand.png" alt=""><span class="sec-txt"><h2>Brand &amp; Style</h2><span class="sub">Colours, logos and usage rules</span></span></div>
     <div class="grid g2">
-      <a class="card" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">
-        <h3>2026 Colour Style Guide →</h3>
+      <div class="card">
+        <h3>2026 Style &amp; Colour Guide</h3>
         <p>Full per-team palettes, logo plates, scorebug and cross-league usage rules.</p>
-      </a>
+        <div class="links">
+          <a class="btn" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">HTML →</a>
+          <a class="btn" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.pdf">PDF →</a>
+        </div>
+      </div>
       <a class="card" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-hex-cheat-sheet.html">
         <h3>Hex Cheat Sheet →</h3>
         <p>Phone-friendly, tap-to-copy hex codes for every team.</p>
@@ -209,7 +214,7 @@
 
   <!-- Up Next -->
   <section id="upnext">
-    <div class="sec-head"><h2>Up Next Graphics</h2><span class="sub">Per-matchup hero / lower-third overlays · download the team pack</span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/up_next.png" alt=""><span class="sec-txt"><h2>Up Next Graphics</h2><span class="sub">Per-matchup hero / lower-third overlays · download the team pack</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="upnext-nzihl" class="grid g3"></div>
     <div class="league-label">NZWIHL</div>
@@ -218,13 +223,13 @@
 
   <!-- DVD LOOPS -->
   <section id="loops">
-    <div class="sec-head"><h2>DVD Bounce Loops</h2><span class="sub">Seamless bouncing-logo MP4s · 4 corner variants per team (1080p50)</span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/dvd_loops.gif" alt=""><span class="sec-txt"><h2>DVD Bounce Loops</h2><span class="sub">Seamless bouncing-logo MP4s · 4 corner variants per team (1080p50)</span></span></div>
     <div id="loops-grid" class="grid g3"></div>
   </section>
 
   <!-- LOGOS -->
   <section id="logos">
-    <div class="sec-head"><h2>Logos</h2><span class="sub">Team &amp; league marks used in the graphics</span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/logos.png" alt=""><span class="sec-txt"><h2>Logos</h2><span class="sub">Team &amp; league marks used in the graphics</span></span></div>
     <div class="grid g2">
       <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/tree/main/assets/logos">
         <h3>Team logos →</h3>
@@ -237,14 +242,6 @@
     </div>
   </section>
 
-  <!-- HOTLINKS -->
-  <section id="hotlinks">
-    <div class="sec-head"><h2>OBS / vMix Hotlinks</h2><span class="sub">Browser-source URLs that always show the current graphic</span></div>
-    <div class="card">
-      <div class="roster-item"><span class="f"><code>NZIHL Standings</code></span><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">Copy</button></div>
-      <div class="roster-item"><span class="f"><code>NZWIHL Standings</code></span><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">Copy</button></div>
-    </div>
-  </section>
 
 </main>
 
@@ -254,6 +251,7 @@
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets">nzihl-broadcast-assets</a> ·
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters">nzihl-broadcast-rosters</a> ·
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">nzwihl-broadcast-rosters</a>
+    <div style="margin-top:8px">Tools: <a target="_blank" rel="noopener" href="https://cockpit.49ing.ch/dashboard">49ing Cockpit ↗</a></div>
     <div style="margin-top:8px"><a href="https://matchavez.com">matchavez.com</a> / hockey</div>
   </div>
 </footer>
@@ -288,7 +286,8 @@ document.getElementById('nzwihl-stand-link').href = `${ASSETS}/NZWIHL_Standings.
 
 // Up Next team cards
 function upCard(t){
-  const zip = `${ASSETS}/up-next/zips/${enc(t.up)}.zip`;
+  const slug = t.nm.toLowerCase().replace(/\s+/g,"_");
+  const zip = `${ASSETS}/up-next/zips/${slug}_upnext.zip`;
   const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/up-next/${enc(t.up)}`;
   return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
     <a class="pill" href="${zip}">Zip</a>
@@ -299,9 +298,12 @@ document.getElementById('upnext-nzwihl').innerHTML = NZWIHL.map(upCard).join('')
 
 // DVD loop team cards
 function dvdCard(t){
+  const slug = t.nm.toLowerCase().replace(/\s+/g,"_");
+  const zip = `${ASSETS}/DVD%20Bounce%20Loops/zips/${slug}_dvd.zip`;
   const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${t.dvd}`;
   return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
-    <a class="pill" target="_blank" rel="noopener" href="${browse}">4 loops →</a></span></div>`;
+    <a class="pill" href="${zip}">Zip</a>
+    <a class="pill" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
 }
 document.getElementById('loops-grid').innerHTML = [...NZIHL,...NZWIHL].map(dvdCard).join('');
 
