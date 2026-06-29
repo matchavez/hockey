@@ -177,9 +177,13 @@ function parse(html){
   const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\(([^)]*)\)\s*$/);
     const who=m?m[2].trim():o.c[0];const id=teamOfName(who);
     return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",tag:(o.c[1]||"").replace(/G$/,"").trim(),teamID:id};}):[];
-  const pens=psH?section(psH,skH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\(([^)]*)\)\s*$/);
-    const tn=m?m[3].trim():"";const id=tn===away.name?away.teamID:tn===home.name?home.teamID:null;
-    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who:m?m[2].trim():o.c[0],inf:o.c[1]||"",dur:o.c[2]||"",teamID:id};}):[];
+  const pens=psH?section(psH,skH).map(o=>{
+    const cell=o.c[0];
+    const tm=cell.match(/\(([^)]*)\)\s*$/);                      // team is ALWAYS in the trailing parens — incl. team penalties (no player/#)
+    const tn=tm?tm[1].trim():"";const id=tn===away.name?away.teamID:tn===home.name?home.teamID:null;
+    const pm=cell.match(/^#?(\d+)\s+(.+?)\s*\([^)]*\)\s*$/);     // player penalty = "#no name (team)"
+    const who=pm?pm[2].trim():cell.replace(/\s*\([^)]*\)\s*$/,"").trim();  // else label minus (team), e.g. "Team Penalty"
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:pm?+pm[1]:"",who,inf:o.c[1]||"",dur:o.c[2]||"",teamID:id};}):[];
   // status / date / time from full text
   const all=doc.body.textContent.replace(/\s+/g," ");
   let status="Live";const fm=all.match(/FINAL\s*\/?\s*(OT|SO)?/i);if(fm)status="Final"+(fm[1]?" / "+fm[1].toUpperCase():"");
