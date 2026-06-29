@@ -276,20 +276,21 @@ async function resolve(){
     const m=MANIFESTS.find(x=> q.get("w")==="1"||leagueParam.startsWith("nzw")||leagueParam==="w" ? x.league==="nzwihl" : x.league==="nzihl");
     return {m, gid:g, venue:"", leagueName:m.league==="nzwihl"?"New Zealand Women's Ice Hockey League":"New Zealand Ice Hockey League"};
   }
-  if(!team){ showMsg("Add ?team=red-devils  (or ?g=<gameid> for one game)"); return null; }
-  // team mode: find this team's game from the manifests, nearest to now
-  let best=null, bestDiff=Infinity, bestM=null;
+  // SAME selector as the scorebug: reuse the roster pipeline's boxscores.json (current round)
+  // and pick THIS team's live/next game. Bare URL defaults to Red Devils.
+  const slugTeam = slug(team || "canterbury-red-devils");
+  const cands=[];
   for(const m of MANIFESTS){
     let data; try{ data=await getJSON(m.url);}catch(e){continue;}
-    (data.games||[]).forEach(gm=>{
-      if(!gm.gameid) return;
-      if(slug(gm.away)!==team && slug(gm.home)!==team) return;
-      const dt=new Date(gm.datetime||gm.date).getTime();
-      const diff=Math.abs(dt-Date.now());
-      if(diff<bestDiff){bestDiff=diff;best=gm;bestM=m;}
-    });
+    (data.games||[]).forEach(gm=>{ if(!gm.gameid) return;
+      if(slug(gm.away)!==slugTeam && slug(gm.home)!==slugTeam) return;
+      cands.push({m, gm, dt:new Date(gm.datetime||gm.date).getTime()||0}); });
   }
-  if(!best){ showMsg("No game found for “"+team+"”. Check the team slug, or that a game is scheduled."); return null; }
+  if(!cands.length){ showMsg("No game found for “"+slugTeam+"”. Check the team slug, or that a game is scheduled."); return null; }
+  const now=Date.now(), LIVE=5*3600*1000;                  // a game up to 5h old still counts as "current"
+  const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);  // soonest live/upcoming first
+  const pick=live[0] || cands.sort((a,b)=>b.dt-a.dt)[0];   // else the most recent
+  const best=pick.gm, bestM=pick.m;
   return {m:bestM, gid:best.gameid, venue:best.venue||"", leagueName:bestM.league==="nzwihl"?"New Zealand Women's Ice Hockey League":"New Zealand Ice Hockey League"};
 }
 
