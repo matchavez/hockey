@@ -33,11 +33,11 @@
 
   /* --- live banner (full width, top) --- */
   /* banner height matches the scorebug bar (~66px) + a hair, so it sits at/just below the bug */
+  /* Flat solid fill = the team's official Half-Dark "Scorebug BG" colour (--dark in REG); no
+     fade/gradient, so white text sits on a uniform high-contrast bed across the whole bar. */
   #bnr{position:absolute;left:0;top:0;width:1920px;height:78px;z-index:5;
     display:flex;align-items:center;
-    background:radial-gradient(ellipse 62% 165% at 50% 50%, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 70%),
-      linear-gradient(90deg,var(--dark) 0%,var(--ink) 32%,var(--ink) 68%,var(--dark) 100%);
-    border-bottom:4px solid rgba(255,255,255,.92);
+    background:var(--dark);
     box-shadow:0 8px 24px rgba(0,0,0,.42);
     clip-path:inset(0 100% 0 0);opacity:0;display:none;
     will-change:clip-path,opacity;}
@@ -61,11 +61,19 @@
   .btxt .sep{opacity:.55;font-weight:700;padding:0 .15em;}
 
   /* --- test controls (only with ?test=1) --- */
-  #test{position:absolute;left:24px;bottom:22px;z-index:9;display:none;gap:10px;
-    font-family:Inter,sans-serif;}
+  #test{position:absolute;left:24px;bottom:22px;right:24px;z-index:9;display:none;gap:8px;
+    flex-wrap:wrap;align-items:center;font-family:Inter,sans-serif;}
   #test button{font:600 15px Inter,sans-serif;color:#fff;background:#15181d;
     border:1px solid #333a44;border-radius:9px;padding:10px 16px;cursor:pointer;}
   #test button:hover{background:#1d2128;border-color:#4a5562;}
+  #teamBtns{display:flex;flex-wrap:wrap;gap:5px 9px;align-items:center;}
+  #test .tg{display:inline-flex;align-items:center;gap:3px;}
+  #test .tg .ab{color:#aeb6c0;font:700 12px Inter,sans-serif;letter-spacing:.05em;margin-right:2px;}
+  #test button.tb{font:700 13px Inter,sans-serif;padding:7px 10px;min-width:30px;letter-spacing:.03em;}
+  #test button.tb.gb{border-color:#2f6b46;} #test button.tb.gb:hover{background:#16271d;border-color:#3f8f5e;}
+  #test button.tb.pb{border-color:#7a5a1e;} #test button.tb.pb:hover{background:#241d10;border-color:#a87d2a;}
+  #test button.tb .k{font-weight:600;opacity:.55;margin-left:5px;font-size:11px;}
+  #test button#tAll{background:#1c2630;border-color:#395066;}
   #test .lbl{color:#7e8794;font:600 13px Inter,sans-serif;align-self:center;
     background:#0d0f13;border:1px solid #222;border-radius:8px;padding:8px 12px;}
   #diag{position:absolute;right:18px;bottom:16px;z-index:9;color:#5d646e;
@@ -83,9 +91,9 @@
   </div>
 
   <div id="test">
-    <span class="lbl">TEST</span>
-    <button id="tGoal">▶ First Goal</button>
-    <button id="tPen">▶ First Penalty</button>
+    <span class="lbl">TEST · GOAL / PEN · EACH TEAM</span>
+    <span id="teamBtns"></span>
+    <button id="tAll">▶ Play all</button>
   </div>
   <div id="diag"></div>
 </div>
@@ -113,7 +121,10 @@ let SCOREBUG_SRC = SINGULAR(BUG_CHC);   // resolved per-team in start(); ?bug= o
 // Scorebug placement / crop. The red scoreline's top-left = (cropX,cropY) -> page (x,y).
 // Callouts ABOVE the red bar are clipped out; penalty drop-downs below are kept.
 // Watermark (bottom-right of the composition) falls outside clipW/clipH -> hidden.
-// Tune live on the YoloBox with ?bs=scale,x,y,clipW,clipH  (e.g. ?bs=0.78,0,0,940,170)
+// The clip window itself sits at page (0,0). Empty space on the LEFT of the bug = cropX is a few
+// px short of the red bar's true left edge, so transparent composition shows through. Nudge cropX UP
+// to eat it (or DOWN if the bar is clipped). Tune live: ?bs=scale,x,y,clipW,clipH[,cropX,cropY]
+//   e.g. ?bs=0.78,0,0,1000,172,402,500   (raise cropX 390 -> 402 to close left gap)
 let BUG = { scale:0.78, x:0, y:0, cropX:390, cropY:500, clipW:1000, clipH:172 };
 
 const HOLD_GOAL = 10000;   // goal banner visible (ms)
@@ -128,15 +139,18 @@ const MANIFESTS=[
 ];
 // team visuals keyed by nzihl teamID (ink = accent, dark = shade, logo = file in /assets/logos/)
 const REG={
- "674110":{code:"ADM", ink:"#2F6FE0", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
- "675633":{code:"CRD", ink:"#E5242B", dark:"#5A0E12", logo:"Red Devils 2000x2000r.png"},
- "675634":{code:"DUN", ink:"#1E9E63", dark:"#013B27", logo:"Dunedin_Thunder.png"},
- "675635":{code:"SCS", ink:"#FAC805", dark:"#1D3056", logo:"Skycity Stampede 2000x2000.png"},
- "674109":{code:"BSW", ink:"#F7AF28", dark:"#3A1320", logo:"Botany Swarm 2000x2000.png"},
- "675636":{code:"AST", ink:"#9FB6C8", dark:"#1c2a35", logo:"Auckland-Steel-White.png"},
- "675637":{code:"CIN", ink:"#E0564E", dark:"#4a1410", logo:"Inferno-White.png"},
- "675638":{code:"DTW", ink:"#1E9E63", dark:"#013B27", logo:"thunder-women-white.png"},
- "675639":{code:"WLD", ink:"#36C2C2", dark:"#0c3a3a", logo:"Wakatipu-wild-white.png"},
+ // dark = official Half-Dark "Scorebug BG" per 2026 style guide (also used as the flat banner fill)
+ "674110":{code:"ADM", ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
+ "675633":{code:"CRD", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png"},
+ "675634":{code:"DUN", ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png"},
+ "675635":{code:"SCS", ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
+ "674109":{code:"BSW", ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
+ "675636":{code:"AST", ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
+ "675637":{code:"CIN", ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png"},
+ "675638":{code:"DTW", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png"},
+ "675639":{code:"WLD", ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
+ // Auckland Mako (NZIHL men) — Mako Steel / Mako Ink per 2026 style guide. TODO @publish: set teamID (left key below) from a parsed Mako box score.
+ // "<MAKO_TEAMID>":{code:"MAK", ink:"#8A8F96", dark:"#202222", logo:"Auckland Mako 2000x2000.png"},
 };
 const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:""};
 const vis=id=>REG[id]||DEFV;
@@ -147,7 +161,8 @@ if(Q.get("worker")) WORKER=Q.get("worker");
 if(Q.get("bug"))    SCOREBUG_SRC=SINGULAR(Q.get("bug"));
 if(Q.get("bs")){const a=Q.get("bs").split(",").map(Number);
   if(a.length>=1&&a[0])BUG.scale=a[0]; if(a.length>=3){BUG.x=a[1];BUG.y=a[2];}
-  if(a.length>=5){BUG.clipW=a[3];BUG.clipH=a[4];}}
+  if(a.length>=5){BUG.clipW=a[3];BUG.clipH=a[4];}
+  if(a.length>=7){BUG.cropX=a[5];BUG.cropY=a[6];}}   // optional inner crop nudge (close left/top gap)
 const TESTMODE = Q.get("test")==="1";
 
 /* ====================== SCOREBUG IFRAME ====================== */
@@ -226,6 +241,7 @@ const FONTS = (document.fonts&&document.fonts.ready)?document.fonts.ready:Promis
 let fontsLoaded=false; FONTS.then(()=>{fontsLoaded=true;});
 
 function setLogo(el,id){const v=vis(id);if(v.logo){el.src=LOGO+encodeURIComponent(v.logo);el.style.visibility="";}else el.style.visibility="hidden";}
+function setLogoFile(el,file){if(file){el.src=LOGO+encodeURIComponent(file);el.style.visibility="";}else el.style.visibility="hidden";}
 
 function goalHTML(g, awayName, homeName){
   const v=vis(g.teamID);
@@ -262,7 +278,8 @@ function pump(){
   const job=queue.shift();
   document.documentElement.style.setProperty("--ink", job.ink);
   document.documentElement.style.setProperty("--dark", job.dark);
-  setLogo(blogoL, job.eventID); setLogo(blogoR, job.eventID);   // both ends = the involved player's team
+  if(job.logoFile){ setLogoFile(blogoL, job.logoFile); setLogoFile(blogoR, job.logoFile); } // test harness: explicit logo
+  else { setLogo(blogoL, job.eventID); setLogo(blogoR, job.eventID); }   // both ends = the involved player's team
   btxt.innerHTML=job.html;
   bnr.classList.remove("hide");
   bnr.style.display="flex";
@@ -307,11 +324,15 @@ async function resolveTarget(){
   //   scorebug/?team=canterbury-red-devils  (or dunedin-thunder, botany-swarm, pure-nz-admirals,
   //   skycity-stampede, auckland-steel, canterbury-inferno, dunedin-thunder-women, wakatipu-wild …)
   const slugTeam = slug(team || "canterbury-red-devils");   // default: Red Devils
+  // Fallback gameids for games the pipeline hasn't filled yet (manifest gameid=null); self-clears when gm.gameid arrives.
+  const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
   const cands=[];
   for(const m of MANIFESTS){let data;try{data=await getJSON(m.url);}catch(e){continue;}
-    (data.games||[]).forEach(gm=>{ if(!gm.gameid)return;
+    (data.games||[]).forEach(gm=>{
+      const gid = gm.gameid || KNOWN_GIDS[[gm.away,gm.home,gm.date].join("|")] || null;
+      if(!gid) return;
       if(slug(gm.away)!==slugTeam && slug(gm.home)!==slugTeam) return;
-      cands.push({m, gid:gm.gameid, dt:new Date(gm.datetime||gm.date).getTime()||0}); });}
+      cands.push({m, gid, dt:new Date(gm.datetime||gm.date).getTime()||0}); });}
   if(!cands.length) return null;
   const now=Date.now(), LIVE=5*3600*1000;                    // a game up to 5h old still counts as "current"
   const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);  // soonest live/upcoming first
@@ -334,16 +355,41 @@ async function tick(){
   P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);firePen(p,AWAYID,HOMEID);}});
 }
 
-/* ====================== SAMPLE DATA (offline test) ====================== */
-const SAMPLE={
-  awayID:"675633", homeID:"675634", awayName:"Canterbury Red Devils", homeName:"Dunedin Thunder",
-  goal:{teamID:"675633", p:"2", t:"12:34", no:9, who:"Liam Carter", a:"Jordan Smith, Cam Walker", name:"Canterbury Red Devils"},
-  pen :{teamID:"675633", p:"1", t:"08:21", no:14, who:"Ryan Hill", inf:"Tripping", dur:"2:00"},
-};
-function testGoal(){ const g=firstGoal?{...firstGoal,name:(firstGoal.teamID===AWAYID?AWAYN:firstGoal.teamID===HOMEID?HOMEN:vis(firstGoal.teamID).code)}:SAMPLE.goal;
-  fireGoal(g, AWAYID||SAMPLE.awayID, HOMEID||SAMPLE.homeID, AWAYN||SAMPLE.awayName, HOMEN||SAMPLE.homeName); }
-function testPen(){ const p=firstPen||SAMPLE.pen;
-  firePen(p, AWAYID||SAMPLE.awayID, HOMEID||SAMPLE.homeID); }
+/* ====================== TEST: 10-TEAM BANNER SHOWCASE ======================
+   Mirrors banner-test-10-teams.html — fires a sample goal/penalty banner for each of
+   the ten clubs over the live scorebug, using each team's official scorebug-BG (dark)
+   flat fill + crest. Auckland Mako is included (not in the live REG since it has no 2026
+   games, so it carries its colours/logo inline here). */
+const TEST_TEAMS = [
+ {abbr:"ADM", name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", goalWho:"Henderson", goalA:"Patel, Cole", penWho:"Cole",       penDur:"2:00", penInf:"Tripping"},
+ {abbr:"BSW", name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png",     goalWho:"Mikaere",   goalA:"Tane, Reid",  penWho:"Mikaere",    penDur:"2:00", penInf:"Hooking"},
+ {abbr:"SCS", name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", goalWho:"O'Connor",  goalA:"Reid",        penWho:"O'Connor",   penDur:"2:00", penInf:"Slashing"},
+ {abbr:"DUN", name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png",            goalWho:"Audas",     goalA:"Stegmann",    penWho:"Sutherland", penDur:"5:00", penInf:"Fighting"},
+ {abbr:"MAK", name:"Auckland Mako",         ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png",    goalWho:"Tane",      goalA:"Brooks, Lee", penWho:"Brooks",     penDur:"2:00", penInf:"Interference"},
+ {abbr:"CRD", name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png",      goalWho:"Carter",    goalA:"Walker",      penWho:"Walker",     penDur:"2:00", penInf:"Cross-checking"},
+ {abbr:"AST", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png",       goalWho:"Thompson",  goalA:"Nair",        penWho:"Nair",       penDur:"2:00", penInf:"Holding"},
+ {abbr:"CIN", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png",              goalWho:"Morgan",    goalA:"Lee",         penWho:"Morgan",     penDur:"2:00", penInf:"Hooking"},
+ {abbr:"DTW", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png",        goalWho:"Hughes",    goalA:"Park",        penWho:"Park",       penDur:"2:00", penInf:"Tripping"},
+ {abbr:"WLD", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png",        goalWho:"Anderson",  goalA:"Frost, Bell", penWho:"Frost",      penDur:"2:00", penInf:"Slashing"},
+];
+function fireTest(t, kind, hold){
+  const html = kind==="pen"
+    ? penHTML({who:t.penWho, dur:t.penDur, inf:t.penInf})
+    : goalHTML({name:t.name, who:t.goalWho, a:t.goalA||""}, t.name, t.name);
+  enqueue({html, ink:t.ink, dark:t.dark, logoFile:t.logo,
+           hold: hold || (kind==="pen"?HOLD_PEN:HOLD_GOAL)});
+}
+function buildTestButtons(){
+  const wrap=document.getElementById("teamBtns");
+  TEST_TEAMS.forEach(t=>{
+    const g=document.createElement("span"); g.className="tg";
+    const lab=document.createElement("span"); lab.className="ab"; lab.textContent=t.abbr; g.appendChild(lab);
+    const bg=document.createElement("button"); bg.className="tb gb"; bg.textContent="G"; bg.title=t.name+" — goal banner";    bg.onclick=()=>fireTest(t,"goal"); g.appendChild(bg);
+    const bp=document.createElement("button"); bp.className="tb pb"; bp.textContent="P"; bp.title=t.name+" — penalty banner"; bp.onclick=()=>fireTest(t,"pen");  g.appendChild(bp);
+    wrap.appendChild(g);
+  });
+}
+function playAll(){ TEST_TEAMS.forEach(t=>{ fireTest(t,"goal",2400); fireTest(t,"pen",2400); }); }   // cycle every team: goal then penalty
 
 /* ====================== INIT ====================== */
 function fitWindow(){document.getElementById("stage").style.transform="scale("+Math.min(innerWidth/1920,innerHeight/1080)+")";}
@@ -360,8 +406,8 @@ async function start(){
   fitWindow(); placeBug();
   if(TESTMODE){ document.getElementById("test").style.display="flex";
     document.getElementById("diag").style.display="block";
-    document.getElementById("tGoal").onclick=testGoal;
-    document.getElementById("tPen").onclick=testPen; }
+    buildTestButtons();
+    document.getElementById("tAll").onclick=playAll; }
   TARGET=await resolveTarget();
   const diag=document.getElementById("diag");
   if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+(TARGET?("game "+TARGET.gid):"no-game")
