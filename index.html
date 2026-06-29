@@ -333,7 +333,8 @@ function summaryCard(t){
     <a class="pill" target="_blank" rel="noopener" href="${path}">Open</a>
     <a class="pill" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
 }
-document.getElementById('slugs-nzihl').innerHTML  = NZIHL.map(summaryCard).join('');
+// Auckland Mako has no 2026 games, so no Game Summary slug to point at — excluded from this list only.
+document.getElementById('slugs-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(summaryCard).join('');
 document.getElementById('slugs-nzwihl').innerHTML = NZWIHL.map(summaryCard).join('');
 
 // live latest roster releases

@@ -13,7 +13,9 @@
   #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
   #stage{width:1840px;height:1000px;flex:0 0 auto;position:relative;color:var(--fg);background:var(--bg);overflow:hidden;display:flex;flex-direction:column;}
   #wash{position:absolute;left:0;top:0;width:100%;height:230px;z-index:0;pointer-events:none;filter:blur(48px);opacity:.6;}
-  .livedot{position:absolute;top:16px;left:22px;z-index:6;width:14px;height:14px;border-radius:50%;background:#5fe39a;box-shadow:0 0 0 0 rgba(95,227,154,.6);animation:pl 2.2s ease-out infinite;}
+  /* live "scraping" indicator — hidden + still by default; only pulses while a box-score fetch is in flight (see tick()) */
+  .livedot{position:absolute;top:16px;left:22px;z-index:6;width:14px;height:14px;border-radius:50%;background:#5fe39a;box-shadow:0 0 0 0 rgba(95,227,154,.6);opacity:0;transition:opacity .2s ease;}
+  .livedot.scraping{opacity:1;animation:pl 2.2s ease-out infinite;}
   @keyframes pl{0%{box-shadow:0 0 0 0 rgba(95,227,154,.55)}70%{box-shadow:0 0 0 11px rgba(95,227,154,0)}100%{box-shadow:0 0 0 0 rgba(95,227,154,0)}}
   header{height:188px;flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 60px;position:relative;z-index:1;}
   .side{display:flex;align-items:center;gap:26px;}
@@ -98,15 +100,18 @@ const LOGO="https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
 const SHOT="https://www.nzihl.com/media/leagues/6795/graphics/";
 // team visuals keyed by nzihl teamID
 const REG={
- "674110":{code:"ADM", ink:"#2F6FE0", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", venue:"Avondale Skate & Sport, Auckland"},
- "675633":{code:"CRD", ink:"#E5242B", dark:"#5A0E12", logo:"Red Devils 2000x2000r.png", venue:"Alpine Ice, Christchurch"},
- "675634":{code:"DUN", ink:"#1E9E63", dark:"#013B27", logo:"Dunedin_Thunder.png", venue:"Dunedin Ice Stadium"},
- "675635":{code:"SCS", ink:"#FAC805", dark:"#1D3056", logo:"Skycity Stampede 2000x2000.png", venue:"Queenstown Ice Arena"},
- "674109":{code:"BSW", ink:"#F7AF28", dark:"#3A1320", logo:"Botany Swarm 2000x2000.png", venue:"Paradice Botany, Auckland"},
- "675636":{code:"AST", ink:"#9FB6C8", dark:"#1c2a35", logo:"Auckland-Steel-White.png", venue:"Avondale, Auckland"},
- "675637":{code:"CIN", ink:"#E0564E", dark:"#4a1410", logo:"Inferno-White.png", venue:"Alpine Ice, Christchurch"},
- "675638":{code:"DTW", ink:"#1E9E63", dark:"#013B27", logo:"thunder-women-white.png", venue:"Dunedin Ice Stadium"},
- "675639":{code:"WLD", ink:"#36C2C2", dark:"#0c3a3a", logo:"Wakatipu-wild-white.png", venue:"Queenstown Ice Arena"},
+ // dark = official Half-Dark "Scorebug BG" per 2026 style guide (used for the header wash vectors)
+ "674110":{code:"ADM", ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", venue:"Avondale Skate & Sport, Auckland"},
+ "675633":{code:"CRD", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", venue:"Alpine Ice, Christchurch"},
+ "675634":{code:"DUN", ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", venue:"Dunedin Ice Stadium"},
+ "675635":{code:"SCS", ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", venue:"Queenstown Ice Arena"},
+ "674109":{code:"BSW", ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png", venue:"Paradice Botany, Auckland"},
+ "675636":{code:"AST", ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png", venue:"Avondale, Auckland"},
+ "675637":{code:"CIN", ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", venue:"Alpine Ice, Christchurch"},
+ "675638":{code:"DTW", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", venue:"Dunedin Ice Stadium"},
+ "675639":{code:"WLD", ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png", venue:"Queenstown Ice Arena"},
+ // Auckland Mako (NZIHL men) — Mako Steel / Mako Ink per 2026 style guide. TODO @publish: set teamID (left key below) from a parsed Mako box score.
+ // "<MAKO_TEAMID>":{code:"MAK", ink:"#8A8F96", dark:"#202222", logo:"Auckland Mako 2000x2000.png", venue:""},
 };
 const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:"", venue:""};
 const vis=id=>REG[id]||DEFV;
@@ -279,14 +284,46 @@ async function resolve(){
   // SAME selector as the scorebug: reuse the roster pipeline's boxscores.json (current round)
   // and pick THIS team's live/next game. Bare URL defaults to Red Devils.
   const slugTeam = slug(team || "canterbury-red-devils");
+  // Fallback gameids for games the roster pipeline hasn't filled yet (manifest gameid=null) —
+  // without this a team whose only current game has a null id resolves to "No game found".
+  // Keyed "away|home|date"; self-clears once the pipeline publishes the id (gm.gameid wins).
+  const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
+  // LAST_GAME: per-team floor fallback = the gameid of the LAST game each team actually
+  // PLAYED. Used only when the live manifests yield no candidate (team idle this round /
+  // not in the current boxscores.json) so a slug NEVER resolves to "No game found".
+  // Live/upcoming games from the manifests always win over this. UPDATE ONLY WHEN THE
+  // ROSTER (round) CHANGES — set each entry to that team's most recent Final gameid.
+  // Last updated 2026-06-30 (after 27–28 Jun round).
+  const LAST_GAME = {
+    // NZIHL men
+    "botany-swarm":          {gid:2519938, league:"nzihl"},  // 28 Jun @ Pure NZ Admirals
+    "canterbury-red-devils": {gid:2519940, league:"nzihl"},  // 28 Jun vs Dunedin Thunder
+    "dunedin-thunder":       {gid:2519940, league:"nzihl"},  // 28 Jun @ Canterbury Red Devils
+    "pure-nz-admirals":      {gid:2519938, league:"nzihl"},  // 28 Jun vs Botany Swarm
+    "skycity-stampede":      {gid:2519934, league:"nzihl"},  // 20 Jun vs Dunedin Thunder
+    // NZWIHL women
+    "auckland-steel":        {gid:2520016, league:"nzwihl"}, // 21 Jun @ Canterbury Inferno
+    "canterbury-inferno":    {gid:2520016, league:"nzwihl"}, // 21 Jun vs Auckland Steel
+    "dunedin-thunder-women": {gid:2520018, league:"nzwihl"}, // 27 Jun @ Wakatipu Wild
+    "wakatipu-wild":         {gid:2520018, league:"nzwihl"}, // 27 Jun vs Dunedin Thunder Women
+  };
   const cands=[];
   for(const m of MANIFESTS){
     let data; try{ data=await getJSON(m.url);}catch(e){continue;}
-    (data.games||[]).forEach(gm=>{ if(!gm.gameid) return;
+    (data.games||[]).forEach(gm=>{
+      const gid = gm.gameid || KNOWN_GIDS[[gm.away,gm.home,gm.date].join("|")] || null;
+      if(!gid) return;
       if(slug(gm.away)!==slugTeam && slug(gm.home)!==slugTeam) return;
-      cands.push({m, gm, dt:new Date(gm.datetime||gm.date).getTime()||0}); });
+      cands.push({m, gm:{...gm, gameid:gid}, dt:new Date(gm.datetime||gm.date).getTime()||0}); });
   }
-  if(!cands.length){ showMsg("No game found for “"+slugTeam+"”. Check the team slug, or that a game is scheduled."); return null; }
+  if(!cands.length){
+    const lg = LAST_GAME[slugTeam];
+    if(lg){
+      const m = MANIFESTS.find(x=>x.league===lg.league) || MANIFESTS[0];
+      return {m, gid:lg.gid, venue:"", leagueName: m.league==="nzwihl"?"New Zealand Women's Ice Hockey League":"New Zealand Ice Hockey League"};
+    }
+    showMsg("No game found for “"+slugTeam+"”. Check the team slug, or that a game is scheduled."); return null;
+  }
   const now=Date.now(), LIVE=5*3600*1000;                  // a game up to 5h old still counts as "current"
   const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);  // soonest live/upcoming first
   const pick=live[0] || cands.sort((a,b)=>b.dt-a.dt)[0];   // else the most recent
@@ -298,6 +335,8 @@ let TARGET=null, renderedOnce=false;
 async function tick(){
   if(!TARGET) return;
   if(!WORKER){ showMsg("Live data endpoint not set. Deploy worker.js and paste its URL into summary.html (WORKER = …)."); return; }
+  const dot=document.querySelector(".livedot"); const t0=Date.now();
+  if(dot) dot.classList.add("scraping");          // flash ON while this scrape is in flight
   try{
     const html=await getText(boxURL(TARGET.m,TARGET.gid));
     const P=parse(html);
@@ -305,6 +344,7 @@ async function tick(){
     LEAGUE_NAME = TARGET.leagueName;
     hideMsg(); render(P); renderedOnce=true; fitWindow();
   }catch(e){ if(!renderedOnce) showMsg("Couldn’t load the live box score — retrying…"); }
+  finally{ if(dot){ const wait=Math.max(0,900-(Date.now()-t0)); setTimeout(()=>dot.classList.remove("scraping"),wait); } } // ensure ≥1 visible pulse, then OFF until next poll
 }
 async function start(){
   fitWindow();
