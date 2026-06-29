@@ -32,22 +32,25 @@
   #bug{position:absolute;border:0;background:transparent;transform-origin:0 0;width:1920px;height:1080px;}
 
   /* --- live banner (full width, top) --- */
-  #bnr{position:absolute;left:0;top:0;width:1920px;height:132px;z-index:5;
+  /* banner height matches the scorebug bar (~66px) + a hair, so it sits at/just below the bug */
+  #bnr{position:absolute;left:0;top:0;width:1920px;height:78px;z-index:5;
     display:flex;align-items:center;
-    background:linear-gradient(90deg,var(--dark) 0%,var(--ink) 28%,var(--ink) 72%,var(--dark) 100%);
-    border-bottom:5px solid rgba(255,255,255,.92);
-    box-shadow:0 10px 30px rgba(0,0,0,.45);
+    background:radial-gradient(ellipse 62% 165% at 50% 50%, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 70%),
+      linear-gradient(90deg,var(--dark) 0%,var(--ink) 32%,var(--ink) 68%,var(--dark) 100%);
+    border-bottom:4px solid rgba(255,255,255,.92);
+    box-shadow:0 8px 24px rgba(0,0,0,.42);
     clip-path:inset(0 100% 0 0);opacity:0;display:none;
     will-change:clip-path,opacity;}
   #bnr.show{display:flex;clip-path:inset(0 0 0 0);opacity:1;
     transition:clip-path .25s cubic-bezier(.4,0,.2,1),opacity .16s ease;}
   #bnr.hide{display:flex;clip-path:inset(0 0 0 100%);opacity:1;
     transition:clip-path .25s cubic-bezier(.4,0,.2,1);}
-  .bend{flex:0 0 168px;height:132px;display:flex;align-items:center;justify-content:center;}
-  .bend img{max-width:108px;max-height:104px;object-fit:contain;
+  .bend{flex:0 0 150px;height:78px;display:flex;align-items:center;justify-content:center;}
+  .bend img{max-width:74px;max-height:60px;object-fit:contain;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+  /* line-height 1.25 keeps descenders (p, g, y) inside the line box so overflow:hidden can't clip them */
   .btxt{flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;
-    color:#fff;font-weight:800;line-height:1;letter-spacing:.005em;padding:0 18px;
+    color:#fff;font-weight:800;line-height:1.25;letter-spacing:.005em;padding:0 16px;
     text-shadow:0 2px 8px rgba(0,0,0,.45);}
   .btxt .team{font-weight:900;letter-spacing:.01em;}
   .btxt .kw{font-weight:900;color:#fff;}
@@ -235,10 +238,10 @@ function penHTML(p){
 
 // fit text so it NEVER ellipsises: shrink font until it fits the available width
 function fitBanner(){
-  let fs=56; btxt.style.fontSize=fs+"px";
-  // measure; shrink in 1px steps to a sane floor
+  let fs=42; btxt.style.fontSize=fs+"px";   // sized to the shorter (78px) bar
+  // measure; shrink in 1px steps to a sane floor — never clip/ellipsis
   let guard=80;
-  while(btxt.scrollWidth>btxt.clientWidth && fs>22 && guard-->0){ fs-=1; btxt.style.fontSize=fs+"px"; }
+  while(btxt.scrollWidth>btxt.clientWidth && fs>20 && guard-->0){ fs-=1; btxt.style.fontSize=fs+"px"; }
 }
 
 const queue=[]; let busy=false;
@@ -248,7 +251,7 @@ function pump(){
   const job=queue.shift();
   document.documentElement.style.setProperty("--ink", job.ink);
   document.documentElement.style.setProperty("--dark", job.dark);
-  setLogo(blogoL, job.awayID); setLogo(blogoR, job.homeID);
+  setLogo(blogoL, job.eventID); setLogo(blogoR, job.eventID);   // both ends = the involved player's team
   btxt.innerHTML=job.html;
   bnr.classList.remove("hide");
   bnr.style.display="flex";
@@ -266,11 +269,11 @@ function pump(){
 function fireGoal(g, awayID, homeID, awayName, homeName){
   const v=vis(g.teamID);
   enqueue({html:goalHTML({...g,awayID,homeID,awayName,homeName}, awayName, homeName),
-    ink:v.ink, dark:v.dark, awayID, homeID, hold:HOLD_GOAL});
+    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL});
 }
 function firePen(p, awayID, homeID){
   const v=vis(p.teamID);
-  enqueue({html:penHTML(p), ink:v.ink, dark:v.dark, awayID, homeID, hold:HOLD_PEN});
+  enqueue({html:penHTML(p), ink:v.ink, dark:v.dark, eventID:p.teamID, hold:HOLD_PEN});
 }
 
 /* ====================== LIVE DETECTION ====================== */
