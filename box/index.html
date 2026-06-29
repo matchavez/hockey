@@ -44,7 +44,7 @@
   var g = p.get('g') || p.get('gameid');
   var lg = (p.get('l') || p.get('league') || '').toLowerCase();
   var isW = p.get('w') === '1' || lg.charAt(0) === 'w' || lg === 'nzwihl';
-  var secs = Math.max(8, parseInt(p.get('s'), 10) || 25);   // refresh cadence, min 8s
+  var secs = Math.max(8, parseInt(p.get('s'), 10) || 35);   // refresh cadence, min 8s (default 35s)
 
   var msg = document.getElementById('msg');
   if(!g){
