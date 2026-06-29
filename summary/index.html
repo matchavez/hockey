@@ -122,11 +122,11 @@ const vis=id=>REG[id]||DEFV;
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const slug=s=>s.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-const decamel=s=>s.replace(/([a-z\.])([A-Z])/g,"$1 $2");
+const decamel=s=>s.replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
 const ini=n=>n.split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
 const shotURL=n=>SHOT+encodeURIComponent(n.replace(/\s+/g,""))+".jpg";
 const nameInit=n=>{const x=n.split(/\s+/);return x.length<2?n:x[0][0]+". "+x.slice(1).join(" ");};
-const surnameOnly=n=>{const w=decamel(n).trim().split(/\s+/);return w.length>1?w.slice(1).join(" "):w[0];};
+const surnameOnly=n=>{const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?w.slice(1).join(" "):(w[0]||"");};
 function fmtAssist(a){
   if(/^unassisted$/i.test(a)) return '<span class="unassist">Unassisted</span>';
   const parts=a.split(",").map(s=>decamel(s).trim()).filter(Boolean);

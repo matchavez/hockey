@@ -178,11 +178,11 @@ function placeBug(){
 }
 
 /* ====================== NAME / TEXT HELPERS ====================== */
-const decamel=s=>String(s||"").replace(/([a-z\.])([A-Z])/g,"$1 $2");
+const decamel=s=>String(s||"").replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
 const titleCase=s=>String(s||"").replace(/\w\S*/g,w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase());
 // last-name-only: de-camelCase first, then take the final token (handles
 // "First Last", camelCase "FirstLast", and Maori multi-given-name "Te Rangi Henare" -> "Henare")
-function surname(n){const w=decamel(n).trim().split(/\s+/);return w[w.length-1]||"";}
+function surname(n){const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w[w.length-1]||"";}
 function surnameUC(n){return surname(n).toUpperCase();}
 function surnameTC(n){return titleCase(surname(n));}
 function assistList(a){
@@ -228,9 +228,13 @@ function parse(html){
   const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\((.*)\)\s*$/);
     const who=m?m[2].trim():o.c[0];const id=teamOfName(who);
     return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",teamID:id};}):[];
-  const pens=psH?section(psH,skH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\(([^)]*)\)\s*$/);
-    const tn=m?m[3].trim():"";const id=tn===away.name?away.teamID:tn===home.name?home.teamID:null;
-    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who:m?m[2].trim():o.c[0],inf:o.c[1]||"",dur:o.c[2]||"",teamID:id};}):[];
+  const pens=psH?section(psH,skH).map(o=>{
+    const cell=o.c[0];
+    const tm=cell.match(/\(([^)]*)\)\s*$/);                      // team is ALWAYS in the trailing parens — incl. team penalties (no player/#)
+    const tn=tm?tm[1].trim():"";const id=tn===away.name?away.teamID:tn===home.name?home.teamID:null;
+    const pm=cell.match(/^#?(\d+)\s+(.+?)\s*\([^)]*\)\s*$/);     // player penalty = "#no name (team)"
+    const who=pm?pm[2].trim():cell.replace(/\s*\([^)]*\)\s*$/,"").trim();  // else label minus (team), e.g. "Team Penalty"
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:pm?+pm[1]:"",who,inf:o.c[1]||"",dur:o.c[2]||"",teamID:id};}):[];
   return {away,home,goals,pens};
 }
 
