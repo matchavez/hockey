@@ -291,14 +291,21 @@ async function resolveTarget(){
   const team=Q.get("team"), g=Q.get("g")||Q.get("gameid");
   const lp=(Q.get("l")||Q.get("league")||"").toLowerCase();
   if(g){const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");return {m,gid:g};}
-  const slugTeam = team || "canterbury-red-devils";   // default: Red Devils
-  let best=null,bestDiff=Infinity,bestM=null;
+  // Reuse the ROSTER selector: same boxscores.json (current round) the portal's rosters +
+  // box-score links are built from. Pick THIS team's live/next game. Static per-team URL:
+  //   scorebug/?team=canterbury-red-devils  (or dunedin-thunder, botany-swarm, pure-nz-admirals,
+  //   skycity-stampede, auckland-steel, canterbury-inferno, dunedin-thunder-women, wakatipu-wild …)
+  const slugTeam = slug(team || "canterbury-red-devils");   // default: Red Devils
+  const cands=[];
   for(const m of MANIFESTS){let data;try{data=await getJSON(m.url);}catch(e){continue;}
     (data.games||[]).forEach(gm=>{ if(!gm.gameid)return;
       if(slug(gm.away)!==slugTeam && slug(gm.home)!==slugTeam) return;
-      const dt=new Date(gm.datetime||gm.date).getTime(); const diff=Math.abs(dt-Date.now());
-      if(diff<bestDiff){bestDiff=diff;best=gm;bestM=m;} });}
-  return best?{m:bestM,gid:best.gameid}:null;
+      cands.push({m, gid:gm.gameid, dt:new Date(gm.datetime||gm.date).getTime()||0}); });}
+  if(!cands.length) return null;
+  const now=Date.now(), LIVE=5*3600*1000;                    // a game up to 5h old still counts as "current"
+  const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);  // soonest live/upcoming first
+  const pick=live[0] || cands.sort((a,b)=>b.dt-a.dt)[0];      // else the most recent
+  return {m:pick.m, gid:pick.gid};
 }
 
 let firstGoal=null, firstPen=null;     // captured for the test buttons
