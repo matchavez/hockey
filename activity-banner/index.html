@@ -2,17 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Red Devils Scorebug + Live Banner</title>
+<title>NZIHL — Activity Banner</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link rel="preconnect" href="https://rsms.me/">
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 <style>
   /* ============================================================
-     NZIHL — Red Devils unified scorebug + live goal/penalty banner
-     ONE static 1920x1080 source for the YoloBox.
-       • Bottom layer: the live Singular scorebug (iframe, watermark clipped)
-       • Top layer:    goal / penalty banners driven by the league box score
-     The scorebug iframe is never modified, so it keeps working as-is.
+     NZIHL / NZWIHL — per-team ACTIVITY BANNER (no scorebug)
+     A transparent, otherwise-EMPTY 1920x1080 source for the YoloBox.
+       • No Singular score bug — this layer is deliberately clean so it can
+         sit OVER whatever scorebug each club already runs.
+       • The only thing that ever appears is the live goal / penalty banner,
+         driven by the league box score (same parser as the Red Devils
+         scorebug + Game Summary).
+     Static per-team URL:  activity-banner/?team=<slug>
+       e.g. ?team=canterbury-red-devils, ?team=botany-swarm, ?team=auckland-steel …
      ============================================================ */
   :root{
     --ink:#E5242B;    /* current event team accent (set per-event) */
@@ -23,13 +27,10 @@
     font-family:Inter,-apple-system,"Segoe UI",sans-serif;
     font-feature-settings:"tnum" 1,"cv05" 1;-webkit-font-smoothing:antialiased;}
 
-  /* full broadcast frame; YoloBox captures this 1:1 (fit-scaled only for desktop preview) */
+  /* full broadcast frame; YoloBox captures this 1:1 (fit-scaled only for desktop preview).
+     Nothing is painted here until a banner fires — the page is an empty transparent 1920x1080. */
   #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;
     transform-origin:0 0;overflow:hidden;}
-
-  /* --- scorebug clip window (upper-left). Red bar top-left = 0,0 --- */
-  #bugclip{position:absolute;left:0;top:0;overflow:hidden;z-index:1;pointer-events:none;}
-  #bug{position:absolute;border:0;background:transparent;transform-origin:0 0;width:1920px;height:1080px;}
 
   /* --- live banner (full width, top) --- */
   /* banner height matches the scorebug bar (~66px) + a hair, so it sits at/just below the bug */
@@ -82,8 +83,6 @@
 </head>
 <body>
 <div id="stage">
-  <div id="bugclip"><iframe id="bug" title="Scorebug" allowtransparency="true" scrolling="no"></iframe></div>
-
   <div id="bnr">
     <div class="bend" id="bendL"><img id="blogoL" alt=""></div>
     <div class="btxt" id="btxt"></div>
@@ -101,31 +100,8 @@
 <script>
 /* ====================== CONFIG ====================== */
 // CORS proxy (your Cloudflare worker.js). Paste the deployed URL here, OR pass ?worker=...
-// Until set, the scorebug still shows; the test buttons use sample data.
+// Until set, the test buttons still work; live box-score polling needs the proxy.
 let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";   // Cloudflare CORS proxy (worker.js)
-
-// The Singular scorebug output is PER-BROADCAST, not per-team. Red Devils + Inferno share the
-// Christchurch (Alpine Ice) output; the other 8 clubs each use a DIFFERENT one.
-// *** BEFORE PUBLISHING any non-Christchurch club, fill its output id below (or pass ?bug=<id|url>). ***
-const BUG_CHC = "7wvd7ZPATlYl3NoLxtxmkF";          // Christchurch — Red Devils + Inferno ONLY
-const BUGMAP = {
-  "canterbury-red-devils": BUG_CHC,
-  "canterbury-inferno":    BUG_CHC,
-  // TODO @publish — different Singular output per club (uncomment + fill, or use ?bug=):
-  // "dunedin-thunder":"", "botany-swarm":"", "pure-nz-admirals":"", "skycity-stampede":"",
-  // "auckland-steel":"", "dunedin-thunder-women":"", "wakatipu-wild":"",
-};
-const SINGULAR = v => /^https?:/.test(v) ? v : "https://app.singular.live/output/"+v;
-let SCOREBUG_SRC = SINGULAR(BUG_CHC);   // resolved per-team in start(); ?bug= overrides
-
-// Scorebug placement / crop. The red scoreline's top-left = (cropX,cropY) -> page (x,y).
-// Callouts ABOVE the red bar are clipped out; penalty drop-downs below are kept.
-// Watermark (bottom-right of the composition) falls outside clipW/clipH -> hidden.
-// The clip window itself sits at page (0,0). Empty space on the LEFT of the bug = cropX is a few
-// px short of the red bar's true left edge, so transparent composition shows through. Nudge cropX UP
-// to eat it (or DOWN if the bar is clipped). Tune live: ?bs=scale,x,y,clipW,clipH[,cropX,cropY]
-//   e.g. ?bs=0.78,0,0,1000,172,402,500   (raise cropX 390 -> 402 to close left gap)
-let BUG = { scale:0.78, x:0, y:0, cropX:390, cropY:500, clipW:1000, clipH:172 };
 
 const HOLD_GOAL = 10000;   // goal banner visible (ms)
 const HOLD_PEN  = 7000;    // penalty banner visible (ms)
@@ -133,6 +109,9 @@ const POLL_MS   = 12000;   // box-score poll cadence (<15s SLA)
 const RUN_CAP   = 3.25*3600*1000;   // auto-stop polling after 3h15m
 
 const LOGO="https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+// NO-CACHE source — admin.esportsdesk.com is the un-cached origin behind nzihl.com / nzwihl.com,
+// so live goals/penalties appear with no CDN delay. clientid/leagueid select the league.
+const SCRAPE_HOST = "https://admin.esportsdesk.com";
 const MANIFESTS=[
   {league:"nzihl",  url:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",  clientid:7131, leagueid:35499},
   {league:"nzwihl", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json", clientid:7132, leagueid:35501},
@@ -149,8 +128,6 @@ const REG={
  "675637":{code:"CIN", ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png"},
  "675638":{code:"DTW", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png"},
  "675639":{code:"WLD", ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
- // Auckland Mako (NZIHL men) — Mako Steel / Mako Ink per 2026 style guide. TODO @publish: set teamID (left key below) from a parsed Mako box score.
- // "<MAKO_TEAMID>":{code:"MAK", ink:"#8A8F96", dark:"#202222", logo:"Auckland Mako 2000x2000.png"},
 };
 const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:""};
 const vis=id=>REG[id]||DEFV;
@@ -158,24 +135,7 @@ const vis=id=>REG[id]||DEFV;
 /* ====================== URL OVERRIDES ====================== */
 const Q=new URLSearchParams(location.search);
 if(Q.get("worker")) WORKER=Q.get("worker");
-if(Q.get("bug"))    SCOREBUG_SRC=SINGULAR(Q.get("bug"));
-if(Q.get("bs")){const a=Q.get("bs").split(",").map(Number);
-  if(a.length>=1&&a[0])BUG.scale=a[0]; if(a.length>=3){BUG.x=a[1];BUG.y=a[2];}
-  if(a.length>=5){BUG.clipW=a[3];BUG.clipH=a[4];}
-  if(a.length>=7){BUG.cropX=a[5];BUG.cropY=a[6];}}   // optional inner crop nudge (close left/top gap)
 const TESTMODE = Q.get("test")==="1";
-
-/* ====================== SCOREBUG IFRAME ====================== */
-function placeBug(){
-  const clip=document.getElementById("bugclip"), f=document.getElementById("bug");
-  clip.style.left=BUG.x+"px"; clip.style.top=BUG.y+"px";
-  clip.style.width=BUG.clipW+"px"; clip.style.height=BUG.clipH+"px";
-  // inside the clip, shift the full 1920x1080 composition so (cropX,cropY) -> (0,0)
-  f.style.left=(-BUG.scale*BUG.cropX)+"px";
-  f.style.top =(-BUG.scale*BUG.cropY)+"px";
-  f.style.transform="scale("+BUG.scale+")";
-  if(f.src!==SCOREBUG_SRC) f.src=SCOREBUG_SRC;
-}
 
 /* ====================== NAME / TEXT HELPERS ====================== */
 const decamel=s=>String(s||"").replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
@@ -220,7 +180,7 @@ function parse(html){
       const t=txt(el);
       if(/^(1ST|2ND|3RD|\dTH|OVERTIME|OT\d*|SHOOTOUT)(\s+PERIOD)?$/i.test(t)&&!(el.querySelector&&el.querySelector("table"))){per=normP(t);return;}
       const tbl=(el.querySelector&&el.querySelector("table"))||(el.tagName==="TABLE"?el:null);
-      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties|No Scoring/i.test(c[0]))items.push({per,c});});
+      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties/i.test(c[0]))items.push({per,c});});
     });
     return items;
   }
@@ -316,7 +276,8 @@ let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="";
 
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
-function boxURL(m,gid){return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
+// NO-CACHE origin: admin.esportsdesk.com mirrors the league sites with no CDN delay.
+function boxURL(m,gid){return `${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 async function resolveTarget(){
@@ -325,7 +286,7 @@ async function resolveTarget(){
   if(g){const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");return {m,gid:g};}
   // Reuse the ROSTER selector: same boxscores.json (current round) the portal's rosters +
   // box-score links are built from. Pick THIS team's live/next game. Static per-team URL:
-  //   scorebug/?team=canterbury-red-devils  (or dunedin-thunder, botany-swarm, pure-nz-admirals,
+  //   activity-banner/?team=canterbury-red-devils  (or dunedin-thunder, botany-swarm, pure-nz-admirals,
   //   skycity-stampede, auckland-steel, canterbury-inferno, dunedin-thunder-women, wakatipu-wild …)
   const slugTeam = slug(team || "canterbury-red-devils");   // default: Red Devils
   // Fallback gameids for games the pipeline hasn't filled yet (manifest gameid=null); self-clears when gm.gameid arrives.
@@ -360,10 +321,9 @@ async function tick(){
 }
 
 /* ====================== TEST: 10-TEAM BANNER SHOWCASE ======================
-   Mirrors banner-test-10-teams.html — fires a sample goal/penalty banner for each of
-   the ten clubs over the live scorebug, using each team's official scorebug-BG (dark)
-   flat fill + crest. Auckland Mako is included (not in the live REG since it has no 2026
-   games, so it carries its colours/logo inline here). */
+   Fires a sample goal/penalty banner for each club over the (otherwise empty) frame,
+   using each team's official scorebug-BG (dark) flat fill + crest. Auckland Mako is
+   included here for the demo only (no 2026 games -> not in the live REG). */
 const TEST_TEAMS = [
  {abbr:"ADM", name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", goalWho:"Henderson", goalA:"Patel, Cole", penWho:"Cole",       penDur:"2:00", penInf:"Tripping"},
  {abbr:"BSW", name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png",     goalWho:"Mikaere",   goalA:"Tane, Reid",  penWho:"Mikaere",    penDur:"2:00", penInf:"Hooking"},
@@ -400,22 +360,15 @@ function fitWindow(){document.getElementById("stage").style.transform="scale("+M
 addEventListener("resize",fitWindow);
 
 async function start(){
-  // pick this club's Singular scorebug (per-broadcast). ?bug= already won above if present.
-  const teamSlug = slug(Q.get("team")||"canterbury-red-devils");
-  let bugFallback=false;
-  if(!Q.get("bug")){
-    if(BUGMAP[teamSlug]) SCOREBUG_SRC=SINGULAR(BUGMAP[teamSlug]);
-    else { SCOREBUG_SRC=SINGULAR(BUG_CHC); bugFallback=true; }   // unmapped club — needs its own id before publish
-  }
-  fitWindow(); placeBug();
+  fitWindow();
   if(TESTMODE){ document.getElementById("test").style.display="flex";
     document.getElementById("diag").style.display="block";
     buildTestButtons();
     document.getElementById("tAll").onclick=playAll; }
   TARGET=await resolveTarget();
   const diag=document.getElementById("diag");
-  if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+(TARGET?("game "+TARGET.gid):"no-game")
-    + (bugFallback?"  ·  ⚠ DEFAULT scorebug — set "+teamSlug+"'s Singular id before publish":""); }
+  const teamSlug = slug(Q.get("team")||"canterbury-red-devils");
+  if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+teamSlug+" · "+(TARGET?("game "+TARGET.gid):"no-game"); }
   if(TARGET&&WORKER){ await tick();
     const t0=Date.now();
     const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }

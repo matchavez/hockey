@@ -97,7 +97,7 @@ const MANIFESTS = [
   {league:"nzwihl", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json", clientid:7132, leagueid:35501},
 ];
 const LOGO="https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
-const SHOT="https://www.nzihl.com/media/leagues/6795/graphics/";
+const SHOT="https://admin.esportsdesk.com/media/leagues/6795/graphics/";
 // team visuals keyed by nzihl teamID
 const REG={
  // dark = official Half-Dark "Scorebug BG" per 2026 style guide (used for the header wash vectors)
@@ -286,7 +286,7 @@ function hideMsg(){document.getElementById("msg").style.display="none";}
 // ---- data flow ---------------------------------------------------------
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
-function boxURL(m,gid){return `https://www.${m.league==="nzwihl"?"nzwihl":"nzihl"}.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
+function boxURL(m,gid){return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 
 async function resolve(){
   const q=new URLSearchParams(location.search);

@@ -58,7 +58,8 @@
   var clientid = isW ? 7132 : 7131;
   var leagueid = isW ? 35501 : 35499;
   function src(){
-    return 'https://www.nzihl.com/leagues/hockey_boxscores.cfm?clientid=' + clientid +
+    // NO-CACHE origin: admin.esportsdesk.com mirrors nzihl.com / nzwihl.com with no CDN delay.
+    return 'https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=' + clientid +
            '&leagueid=' + leagueid + '&gameid=' + encodeURIComponent(g) +
            '&printPage=1&_=' + Date.now();   // cache-bust each load
   }
@@ -81,7 +82,7 @@
 
   // ---- team logos: nzihl omits them from the print view, so overlay them ourselves.
   // Team identity comes from the roster pipeline's boxscores.json (matched by gameid).
-  var LOGO_BASE = 'https://www.nzihl.com/media/leagues/6795/graphics/';
+  var LOGO_BASE = 'https://admin.esportsdesk.com/media/leagues/6795/graphics/';
   var LOGOS = {
     // NZIHL (men's)
     'Dunedin Thunder':'thunder.png',

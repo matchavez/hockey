@@ -124,7 +124,8 @@
   <div class="wrap">
     <a href="#standings">Standings</a>
     <a href="#boxscores">Live Game Summary</a>
-    <a href="#summaryslugs">Team Slugs</a>
+    <a href="#summaryslugs">Summary Slugs</a>
+    <a href="#bannerslugs">Banner Slugs</a>
     <a href="#rosters">Rosters</a>
     <a href="#brand">Brand</a>
     <a href="#upnext">Up Next</a>
@@ -184,6 +185,15 @@
     <div id="slugs-nzihl" class="grid g3"></div>
     <div class="league-label">NZWIHL</div>
     <div id="slugs-nzwihl" class="grid g3"></div>
+  </section>
+
+  <!-- ACTIVITY BANNER TEAM SLUGS -->
+  <section id="bannerslugs">
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs</h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source</span></span></div>
+    <div class="league-label">NZIHL</div>
+    <div id="banner-nzihl" class="grid g3"></div>
+    <div class="league-label">NZWIHL</div>
+    <div id="banner-nzwihl" class="grid g3"></div>
   </section>
 
   <!-- ROSTERS -->
@@ -266,6 +276,7 @@
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">nzwihl-broadcast-rosters</a>
     <div style="margin-top:8px">Tools: <a target="_blank" rel="noopener" href="https://cockpit.49ing.ch/dashboard">49ing Cockpit ↗</a></div>
     <div style="margin-top:8px"><a target="_blank" rel="noopener" href="scorebug/?test=1">Red Devils Scorebug + Live Banner (beta) ↗</a></div>
+    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="activity-banner/?test=1">Activity Banner — goal/penalty only, no scorebug (beta) ↗</a></div>
     <div style="margin-top:8px"><a href="https://matchavez.com">matchavez.com</a> / hockey</div>
   </div>
 </footer>
@@ -336,6 +347,19 @@ function summaryCard(t){
 // Auckland Mako has no 2026 games, so no Game Summary slug to point at — excluded from this list only.
 document.getElementById('slugs-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(summaryCard).join('');
 document.getElementById('slugs-nzwihl').innerHTML = NZWIHL.map(summaryCard).join('');
+
+// Activity Banner per-team static URLs ("Activity Banner Team Slugs") — same slugs as Game Summary.
+function bannerCard(t){
+  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const path = `activity-banner/?team=${sl}`;
+  const full = `https://matchavez.com/hockey/${path}`;
+  return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
+    <a class="pill" target="_blank" rel="noopener" href="${path}">Open</a>
+    <a class="pill" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
+}
+// Mako left out (no 2026 games) — 9 teams, matching the Game Summary slug list.
+document.getElementById('banner-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(bannerCard).join('');
+document.getElementById('banner-nzwihl').innerHTML = NZWIHL.map(bannerCard).join('');
 
 // live latest roster releases
 async function loadRosters(repo, elId){
