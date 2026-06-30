@@ -220,7 +220,7 @@ function parse(html){
       const t=txt(el);
       if(/^(1ST|2ND|3RD|\dTH|OVERTIME|OT\d*|SHOOTOUT)(\s+PERIOD)?$/i.test(t)&&!(el.querySelector&&el.querySelector("table"))){per=normP(t);return;}
       const tbl=(el.querySelector&&el.querySelector("table"))||(el.tagName==="TABLE"?el:null);
-      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties/i.test(c[0]))items.push({per,c});});
+      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties|No Scoring/i.test(c[0]))items.push({per,c});});
     });
     return items;
   }
