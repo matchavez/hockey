@@ -277,6 +277,10 @@ function render(P){
   if(!any){const e=document.createElement("div");e.className="pinf";e.style.cssText="opacity:.4;text-align:center;padding:.5em 0";e.textContent="No penalties";pcol.appendChild(e);}
   grid.appendChild(pcol);
   layout(); requestAnimationFrame(layout);
+  // Safari (and slow connections) can run this fit pass before the Inter webfont has
+  // finished swapping in; fitCols() then measures against the bulkier fallback font and
+  // locks in a too-small size that never gets recomputed. Re-run once webfonts settle.
+  if(document.fonts&&document.fonts.ready){document.fonts.ready.then(layout);}
 }
 function fillHeight(col){const rows=col.querySelectorAll(".goal, .pen");if(!rows.length)return;
   const extra=col.clientHeight-col.scrollHeight;if(extra<=2)return;const add=Math.min(extra/rows.length,30);
