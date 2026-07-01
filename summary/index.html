@@ -130,7 +130,7 @@ const surnameOnly=n=>{const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)
 function fmtAssist(a){
   if(/^unassisted$/i.test(a)) return '<span class="unassist">Unassisted</span>';
   const parts=a.split(",").map(s=>decamel(s).trim()).filter(Boolean);
-  return parts.length>=2 ? parts.map(surnameOnly).join(", ") : (parts[0]||"");
+  return parts.map(surnameOnly).join(", ");
 }
 const PORDER=[["1","1st Period"],["2","2nd Period"],["3","3rd Period"],["OT","Overtime"]];
 const normP=s=>{s=s.toUpperCase();if(s.startsWith("1"))return"1";if(s.startsWith("2"))return"2";if(s.startsWith("3"))return"3";if(/OT|OVER/.test(s))return"OT";if(/SO|SHOOT/.test(s))return"SO";return s;};
