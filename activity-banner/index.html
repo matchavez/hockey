@@ -49,6 +49,20 @@
   .bend{flex:0 0 150px;height:78px;display:flex;align-items:center;justify-content:center;}
   .bend img{max-width:74px;max-height:60px;object-fit:contain;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+
+  /* --- goal-scorer avatar (added 2026-07-01) ---
+     100px circle — deliberately taller than the 78px bar. #bnr is display:flex;align-items:center,
+     so this centers on the bar's vertical MIDDLE for free and overhangs top+bottom evenly by
+     design (Mat's call: "centre at the vertical centre... even though there will be overhang").
+     Top overhang gets clipped by the #stage frame edge (bar sits at top:0); bottom overhang bleeds
+     visibly into the transparent frame below. GOALS only — never shown for penalties. No initials
+     fallback here (unlike Game Summary): an unmatched/missing photo just shows nothing, added only
+     on a confirmed Image() onload so a broken-image icon can never flash on screen. */
+  .gav{flex:0 0 100px;width:100px;height:100px;border-radius:50%;overflow:hidden;
+    background:#1b2029;box-shadow:0 4px 16px rgba(0,0,0,.55),0 0 0 3px rgba(255,255,255,.14);
+    display:none;}
+  .gav.show{display:block;}
+  .gav img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;}
   /* line-height 1.25 keeps descenders (p, g, y) inside the line box so overflow:hidden can't clip them */
   .btxt{flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;
     color:#fff;font-weight:800;line-height:1.25;letter-spacing:.005em;padding:0 16px;
@@ -85,6 +99,7 @@
 <div id="stage">
   <div id="bnr">
     <div class="bend" id="bendL"><img id="blogoL" alt=""></div>
+    <div class="gav" id="gav"><img id="gavImg" alt=""></div>
     <div class="btxt" id="btxt"></div>
     <div class="bend" id="bendR"><img id="blogoR" alt=""></div>
   </div>
@@ -109,6 +124,11 @@ const POLL_MS   = 12000;   // box-score poll cadence (<15s SLA)
 const RUN_CAP   = 3.25*3600*1000;   // auto-stop polling after 3h15m
 
 const LOGO="https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+// esportsdesk player-headshot source — shared media folder, same convention as Game Summary's
+// SHOT/shotURL. Photos are NOT a fixed size (roughly 600x750-600x900, varies per upload), so the
+// avatar circle crops with object-fit:cover / object-position 50% 16% (biased toward the face).
+const SHOT="https://admin.esportsdesk.com/media/leagues/6795/graphics/";
+const shotURL=n=>SHOT+encodeURIComponent(String(n||"").replace(/\s+/g,""))+".jpg";
 // NO-CACHE source — admin.esportsdesk.com is the un-cached origin behind nzihl.com / nzwihl.com,
 // so live goals/penalties appear with no CDN delay. clientid/leagueid select the league.
 const SCRAPE_HOST = "https://admin.esportsdesk.com";
@@ -201,6 +221,8 @@ function parse(html){
 /* ====================== BANNER BUILD + ANIMATE ====================== */
 const bnr=document.getElementById("bnr"), btxt=document.getElementById("btxt");
 const blogoL=document.getElementById("blogoL"), blogoR=document.getElementById("blogoR");
+const gav=document.getElementById("gav"), gavImg=document.getElementById("gavImg");
+let avatarToken=0;   // guards against a late photo load landing on the wrong (already-advanced) job
 const FONTS = (document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
 let fontsLoaded=false; FONTS.then(()=>{fontsLoaded=true;});
 
@@ -240,11 +262,21 @@ function enqueue(job){ queue.push(job); pump(); }
 function pump(){
   if(busy||!queue.length) return; busy=true;
   const job=queue.shift();
+  const myToken=++avatarToken;
   document.documentElement.style.setProperty("--ink", job.ink);
   document.documentElement.style.setProperty("--dark", job.dark);
   if(job.logoFile){ setLogoFile(blogoL, job.logoFile); setLogoFile(blogoR, job.logoFile); } // test harness: explicit logo
   else { setLogo(blogoL, job.eventID); setLogo(blogoR, job.eventID); }   // both ends = the involved player's team
   btxt.innerHTML=job.html;
+  // goal-scorer avatar: reset first, then only show once the real photo confirms it loads —
+  // never an initials fallback here, a miss just stays hidden (see .gav comment in <style>).
+  gav.classList.remove("show"); gavImg.removeAttribute("src");
+  if(job.photoWho){
+    const test=new Image();
+    test.onload=()=>{ if(myToken!==avatarToken) return;   // this job already finished/advanced
+      gavImg.src=test.src; gav.classList.add("show"); fitBanner(); };
+    test.src=shotURL(job.photoWho);
+  }
   bnr.classList.remove("hide");
   bnr.style.display="flex";
   void bnr.offsetWidth;                 // reflow: lock the hidden start state
@@ -261,7 +293,7 @@ function pump(){
 function fireGoal(g, awayID, homeID, awayName, homeName){
   const v=vis(g.teamID);
   enqueue({html:goalHTML({...g,awayID,homeID,awayName,homeName}, awayName, homeName),
-    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL});
+    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL, photoWho:g.who});
 }
 function firePen(p, awayID, homeID){
   const v=vis(p.teamID);
@@ -327,10 +359,10 @@ async function tick(){
 const TEST_TEAMS = [
  {abbr:"ADM", name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", goalWho:"Henderson", goalA:"Patel, Cole", penWho:"Cole",       penDur:"2:00", penInf:"Tripping"},
  {abbr:"BSW", name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png",     goalWho:"Mikaere",   goalA:"Tane, Reid",  penWho:"Mikaere",    penDur:"2:00", penInf:"Hooking"},
- {abbr:"SCS", name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", goalWho:"O'Connor",  goalA:"Reid",        penWho:"O'Connor",   penDur:"2:00", penInf:"Slashing"},
- {abbr:"DUN", name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png",            goalWho:"Audas",     goalA:"Stegmann",    penWho:"Sutherland", penDur:"5:00", penInf:"Fighting"},
+ {abbr:"SCS", name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", goalWho:"Scott Henry", goalA:"Reid",      penWho:"O'Connor",   penDur:"2:00", penInf:"Slashing"},
+ {abbr:"DUN", name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png",            goalWho:"Nico Hemming", goalA:"Stegmann", penWho:"Sutherland", penDur:"5:00", penInf:"Fighting"},
  {abbr:"MAK", name:"Auckland Mako",         ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png",    goalWho:"Tane",      goalA:"Brooks, Lee", penWho:"Brooks",     penDur:"2:00", penInf:"Interference"},
- {abbr:"CRD", name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png",      goalWho:"Carter",    goalA:"Walker",      penWho:"Walker",     penDur:"2:00", penInf:"Cross-checking"},
+ {abbr:"CRD", name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png",      goalWho:"Justin Daigle", goalA:"Walker",   penWho:"Walker",     penDur:"2:00", penInf:"Cross-checking"},
  {abbr:"AST", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png",       goalWho:"Thompson",  goalA:"Nair",        penWho:"Nair",       penDur:"2:00", penInf:"Holding"},
  {abbr:"CIN", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png",              goalWho:"Morgan",    goalA:"Lee",         penWho:"Morgan",     penDur:"2:00", penInf:"Hooking"},
  {abbr:"DTW", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png",        goalWho:"Hughes",    goalA:"Park",        penWho:"Park",       penDur:"2:00", penInf:"Tripping"},
@@ -341,6 +373,7 @@ function fireTest(t, kind, hold){
     ? penHTML({who:t.penWho, dur:t.penDur, inf:t.penInf})
     : goalHTML({name:t.name, who:t.goalWho, a:t.goalA||""}, t.name, t.name);
   enqueue({html, ink:t.ink, dark:t.dark, logoFile:t.logo,
+           photoWho: kind==="goal" ? t.goalWho : undefined,   // goals only, same field doubles as the display name
            hold: hold || (kind==="pen"?HOLD_PEN:HOLD_GOAL)});
 }
 function buildTestButtons(){
