@@ -56,12 +56,13 @@
      "centre at the vertical centre... even though there will be overhang"). Top overhang gets
      clipped by the #stage frame edge (bar sits at top:0); bottom overhang bleeds visibly into the
      transparent frame below.
-     It is now positioned to track the scorer's NAME rather than sitting in a fixed slot: a zero-width
-     inline spacer (.gsp) is baked into goalHTML() immediately before the <span class="who">, and once
-     the photo confirms it loads, JS widens that spacer (reserving a gap right next to the name in the
+     It tracks a specific word rather than sitting in a fixed slot: a zero-width inline spacer (.gsp)
+     is baked into goalHTML() immediately before the <span class="team"> (Mat: left of the TEAM NAME,
+     not the scorer's name — moved here 2026-07-01 after first trying left-of-name), and once the
+     photo confirms it loads, JS widens that spacer (reserving a gap right before the team name in the
      centered sentence), re-fits the text, then measures the spacer's rendered position and moves this
-     absolutely-positioned circle to sit exactly there — so it reads "scored by [PHOTO] SURNAME" no
-     matter how the surrounding text re-centers. GOALS only — never penalties. No initials fallback
+     absolutely-positioned circle to sit exactly there — so it reads "[PHOTO] TEAM GOAL scored by
+     SURNAME" no matter how the surrounding text re-centers. GOALS only — never penalties. No initials fallback
      here (unlike Game Summary): a missing/unmatched photo just shows nothing (spacer stays 0-width),
      added only on a confirmed Image() onload so a broken-image icon can never flash on screen. */
   .gav{position:absolute;left:0;top:50%;transform:translateY(-50%);
@@ -243,8 +244,8 @@ function goalHTML(g, awayName, homeName){
   const v=vis(g.teamID);
   const team=esc(g.name|| (g.teamID===g.awayID?awayName:homeName) || "");
   const ast=assistList(g.a);
-  return `<span class="team">${team.toUpperCase()}</span> <span class="kw">GOAL</span> `
-       + `<span class="lc">scored by</span> <span class="gsp" id="gsp"></span><span class="who">${esc(surnameUC(g.who))}</span>`
+  return `<span class="gsp" id="gsp"></span><span class="team">${team.toUpperCase()}</span> <span class="kw">GOAL</span> `
+       + `<span class="lc">scored by</span> <span class="who">${esc(surnameUC(g.who))}</span>`
        + (ast?` <span class="ast">(${esc(ast)})</span>`:``);
 }
 // box score writes durations as "2 Minutes" / "5 Minutes" -> render as #:00 per spec
