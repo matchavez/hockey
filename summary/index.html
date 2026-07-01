@@ -375,6 +375,10 @@ async function tick(){
   if(!WORKER){ showMsg("Live data endpoint not set. Deploy worker.js and paste its URL into summary.html (WORKER = …)."); return; }
   const dot=document.querySelector(".livedot"); const t0=Date.now();
   if(dot) dot.classList.add("scraping");          // flash ON while this scrape is in flight
+  // First load only: the Worker does a live proxy+parse of the box score, which typically
+  // takes several seconds. Without this the stage sits blank but for the corner dot, which
+  // reads as "stuck." Subsequent ticks reuse already-rendered content, so no message needed.
+  if(!renderedOnce) showMsg("Loading live box score…");
   try{
     const html=await getText(boxURL(TARGET.m,TARGET.gid));
     const P=parse(html);
