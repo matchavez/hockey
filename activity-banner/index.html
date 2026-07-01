@@ -50,19 +50,29 @@
   .bend img{max-width:74px;max-height:60px;object-fit:contain;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
 
-  /* --- goal-scorer avatar (added 2026-07-01) ---
-     100px circle — deliberately taller than the 78px bar. #bnr is display:flex;align-items:center,
-     so this centers on the bar's vertical MIDDLE for free and overhangs top+bottom evenly by
-     design (Mat's call: "centre at the vertical centre... even though there will be overhang").
-     Top overhang gets clipped by the #stage frame edge (bar sits at top:0); bottom overhang bleeds
-     visibly into the transparent frame below. GOALS only — never shown for penalties. No initials
-     fallback here (unlike Game Summary): an unmatched/missing photo just shows nothing, added only
-     on a confirmed Image() onload so a broken-image icon can never flash on screen. */
-  .gav{flex:0 0 100px;width:100px;height:100px;border-radius:50%;overflow:hidden;
+  /* --- goal-scorer avatar (added 2026-07-01, aligned-to-name 2026-07-01) ---
+     100px circle — deliberately taller than the 78px bar, vertically centered on the bar's
+     MIDDLE via top:50%/translateY(-50%) so it overhangs top+bottom evenly by design (Mat's call:
+     "centre at the vertical centre... even though there will be overhang"). Top overhang gets
+     clipped by the #stage frame edge (bar sits at top:0); bottom overhang bleeds visibly into the
+     transparent frame below.
+     It is now positioned to track the scorer's NAME rather than sitting in a fixed slot: a zero-width
+     inline spacer (.gsp) is baked into goalHTML() immediately before the <span class="who">, and once
+     the photo confirms it loads, JS widens that spacer (reserving a gap right next to the name in the
+     centered sentence), re-fits the text, then measures the spacer's rendered position and moves this
+     absolutely-positioned circle to sit exactly there — so it reads "scored by [PHOTO] SURNAME" no
+     matter how the surrounding text re-centers. GOALS only — never penalties. No initials fallback
+     here (unlike Game Summary): a missing/unmatched photo just shows nothing (spacer stays 0-width),
+     added only on a confirmed Image() onload so a broken-image icon can never flash on screen. */
+  .gav{position:absolute;left:0;top:50%;transform:translateY(-50%);
+    width:100px;height:100px;border-radius:50%;overflow:hidden;
     background:#1b2029;box-shadow:0 4px 16px rgba(0,0,0,.55),0 0 0 3px rgba(255,255,255,.14);
     display:none;}
   .gav.show{display:block;}
   .gav img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;}
+  /* invisible layout-only spacer — width is set by JS once a photo is confirmed, reserving the
+     avatar's footprint right next to the name inside the centered, nowrap sentence. */
+  .gsp{display:inline-block;width:0;height:1px;vertical-align:middle;}
   /* line-height 1.25 keeps descenders (p, g, y) inside the line box so overflow:hidden can't clip them */
   .btxt{flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;
     color:#fff;font-weight:800;line-height:1.25;letter-spacing:.005em;padding:0 16px;
@@ -99,9 +109,9 @@
 <div id="stage">
   <div id="bnr">
     <div class="bend" id="bendL"><img id="blogoL" alt=""></div>
-    <div class="gav" id="gav"><img id="gavImg" alt=""></div>
     <div class="btxt" id="btxt"></div>
     <div class="bend" id="bendR"><img id="blogoR" alt=""></div>
+    <div class="gav" id="gav"><img id="gavImg" alt=""></div>
   </div>
 
   <div id="test">
@@ -234,7 +244,7 @@ function goalHTML(g, awayName, homeName){
   const team=esc(g.name|| (g.teamID===g.awayID?awayName:homeName) || "");
   const ast=assistList(g.a);
   return `<span class="team">${team.toUpperCase()}</span> <span class="kw">GOAL</span> `
-       + `<span class="lc">scored by</span> <span class="who">${esc(surnameUC(g.who))}</span>`
+       + `<span class="lc">scored by</span> <span class="gsp" id="gsp"></span><span class="who">${esc(surnameUC(g.who))}</span>`
        + (ast?` <span class="ast">(${esc(ast)})</span>`:``);
 }
 // box score writes durations as "2 Minutes" / "5 Minutes" -> render as #:00 per spec
@@ -272,10 +282,18 @@ function pump(){
   // never an initials fallback here, a miss just stays hidden (see .gav comment in <style>).
   gav.classList.remove("show"); gavImg.removeAttribute("src");
   if(job.photoWho){
-    const test=new Image();
-    test.onload=()=>{ if(myToken!==avatarToken) return;   // this job already finished/advanced
-      gavImg.src=test.src; gav.classList.add("show"); fitBanner(); };
-    test.src=shotURL(job.photoWho);
+    const gsp=btxt.querySelector(".gsp");   // goalHTML() bakes this in right before the name; absent for penalties
+    if(gsp){
+      const test=new Image();
+      test.onload=()=>{ if(myToken!==avatarToken) return;   // this job already finished/advanced
+        gsp.style.width="112px";            // reserve the avatar's footprint next to the name
+        fitBanner();                        // re-fit text now that the gap exists
+        const gspR=gsp.getBoundingClientRect(), bnrR=bnr.getBoundingClientRect();
+        const scale=(bnrR.width/1920)||1;   // #stage may be CSS-scaled for the desktop preview
+        gav.style.left=((gspR.left-bnrR.left)/scale)+"px";
+        gavImg.src=test.src; gav.classList.add("show"); };
+      test.src=shotURL(job.photoWho);
+    }
   }
   bnr.classList.remove("hide");
   bnr.style.display="flex";
