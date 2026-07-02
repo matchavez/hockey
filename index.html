@@ -7,41 +7,96 @@
 <meta name="description" content="Portal to NZIHL & NZWIHL broadcast assets — standings, rosters, Up Next graphics, DVD loops, brand.">
 <link rel="icon" href="data:,">
 <style>
+  @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('assets/fonts/InterVariable.woff2') format('woff2');}
+  @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('assets/fonts/InterVariable-Italic.woff2') format('woff2');}
   :root{
     --bg:#0a0b0d; --panel:#141619; --panel2:#1b1e22; --line:#2a2e34;
-    --txt:#f3f4f6; --muted:#9aa3ad; --gold:#f7be11; --accent:#3aa0ff;
+    --txt:#f3f4f6; --muted:#9aa3ad; --gold:#f7be11; --accent:#3aa0ff; --live:#2ecc71;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html{ scroll-behavior:smooth; }
   body{ margin:0; background:var(--bg); color:var(--txt);
     font-family:Inter,-apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;
+    font-feature-settings:"ss01" 1,"ss02" 1;
     line-height:1.5; }
+  button,input{ font:inherit; font-feature-settings:inherit; }
   a{ color:inherit; text-decoration:none; }
   .wrap{ max-width:1080px; margin:0 auto; padding:0 16px; }
 
-  header.hero{ padding:34px 0 18px; border-bottom:1px solid var(--line);
-    background:radial-gradient(1200px 300px at 50% -120px, rgba(247,190,17,.10), transparent); }
+  /* scroll progress — thin gold beam pinned to the very top */
+  #pbar{ position:fixed; top:0; left:0; height:2px; width:0; z-index:9;
+    background:linear-gradient(90deg,var(--gold),#ffd75e);
+    box-shadow:0 0 8px rgba(247,190,17,.5); }
+
+  /* hero — drifting rink-light wash + faint centre-ice mark */
+  header.hero{ padding:36px 0 24px; border-bottom:1px solid var(--line);
+    position:relative; overflow:hidden; }
+  header.hero::before{ content:""; position:absolute; inset:-60% -20%; pointer-events:none;
+    background:
+      radial-gradient(640px 300px at 22% 35%, rgba(58,160,255,.11), transparent 62%),
+      radial-gradient(720px 330px at 78% 22%, rgba(247,190,17,.14), transparent 62%);
+    animation:drift 16s ease-in-out infinite alternate; }
+  @keyframes drift{ from{ transform:translate3d(-2.5%,0,0) scale(1); }
+    to{ transform:translate3d(2.5%,4%,0) scale(1.06); } }
+  .hero .rink{ position:absolute; right:-36px; top:50%; transform:translateY(-50%);
+    height:230px; width:230px; pointer-events:none; }
+  .hero .wrap{ position:relative; }
   .hero .home{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600;
-    color:var(--muted); margin-bottom:10px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); }
-  .hero .home:hover{ color:var(--txt); border-color:#3a3f47; background:var(--panel); }
-  .hero h1{ font-size:clamp(22px,4vw,34px); font-weight:800; margin:0; letter-spacing:.01em; }
-  .hero .tag{ color:var(--muted); margin-top:6px; font-size:14px; }
-  .hero .logos{ display:flex; gap:18px; align-items:center; margin-bottom:14px; }
-  .hero .logos img{ height:34px; width:auto; opacity:.95; }
+    color:var(--muted); margin-bottom:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--line);
+    transition:color .15s, border-color .15s, background .15s, box-shadow .2s; }
+  .hero .home:hover{ color:var(--txt); border-color:#3a3f47; background:var(--panel);
+    box-shadow:0 0 14px rgba(243,244,246,.07); }
+  .eyebrow{ display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--gold); margin:0 0 6px; }
+  .eyebrow .sep{ width:26px; height:2px; border-radius:2px;
+    background:linear-gradient(90deg,var(--gold),transparent); }
+  .eyebrow #clock{ color:var(--muted); letter-spacing:.08em; font-weight:700; }
+  .hero h1{ font-size:clamp(24px,4.4vw,38px); font-weight:800; margin:0; letter-spacing:.005em;
+    background:linear-gradient(92deg,#fff 55%, rgba(247,190,17,.92));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero .tag{ color:var(--muted); margin-top:7px; font-size:14px; max-width:640px; }
+
+  /* "next game" chip — filled live from boxscores.json */
+  .next-chip{ display:none; align-items:center; gap:9px; margin-top:16px; padding:8px 15px;
+    border-radius:999px; border:1px solid rgba(247,190,17,.4); background:rgba(247,190,17,.06);
+    font-size:12.5px; font-weight:600; transition:box-shadow .2s, border-color .2s; }
+  .next-chip.show{ display:inline-flex; }
+  a.next-chip:hover{ border-color:rgba(247,190,17,.7); box-shadow:0 0 18px rgba(247,190,17,.22); }
+  .next-chip b{ color:var(--gold); font-size:10.5px; font-weight:800; letter-spacing:.12em; }
+  .next-chip .dot{ background:var(--gold); animation-name:pulse-gold; margin:0; }
+  @keyframes pulse-gold{ 0%,100%{ box-shadow:0 0 0 0 rgba(247,190,17,.5); }
+    50%{ box-shadow:0 0 0 5px rgba(247,190,17,0); } }
 
   nav.jump{ position:sticky; top:0; z-index:5; background:rgba(10,11,13,.86);
     backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
   nav.jump .wrap{ display:flex; gap:6px; overflow-x:auto; padding:9px 16px; }
   nav.jump a{ white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--muted);
-    padding:5px 11px; border-radius:999px; border:1px solid transparent; }
+    padding:5px 11px; border-radius:999px; border:1px solid transparent;
+    transition:color .15s, border-color .15s, background .15s; }
   nav.jump a:hover{ color:var(--txt); border-color:var(--line); background:var(--panel); }
+  nav.jump a.on{ color:var(--gold); border-color:rgba(247,190,17,.35); background:rgba(247,190,17,.07); }
 
   section{ padding:26px 0 6px; }
+  body.anim main section{ opacity:0; transform:translateY(14px);
+    transition:opacity .55s ease, transform .55s ease; }
+  body.anim main section.in{ opacity:1; transform:none; }
   .sec-head{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
-  .sec-thumb{ width:96px; height:54px; object-fit:cover; border-radius:8px; border:1px solid var(--line); background:#000; flex:0 0 auto; }
+  .sec-thumb{ width:104px; height:58px; object-fit:cover; border-radius:9px;
+    border:1px solid var(--line); background:#000; flex:0 0 auto;
+    transition:transform .25s ease, border-color .2s ease, box-shadow .25s ease; }
+  .sec-head:hover .sec-thumb{ transform:scale(1.05) rotate(-.6deg);
+    border-color:rgba(247,190,17,.4); box-shadow:0 6px 18px rgba(0,0,0,.45); }
   .sec-head .sec-txt{ min-width:0; }
-  .sec-head h2{ font-size:18px; font-weight:800; margin:0; }
+  .sec-head h2{ font-size:18px; font-weight:800; margin:0; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
   .sec-head .sub{ font-size:12.5px; color:var(--muted); }
+
+  /* status chips — say up front how each section behaves */
+  .chip{ font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;
+    border:1px solid rgba(46,204,113,.35); color:var(--live); background:rgba(46,204,113,.07); }
+  .chip .dot{ margin:0; width:6px; height:6px; }
+  .chip.blue{ border-color:rgba(58,160,255,.35); color:var(--accent); background:rgba(58,160,255,.07); }
+
   .grid{ display:grid; gap:12px; }
   .g2{ grid-template-columns:repeat(2,1fr); }
   .g3{ grid-template-columns:repeat(3,1fr); }
@@ -49,14 +104,28 @@
   @media(max-width:520px){ .g2,.g3{ grid-template-columns:1fr; } }
 
   .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:14px; }
+    padding:14px; transition:transform .18s ease, border-color .18s ease, box-shadow .22s ease; }
+  a.card:hover{ transform:translateY(-2px); border-color:#3a3f47;
+    box-shadow:0 8px 26px rgba(0,0,0,.4), 0 0 0 1px rgba(58,160,255,.14); }
   .card h3{ margin:0 0 4px; font-size:14.5px; font-weight:700; }
   .card p{ margin:0; font-size:12.5px; color:var(--muted); }
+
+  /* cursor-follow glow — panels light up under the pointer */
+  .card,.team,.roster-col,.standings figure{ position:relative; }
+  .card::after,.team::after,.roster-col::after,.standings figure::after{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    opacity:0; transition:opacity .25s ease;
+    background:radial-gradient(170px circle at var(--mx,50%) var(--my,50%),
+      rgba(247,190,17,.09), transparent 68%); }
+  .card:hover::after,.team:hover::after,.roster-col:hover::after,
+  .standings figure:hover::after{ opacity:1; }
 
   .standings{ display:grid; gap:14px; grid-template-columns:1fr 1fr; }
   @media(max-width:680px){ .standings{ grid-template-columns:1fr; } }
   .standings figure{ margin:0; background:var(--panel); border:1px solid var(--line);
-    border-radius:14px; overflow:hidden; }
+    border-radius:14px; overflow:hidden; transition:border-color .2s, box-shadow .25s; }
+  .standings figure:hover{ border-color:rgba(247,190,17,.35);
+    box-shadow:0 8px 26px rgba(0,0,0,.4), 0 0 22px rgba(247,190,17,.08); }
   .standings img{ display:block; width:100%; height:auto; background:#000; }
   .standings figcaption{ display:flex; align-items:center; justify-content:space-between;
     gap:8px; padding:10px 12px; font-size:12.5px; }
@@ -65,22 +134,49 @@
   .btn{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
     padding:6px 11px; border-radius:8px; border:1px solid var(--line);
     background:var(--panel2); color:var(--txt); cursor:pointer; }
-  .btn:hover{ border-color:#3a3f47; }
-  .btn.gold{ background:var(--gold); color:#1a1500; border-color:var(--gold); }
   .links{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
 
   .team{ display:flex; align-items:center; justify-content:space-between; gap:8px;
     background:var(--panel); border:1px solid var(--line); border-radius:11px;
-    padding:6px 10px; }
+    padding:6px 10px 6px 8px; transition:border-color .15s, background .15s; }
+  .team:hover{ border-color:#3a3f47; background:#17191d; }
+  .team .idw{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .team .lg{ width:26px; height:26px; object-fit:contain; flex:0 0 auto;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
   .team .nm{ font-size:13px; font-weight:600; min-width:0; overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap; }
   .team .acts{ display:flex; gap:6px; flex:0 0 auto; }
   .pill{ font-size:11px; font-weight:600; padding:4px 9px; border-radius:7px;
     border:1px solid var(--line); background:var(--panel2); }
-  .pill:hover{ border-color:#3a3f47; }
+
+  /* ---- interaction language ----
+     Every control tells you what it does before you click:
+       ↓  gold  = downloads a file
+       ⧉  gold  = copies a URL (paste as a browser source)
+       ↗  blue  = opens a page                                   */
+  .btn,.pill{ transition:color .15s ease, border-color .15s ease, background .15s ease,
+    box-shadow .22s ease, transform .15s ease; }
+  .btn:hover,.pill:hover{ transform:translateY(-1px); border-color:#3a3f47; }
+  .dl:hover,.cp:hover{ border-color:rgba(247,190,17,.55); color:#fff;
+    box-shadow:0 0 0 1px rgba(247,190,17,.28), 0 0 16px rgba(247,190,17,.20); }
+  .ext:hover{ border-color:rgba(58,160,255,.55); color:#fff;
+    box-shadow:0 0 0 1px rgba(58,160,255,.25), 0 0 16px rgba(58,160,255,.20); }
+  .btn.gold{ background:var(--gold); color:#1a1500; border-color:var(--gold); }
+  .dl::before{ content:"↓"; } .ext::before{ content:"↗"; } .cp::before{ content:"⧉"; }
+  .dl::before,.ext::before,.cp::before{ margin-right:5px; opacity:.6; font-size:10px; font-weight:700; }
+  .copied{ color:var(--gold) !important; border-color:rgba(247,190,17,.6) !important; }
+  .copied::before{ content:"✓" !important; opacity:1 !important; }
+
+  /* pulsing "this updates itself" dot */
+  .dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--live);
+    margin-right:7px; vertical-align:1px; animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,.45); }
+    50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
 
   .league-label{ font-size:11px; font-weight:800; letter-spacing:.14em; color:var(--muted);
-    text-transform:uppercase; margin:8px 2px 8px; }
+    text-transform:uppercase; margin:8px 2px 8px; display:flex; align-items:center; gap:8px; }
+  .league-label::before{ content:""; display:inline-block; width:14px; height:2px;
+    background:var(--gold); border-radius:2px; }
 
   #rosters .roster-col{ background:var(--panel); border:1px solid var(--line);
     border-radius:14px; padding:14px; }
@@ -104,19 +200,37 @@
   a.game{ display:block; }
   .game .day{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--gold);
     text-transform:uppercase; }
-  .game .match{ font-size:14px; font-weight:700; margin:3px 0 4px; }
-  .game .match span{ color:var(--muted); font-weight:600; padding:0 4px; }
+  .game .match{ font-size:14px; font-weight:700; margin:4px 0 4px; display:flex;
+    align-items:center; flex-wrap:wrap; gap:2px; }
+  .game .match .mlg{ width:19px; height:19px; object-fit:contain; margin-right:5px;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  .game .match span{ color:var(--muted); font-weight:600; padding:0 6px; }
   .game .meta{ font-size:11.5px; color:var(--muted); }
   .game .meta b{ color:var(--txt); font-weight:600; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+    .btn:hover,.pill:hover,a.card:hover{ transform:none !important; }
+    body.anim main section{ opacity:1 !important; transform:none !important; }
+  }
 </style>
 </head>
 <body>
 
+<div id="pbar"></div>
+
 <header class="hero">
+  <svg class="rink" viewBox="0 0 230 230" aria-hidden="true">
+    <line x1="0" y1="115" x2="230" y2="115" stroke="rgba(220,0,0,.12)" stroke-width="4"/>
+    <circle cx="115" cy="115" r="78" fill="none" stroke="rgba(58,160,255,.12)" stroke-width="2.5"/>
+    <circle cx="115" cy="115" r="7" fill="rgba(58,160,255,.14)"/>
+  </svg>
   <div class="wrap">
     <a class="home" href="https://matchavez.com">&larr; matchavez.com</a>
+    <div class="eyebrow">2026 Season <span class="sep"></span> <span id="clock"></span></div>
     <h1>NZ Hockey Broadcast Assets</h1>
     <div class="tag">One place for every NZIHL &amp; NZWIHL broadcast asset — standings, rosters, Up Next graphics, loops and brand. Most update automatically.</div>
+    <a id="next-chip" class="next-chip" target="_blank" rel="noopener"></a>
   </div>
 </header>
 
@@ -138,22 +252,22 @@
 
   <!-- STANDINGS -->
   <section id="standings">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/standings.png" alt=""><span class="sec-txt"><h2>Live Standings</h2><span class="sub">Auto-rebuilt nightly · 1920×1080 PNG</span></span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/standings.png" alt=""><span class="sec-txt"><h2>Live Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · 1920×1080 PNG</span></span></div>
     <div class="standings">
       <figure>
         <a id="nzihl-stand-link" target="_blank" rel="noopener"><img id="nzihl-stand" alt="NZIHL standings"></a>
-        <figcaption><b>NZIHL</b><span class="acts"><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">1920×1080</button><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
+        <figcaption><b>NZIHL</b><span class="acts"><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">1920×1080</button><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
       <figure>
         <a id="nzwihl-stand-link" target="_blank" rel="noopener"><img id="nzwihl-stand" alt="NZWIHL standings"></a>
-        <figcaption><b>NZWIHL</b><span class="acts"><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">1920×1080</button><button class="btn" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
+        <figcaption><b>NZWIHL</b><span class="acts"><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">1920×1080</button><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
     </div>
   </section>
 
   <!-- THIS WEEKEND · BOX SCORES -->
   <section id="boxscores">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Live Game Summary</h2><span class="sub">Auto-resolved from the roster pipeline · links go live as results post</span></span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Live Game Summary <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Resolved from the roster pipeline · links go live as results post</span></span></div>
     <div id="boxscore-grid" class="grid g2">
       <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519937">
         <div class="day">Sat 27 Jun · 4:45 PM</div>
@@ -180,7 +294,7 @@
 
   <!-- GAME SUMMARY TEAM SLUGS -->
   <section id="summaryslugs">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Game Summary Team Slugs</h2><span class="sub">Static per-team Game Summary URLs · open or copy as a source</span></span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Game Summary Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Static per-team Game Summary URLs · open or copy as a source</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="slugs-nzihl" class="grid g3"></div>
     <div class="league-label">NZWIHL</div>
@@ -189,7 +303,7 @@
 
   <!-- ACTIVITY BANNER TEAM SLUGS -->
   <section id="bannerslugs">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs</h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source</span></span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="banner-nzihl" class="grid g3"></div>
     <div class="league-label">NZWIHL</div>
@@ -198,17 +312,17 @@
 
   <!-- ROSTERS -->
   <section id="rosters">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/rosters.png" alt=""><span class="sec-txt"><h2>Game-Day Rosters</h2><span class="sub">Latest fixture PDFs · auto-published per game</span></span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/rosters.png" alt=""><span class="sec-txt"><h2>Game-Day Rosters <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Latest fixture PDFs · auto-published per game</span></span></div>
     <div class="grid g2">
       <div class="roster-col">
         <div class="league-label">NZIHL</div>
         <div id="ros-nzihl"><p class="muted-note">Loading latest…</p></div>
-        <div class="links"><a class="btn" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters/releases">All NZIHL rosters →</a></div>
+        <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters/releases">All NZIHL rosters</a></div>
       </div>
       <div class="roster-col">
         <div class="league-label">NZWIHL</div>
         <div id="ros-nzwihl"><p class="muted-note">Loading latest…</p></div>
-        <div class="links"><a class="btn" target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters/releases">All NZWIHL rosters →</a></div>
+        <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters/releases">All NZWIHL rosters</a></div>
       </div>
     </div>
   </section>
@@ -221,8 +335,8 @@
         <h3>2026 Style &amp; Colour Guide</h3>
         <p>Full per-team palettes, logo plates, scorebug and cross-league usage rules.</p>
         <div class="links">
-          <a class="btn" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">HTML →</a>
-          <a class="btn" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.pdf">PDF →</a>
+          <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">HTML</a>
+          <a class="btn dl" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.pdf">PDF</a>
         </div>
       </div>
       <a class="card" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-hex-cheat-sheet.html">
@@ -290,21 +404,28 @@ const ASSETS = "https://matchavez.com/nzihl-broadcast-assets";
 const enc = s => encodeURIComponent(s);
 
 const NZIHL = [
-  {nm:"Pure NZ Admirals", nick:"Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals"},
-  {nm:"Botany Swarm", nick:"Swarm", up:"Botany Swarm", dvd:"BotanySwarm"},
-  {nm:"SkyCity Stampede", nick:"Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede"},
-  {nm:"Dunedin Thunder", nick:"Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder"},
-  {nm:"Auckland Mako", nick:"Mako", up:"Auckland Mako", dvd:"AucklandMako"},
-  {nm:"Canterbury Red Devils", nick:"Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils"},
+  {nm:"Pure NZ Admirals", nick:"Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals", logo:"Pure-NZ-Admirals-2000x2000.png"},
+  {nm:"Botany Swarm", nick:"Swarm", up:"Botany Swarm", dvd:"BotanySwarm", logo:"Botany Swarm 2000x2000.png"},
+  {nm:"SkyCity Stampede", nick:"Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede", logo:"Skycity Stampede 2000x2000.png"},
+  {nm:"Dunedin Thunder", nick:"Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder", logo:"Dunedin_Thunder.png"},
+  {nm:"Auckland Mako", nick:"Mako", up:"Auckland Mako", dvd:"AucklandMako", logo:"Auckland Mako 2000x2000.png"},
+  {nm:"Canterbury Red Devils", nick:"Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils", logo:"Red Devils 2000x2000r.png"},
 ];
 const NZWIHL = [
-  {nm:"Auckland Steel", nick:"Steel", up:"Auckland Steel", dvd:"AucklandSteel"},
-  {nm:"Canterbury Inferno", nick:"Inferno", up:"Canterbury Inferno", dvd:"CanterburyInferno"},
-  {nm:"Dunedin Thunder Women", nick:"Thunder", up:"Dunedin Thunder Women", dvd:"DunedinThunderWomen"},
-  {nm:"Wakatipu Wild", nick:"Wild", up:"Wakatipu Wild", dvd:"WakatipuWild"},
+  {nm:"Auckland Steel", nick:"Steel", up:"Auckland Steel", dvd:"AucklandSteel", logo:"Auckland-Steel-White.png"},
+  {nm:"Canterbury Inferno", nick:"Inferno", up:"Canterbury Inferno", dvd:"CanterburyInferno", logo:"Inferno-White.png"},
+  {nm:"Dunedin Thunder Women", nick:"Thunder", up:"Dunedin Thunder Women", dvd:"DunedinThunderWomen", logo:"thunder-women-white.png"},
+  {nm:"Wakatipu Wild", nick:"Wild", up:"Wakatipu Wild", dvd:"WakatipuWild", logo:"Wakatipu-wild-white.png"},
 ];
 // one consistent order for every team list: alphabetical by team nickname, subdivided by league
 [NZIHL, NZWIHL].forEach(a => a.sort((x,y) => x.nick.localeCompare(y.nick)));
+
+const logoUrl = t => `${ASSETS}/assets/logos/${enc(t.logo)}`;
+const logoOf = name => {
+  const t = [...NZIHL, ...NZWIHL].find(t => t.nm === name);
+  return t ? logoUrl(t) : null;
+};
+const idw = t => `<span class="idw"><img class="lg" loading="lazy" src="${logoUrl(t)}" alt=""><span class="nm">${t.nm}</span></span>`;
 
 // cache-busted standings
 const v = Date.now();
@@ -318,9 +439,9 @@ function upCard(t){
   const slug = t.nm.toLowerCase().replace(/\s+/g,"_");
   const zip = `${ASSETS}/up-next/zips/${slug}_upnext.zip`;
   const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/up-next/${enc(t.up)}`;
-  return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
-    <a class="pill" href="${zip}">Zip</a>
-    <a class="pill" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
+  return `<div class="team">${idw(t)}<span class="acts">
+    <a class="pill dl" title="Download the team pack (zip)" href="${zip}">Zip</a>
+    <a class="pill ext" title="Browse the files on GitHub" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
 }
 document.getElementById('upnext-nzihl').innerHTML  = NZIHL.map(upCard).join('');
 document.getElementById('upnext-nzwihl').innerHTML = NZWIHL.map(upCard).join('');
@@ -330,9 +451,9 @@ function dvdCard(t){
   const slug = t.nm.toLowerCase().replace(/\s+/g,"_");
   const zip = `${ASSETS}/DVD%20Bounce%20Loops/zips/${slug}_dvd.zip`;
   const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${t.dvd}`;
-  return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
-    <a class="pill" href="${zip}">Zip</a>
-    <a class="pill" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
+  return `<div class="team">${idw(t)}<span class="acts">
+    <a class="pill dl" title="Download the loop pack (zip)" href="${zip}">Zip</a>
+    <a class="pill ext" title="Browse the files on GitHub" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
 }
 document.getElementById('loops-nzihl').innerHTML  = NZIHL.map(dvdCard).join('');
 document.getElementById('loops-nzwihl').innerHTML = NZWIHL.map(dvdCard).join('');
@@ -342,9 +463,9 @@ function summaryCard(t){
   const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   const path = `summary/?team=${sl}`;
   const full = `https://matchavez.com/hockey/${path}`;
-  return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
-    <a class="pill" target="_blank" rel="noopener" href="${path}">Open</a>
-    <a class="pill" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
+  return `<div class="team">${idw(t)}<span class="acts">
+    <a class="pill ext" title="Open the live page" target="_blank" rel="noopener" href="${path}">Open</a>
+    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
 }
 // Auckland Mako has no 2026 games, so no Game Summary slug to point at — excluded from this list only.
 document.getElementById('slugs-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(summaryCard).join('');
@@ -355,9 +476,9 @@ function bannerCard(t){
   const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   const path = `activity-banner/?team=${sl}`;
   const full = `https://matchavez.com/hockey/${path}`;
-  return `<div class="team"><span class="nm">${t.nm}</span><span class="acts">
-    <a class="pill" target="_blank" rel="noopener" href="${path}">Open</a>
-    <a class="pill" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
+  return `<div class="team">${idw(t)}<span class="acts">
+    <a class="pill ext" title="Open the live overlay" target="_blank" rel="noopener" href="${path}">Open</a>
+    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
 }
 // Mako left out (no 2026 games) — 9 teams, matching the Game Summary slug list.
 document.getElementById('banner-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(bannerCard).join('');
@@ -395,7 +516,7 @@ async function loadRosters(repo, elId){
     el.innerHTML = fresh.map(a=>{
       const label = a.name.replace(/\.pdf$/i,'').replace(/_/g,' ');
       return `<div class="roster-item"><span class="f">${label}</span>
-        <a class="btn" href="${a.browser_download_url}">PDF</a></div>`;
+        <a class="btn dl" href="${a.browser_download_url}">PDF</a></div>`;
     }).join('');
   }catch(e){
     el.innerHTML = `<p class="muted-note">Couldn’t load live — <a style="color:var(--accent)" target="_blank" rel="noopener" href="https://github.com/matchavez/${repo}/releases/latest">open latest release →</a></p>`;
@@ -410,6 +531,18 @@ const BOXSCORE_SOURCES = [
   "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",
   "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json",
 ];
+// Known gameids for games the roster pipeline hasn't filled yet (manifest gameid=null).
+// Keyed "away|home|date". Self-clears once the pipeline publishes the id (g.gameid wins).
+const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
+const gidOf = g => g.gameid || KNOWN_GIDS[[g.away,g.home,g.date].join('|')] || null;
+const urlOf = g => {
+  const gid = gidOf(g);
+  return gid ? 'summary/?g=' + gid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '') : null;
+};
+const mlg = name => {
+  const u = logoOf(name);
+  return u ? `<img class="mlg" loading="lazy" src="${u}" alt="">` : '';
+};
 async function loadBoxscores(){
   try{
     const data = await Promise.all(BOXSCORE_SOURCES.map(u =>
@@ -435,38 +568,111 @@ async function loadBoxscores(){
         {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }
       catch(_){ return g.date; }
     };
-    // Known gameids for games the roster pipeline hasn't filled yet (manifest gameid=null).
-    // Keyed "away|home|date". Self-clears once the pipeline publishes the id (g.gameid wins).
-    const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
     document.getElementById('boxscore-grid').innerHTML = fresh.map(g => {
-      const gid = g.gameid || KNOWN_GIDS[[g.away,g.home,g.date].join('|')] || null;
+      const gid = gidOf(g);
       const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
       const inner = `<div class="day">${when}</div>
-        <div class="match">${g.away} <span>@</span> ${g.home}</div>
+        <div class="match">${mlg(g.away)}${g.away} <span>@</span> ${mlg(g.home)}${g.home}</div>
         <div class="meta"><b>${g.venue||''}</b>${gid ? ' · Game summary →' : ' · game summary TBC'}</div>`;
-      const url = gid
-        ? 'summary/?g=' + gid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '')
-        : null;
+      const url = urlOf(g);
       return url
         ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
         : `<div class="game card" style="opacity:.55">${inner}</div>`;
     }).join('');
+
+    // "next game" hero chip — first game that hasn't finished (3 h grace for in-progress)
+    const now = Date.now();
+    const nxt = fresh.find(g => {
+      const t = Date.parse(g.datetime || g.date);
+      return t && t > now - 3*3600e3;
+    });
+    if(nxt){
+      const chip = document.getElementById('next-chip');
+      const url = urlOf(nxt);
+      chip.innerHTML = `<span class="dot"></span><b>NEXT</b> ${nxt.away} @ ${nxt.home} · ${fmt(nxt)}${nxt.time ? ' · ' + nxt.time : ''}${nxt.venue ? ' · ' + nxt.venue : ''}`;
+      if(url) chip.href = url; else chip.removeAttribute('href');
+      chip.classList.add('show');
+    }
   }catch(_){ /* keep static fallback */ }
 }
 loadBoxscores();
 
-// copy-to-clipboard
+// copy-to-clipboard — with inline "✓ Copied" feedback on the control itself
 const toast = document.getElementById('toast');
 function flash(msg){ toast.textContent = msg; toast.classList.add('on');
   clearTimeout(flash._t); flash._t = setTimeout(()=>toast.classList.remove('on'),1200); }
+function copiedFx(b){
+  if(!b._label) b._label = b.textContent;
+  b.textContent = 'Copied'; b.classList.add('copied');
+  clearTimeout(b._t); b._t = setTimeout(()=>{ b.textContent = b._label; b.classList.remove('copied'); },1200);
+}
 document.addEventListener('click', e=>{
   const b = e.target.closest('[data-copy]'); if(!b) return;
   const txt = b.getAttribute('data-copy');
-  (navigator.clipboard?.writeText(txt) ?? Promise.reject()).then(()=>flash('Copied URL')).catch(()=>{
+  (navigator.clipboard?.writeText(txt) ?? Promise.reject()).then(()=>{ flash('Copied URL'); copiedFx(b); }).catch(()=>{
     const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select();
-    try{document.execCommand('copy');}catch(_){} t.remove(); flash('Copied URL');
+    try{document.execCommand('copy');}catch(_){} t.remove(); flash('Copied URL'); copiedFx(b);
   });
 });
+
+// scroll-spy — the jump nav lights up as you move through the page
+(()=>{
+  const links = [...document.querySelectorAll('nav.jump a')];
+  const secs  = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const spy = new IntersectionObserver(es=>{
+    es.forEach(en=>{
+      if(!en.isIntersecting) return;
+      links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + en.target.id));
+    });
+  },{ rootMargin:'-15% 0px -75% 0px' });
+  secs.forEach(s => spy.observe(s));
+})();
+
+// section reveal — gentle ease-in as sections enter view (JS-gated so no-JS still shows everything)
+(()=>{
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.body.classList.add('anim');
+  const secs = [...document.querySelectorAll('main section')];
+  const rev = new IntersectionObserver(es=>es.forEach(en=>{
+    if(en.isIntersecting){ en.target.classList.add('in'); rev.unobserve(en.target); }
+  }),{ threshold:.06 });
+  secs.forEach(s=>{
+    const r = s.getBoundingClientRect();
+    if(r.top < innerHeight){ s.classList.add('in'); } else { rev.observe(s); }
+  });
+})();
+
+// cursor-follow glow — panels light up where the pointer is
+if(matchMedia('(pointer:fine)').matches){
+  document.addEventListener('pointermove', e=>{
+    const el = e.target.closest('.card,.team,.roster-col,.standings figure');
+    if(!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  }, {passive:true});
+}
+
+// scroll progress beam
+(()=>{
+  const pb = document.getElementById('pbar');
+  const upd = ()=>{
+    const h = document.documentElement;
+    const max = h.scrollHeight - window.innerHeight;
+    pb.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  };
+  addEventListener('scroll', upd, {passive:true}); upd();
+})();
+
+// live NZ clock in the eyebrow
+(()=>{
+  const ck = document.getElementById('clock');
+  const tick = ()=>{ try{
+    ck.textContent = new Date().toLocaleTimeString('en-NZ',
+      {hour:'numeric', minute:'2-digit', timeZone:'Pacific/Auckland'}) + ' NZT';
+  }catch(_){ ck.textContent = ''; } };
+  tick(); setInterval(tick, 30000);
+})();
 </script>
 </body>
 </html>
