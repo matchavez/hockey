@@ -363,6 +363,16 @@ function bannerCard(t){
 document.getElementById('banner-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(bannerCard).join('');
 document.getElementById('banner-nzwihl').innerHTML = NZWIHL.map(bannerCard).join('');
 
+// Games/rosters older than this many days (past their date) are treated as
+// stale and hidden from the portal's "current" sections, rather than lingering
+// forever when there's nothing yet scheduled to replace them. Direct URLs
+// (summary/?g=..., the GitHub release itself) are unaffected — this only
+// changes what gets featured as current.
+const STALE_CUTOFF_DAYS = 3;
+const nzTodayISO = () => new Date().toLocaleDateString('en-CA', {timeZone:'Pacific/Auckland'});
+const daysPast = (isoDate, todayISO) =>
+  Math.round((new Date(todayISO+'T00:00:00Z') - new Date((isoDate||'').slice(0,10)+'T00:00:00Z')) / 86400000);
+
 // live latest roster releases
 async function loadRosters(repo, elId){
   const el = document.getElementById(elId);
@@ -372,7 +382,17 @@ async function loadRosters(repo, elId){
     const d = await r.json();
     const assets = (d.assets||[]).filter(a=>a.name.toLowerCase().endsWith('.pdf'));
     if(!assets.length){ el.innerHTML = `<p class="muted-note">No PDF in latest release.</p>`; return; }
-    el.innerHTML = assets.map(a=>{
+    // Filenames are <YYYY-MM-DD>_<AWAY>_at_<HOME>.pdf. If the "latest" release
+    // is for a game more than STALE_CUTOFF_DAYS in the past, treat it as
+    // nothing-current rather than showing an already-played game as if it's
+    // this week's roster (the release itself still exists via "All rosters").
+    const todayISO = nzTodayISO();
+    const fresh = assets.filter(a=>{
+      const m = a.name.match(/^(\d{4}-\d{2}-\d{2})_/);
+      return !m || daysPast(m[1], todayISO) <= STALE_CUTOFF_DAYS;
+    });
+    if(!fresh.length){ el.innerHTML = `<p class="muted-note">No roster this week.</p>`; return; }
+    el.innerHTML = fresh.map(a=>{
       const label = a.name.replace(/\.pdf$/i,'').replace(/_/g,' ');
       return `<div class="roster-item"><span class="f">${label}</span>
         <a class="btn" href="${a.browser_download_url}">PDF</a></div>`;
@@ -394,10 +414,22 @@ async function loadBoxscores(){
   try{
     const data = await Promise.all(BOXSCORE_SOURCES.map(u =>
       fetch(u, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(()=>null)));
+    if(data.every(d => d === null)) return;  // fetch failed entirely — keep static fallback
     const games = [];
     data.forEach(d => { if(d && Array.isArray(d.games)) d.games.forEach(g => games.push({...g, league:d.league})); });
-    if(!games.length) return;  // keep the static fallback
-    games.sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
+    // Drop anything more than STALE_CUTOFF_DAYS past its date. The pipeline
+    // now self-prunes boxscores.json too, but this gives immediate effect
+    // without waiting for the next cron run, and is a safety net if a league
+    // has no upcoming game to replace an old one with.
+    const todayISO = nzTodayISO();
+    const fresh = games.filter(g => daysPast(g.date || g.datetime, todayISO) <= STALE_CUTOFF_DAYS);
+    if(!fresh.length){
+      document.getElementById('boxscore-grid').innerHTML =
+        `<div class="game card" style="opacity:.55"><div class="day">No games this weekend</div>
+        <div class="match">Check back closer to the next fixture</div></div>`;
+      return;
+    }
+    fresh.sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
     const fmt = g => {
       try{ return new Date(g.datetime).toLocaleDateString('en-NZ',
         {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }
@@ -406,7 +438,7 @@ async function loadBoxscores(){
     // Known gameids for games the roster pipeline hasn't filled yet (manifest gameid=null).
     // Keyed "away|home|date". Self-clears once the pipeline publishes the id (g.gameid wins).
     const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
-    document.getElementById('boxscore-grid').innerHTML = games.map(g => {
+    document.getElementById('boxscore-grid').innerHTML = fresh.map(g => {
       const gid = g.gameid || KNOWN_GIDS[[g.away,g.home,g.date].join('|')] || null;
       const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
       const inner = `<div class="day">${when}</div>
