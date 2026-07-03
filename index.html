@@ -28,18 +28,20 @@
     background:linear-gradient(90deg,var(--gold),#ffd75e);
     box-shadow:0 0 8px rgba(247,190,17,.5); }
 
-  /* hero — drifting rink-light wash + faint centre-ice mark */
+  /* hero — drifting rink-light wash */
   header.hero{ padding:36px 0 24px; border-bottom:1px solid var(--line);
     position:relative; overflow:hidden; }
   header.hero::before{ content:""; position:absolute; inset:-60% -20%; pointer-events:none;
     background:
       radial-gradient(640px 300px at 22% 35%, rgba(58,160,255,.11), transparent 62%),
-      radial-gradient(720px 330px at 78% 22%, rgba(247,190,17,.14), transparent 62%);
+      radial-gradient(720px 330px at 78% 22%, rgba(226,75,74,.13), transparent 62%);
     animation:drift 16s ease-in-out infinite alternate; }
   @keyframes drift{ from{ transform:translate3d(-2.5%,0,0) scale(1); }
     to{ transform:translate3d(2.5%,4%,0) scale(1.06); } }
-  .hero .rinkbig{ position:absolute; right:-140px; top:50%; transform:translateY(-50%);
-    height:460px; width:460px; pointer-events:none; }
+
+  /* full-page ice rink watermark — fixed behind all content */
+  .rink-bg{ position:fixed; inset:0; z-index:-1; pointer-events:none; }
+  .rink-bg svg{ display:block; width:100%; height:100%; }
   .hero .wrap{ position:relative; }
   .hero .home{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600;
     color:var(--muted); margin-bottom:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--line);
@@ -219,13 +221,34 @@
 
 <div id="pbar"></div>
 
-<header class="hero">
-  <svg class="rinkbig" viewBox="0 0 460 460" aria-hidden="true">
-    <line x1="0" y1="230" x2="460" y2="230" stroke="rgba(220,0,0,.10)" stroke-width="7"/>
-    <circle cx="230" cy="230" r="156" fill="none" stroke="rgba(58,160,255,.10)" stroke-width="4"/>
-    <circle cx="230" cy="230" r="14" fill="rgba(58,160,255,.11)"/>
-    <rect x="6" y="6" width="448" height="448" rx="60" fill="none" stroke="rgba(58,160,255,.06)" stroke-width="4"/>
+<div class="rink-bg" aria-hidden="true">
+  <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+    <rect x="90" y="140" width="1420" height="620" rx="140" ry="140" fill="none" stroke="rgba(243,244,246,.07)" stroke-width="6"/>
+    <line x1="800" y1="140" x2="800" y2="760" stroke="rgba(226,75,74,.09)" stroke-width="6"/>
+    <line x1="540" y1="140" x2="540" y2="760" stroke="rgba(58,160,255,.09)" stroke-width="8"/>
+    <line x1="1060" y1="140" x2="1060" y2="760" stroke="rgba(58,160,255,.09)" stroke-width="8"/>
+    <line x1="130" y1="140" x2="130" y2="760" stroke="rgba(226,75,74,.08)" stroke-width="4"/>
+    <line x1="1470" y1="140" x2="1470" y2="760" stroke="rgba(226,75,74,.08)" stroke-width="4"/>
+    <path d="M130,390 Q190,450 130,510 Z" fill="rgba(58,160,255,.05)"/>
+    <path d="M1470,390 Q1410,450 1470,510 Z" fill="rgba(58,160,255,.05)"/>
+    <circle cx="800" cy="450" r="110" fill="none" stroke="rgba(58,160,255,.08)" stroke-width="3"/>
+    <circle cx="800" cy="450" r="6" fill="rgba(58,160,255,.10)"/>
+    <circle cx="320" cy="270" r="110" fill="none" stroke="rgba(226,75,74,.07)" stroke-width="3"/>
+    <circle cx="320" cy="270" r="5" fill="rgba(226,75,74,.09)"/>
+    <circle cx="320" cy="630" r="110" fill="none" stroke="rgba(226,75,74,.07)" stroke-width="3"/>
+    <circle cx="320" cy="630" r="5" fill="rgba(226,75,74,.09)"/>
+    <circle cx="1280" cy="270" r="110" fill="none" stroke="rgba(226,75,74,.07)" stroke-width="3"/>
+    <circle cx="1280" cy="270" r="5" fill="rgba(226,75,74,.09)"/>
+    <circle cx="1280" cy="630" r="110" fill="none" stroke="rgba(226,75,74,.07)" stroke-width="3"/>
+    <circle cx="1280" cy="630" r="5" fill="rgba(226,75,74,.09)"/>
+    <circle cx="630" cy="270" r="5" fill="rgba(226,75,74,.08)"/>
+    <circle cx="630" cy="630" r="5" fill="rgba(226,75,74,.08)"/>
+    <circle cx="970" cy="270" r="5" fill="rgba(226,75,74,.08)"/>
+    <circle cx="970" cy="630" r="5" fill="rgba(226,75,74,.08)"/>
   </svg>
+</div>
+
+<header class="hero">
   <div class="wrap">
     <a class="home" href="https://matchavez.com">&larr; matchavez.com</a>
     <div class="eyebrow">2026 Season <span class="sep"></span> <span id="clock"></span></div>
