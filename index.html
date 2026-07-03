@@ -38,8 +38,7 @@
     animation:drift 16s ease-in-out infinite alternate; }
   @keyframes drift{ from{ transform:translate3d(-2.5%,0,0) scale(1); }
     to{ transform:translate3d(2.5%,4%,0) scale(1.06); } }
-  .hero .rink{ position:absolute; right:-36px; top:50%; transform:translateY(-50%);
-    height:230px; width:230px; pointer-events:none; }
+  .hero .pucks{ position:absolute; inset:0; pointer-events:none; }
   .hero .wrap{ position:relative; }
   .hero .home{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600;
     color:var(--muted); margin-bottom:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--line);
@@ -220,10 +219,13 @@
 <div id="pbar"></div>
 
 <header class="hero">
-  <svg class="rink" viewBox="0 0 230 230" aria-hidden="true">
-    <line x1="0" y1="115" x2="230" y2="115" stroke="rgba(220,0,0,.12)" stroke-width="4"/>
-    <circle cx="115" cy="115" r="78" fill="none" stroke="rgba(58,160,255,.12)" stroke-width="2.5"/>
-    <circle cx="115" cy="115" r="7" fill="rgba(58,160,255,.14)"/>
+  <svg class="pucks" aria-hidden="true">
+    <defs>
+      <pattern id="puckPattern" width="52" height="52" patternUnits="userSpaceOnUse" patternTransform="rotate(8)">
+        <ellipse cx="14" cy="14" rx="11" ry="5" fill="rgba(243,244,246,.045)"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#puckPattern)"/>
   </svg>
   <div class="wrap">
     <a class="home" href="https://matchavez.com">&larr; matchavez.com</a>
