@@ -237,8 +237,20 @@ let avatarToken=0;   // guards against a late photo load landing on the wrong (a
 const FONTS = (document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
 let fontsLoaded=false; FONTS.then(()=>{fontsLoaded=true;});
 
-function setLogo(el,id){const v=vis(id);if(v.logo){el.src=LOGO+encodeURIComponent(v.logo);el.style.visibility="";}else el.style.visibility="hidden";}
-function setLogoFile(el,file){if(file){el.src=LOGO+encodeURIComponent(file);el.style.visibility="";}else el.style.visibility="hidden";}
+// Preload-and-gate: resolves once `src` has actually loaded (or errors, or a timeout
+// elapses) so the caller can hold the banner reveal until the asset is really there —
+// never resolves to a broken/blank image, and never blocks forever on a miss.
+const ASSET_TIMEOUT_MS = 1500;   // Mat: "an extra second won't matter" — cap the wait
+function loadImage(src, timeoutMs){
+  return new Promise(res=>{
+    if(!src){ res(null); return; }
+    let done=false; const img=new Image();
+    const finish=ok=>{ if(done) return; done=true; res(ok?img:null); };
+    img.onload=()=>finish(true); img.onerror=()=>finish(false);
+    img.src=src;
+    setTimeout(()=>finish(false), timeoutMs||ASSET_TIMEOUT_MS);
+  });
+}
 
 function goalHTML(g, awayName, homeName){
   const v=vis(g.teamID);
@@ -276,32 +288,41 @@ function pump(){
   const myToken=++avatarToken;
   document.documentElement.style.setProperty("--ink", job.ink);
   document.documentElement.style.setProperty("--dark", job.dark);
-  if(job.logoFile){ setLogoFile(blogoL, job.logoFile); setLogoFile(blogoR, job.logoFile); } // test harness: explicit logo
-  else { setLogo(blogoL, job.eventID); setLogo(blogoR, job.eventID); }   // both ends = the involved player's team
   btxt.innerHTML=job.html;
-  // goal-scorer avatar: reset first, then only show once the real photo confirms it loads —
+  // reset avatar; it (and the logos) only get switched on below once confirmed loaded —
   // never an initials fallback here, a miss just stays hidden (see .gav comment in <style>).
   gav.classList.remove("show"); gavImg.removeAttribute("src");
-  if(job.photoWho){
-    const gsp=btxt.querySelector(".gsp");   // goalHTML() bakes this in right before the name; absent for penalties
-    if(gsp){
-      const test=new Image();
-      test.onload=()=>{ if(myToken!==avatarToken) return;   // this job already finished/advanced
-        gsp.style.width="112px";            // reserve the avatar's footprint next to the name
-        fitBanner();                        // re-fit text now that the gap exists
-        const gspR=gsp.getBoundingClientRect(), bnrR=bnr.getBoundingClientRect();
-        const scale=(bnrR.width/1920)||1;   // #stage may be CSS-scaled for the desktop preview
-        gav.style.left=((gspR.left-bnrR.left)/scale)+"px";
-        gavImg.src=test.src; gav.classList.add("show"); };
-      test.src=shotURL(job.photoWho);
-    }
-  }
+  blogoL.style.visibility="hidden"; blogoR.style.visibility="hidden";
+
+  // 2026-07-04: gate the reveal itself on the logo + (for goals) scorer photo actually
+  // having loaded, instead of wiping the bar in immediately and letting those assets pop
+  // in late. Each load races a short timeout (ASSET_TIMEOUT_MS) so a missing/slow asset
+  // delays the banner by at most that long rather than blocking it — Mat: "an extra
+  // second won't matter."
+  const logoFile = job.logoFile || vis(job.eventID).logo;
+  const logoSrc = logoFile ? LOGO+encodeURIComponent(logoFile) : null;
+  const logoP = loadImage(logoSrc);
+  const photoSrc = job.photoWho ? shotURL(job.photoWho) : null;
+  const photoP = job.photoWho ? loadImage(photoSrc) : Promise.resolve(null);
+  const gsp = btxt.querySelector(".gsp");   // goalHTML() bakes this in right before the team name; absent for penalties
+
   bnr.classList.remove("hide");
   bnr.style.display="flex";
   void bnr.offsetWidth;                 // reflow: lock the hidden start state
-  (fontsLoaded?Promise.resolve():FONTS).then(()=>{ fitBanner();
+
+  Promise.all([logoP, photoP, (fontsLoaded?Promise.resolve():FONTS)]).then(([logoImg, photoImg])=>{
+    if(myToken!==avatarToken) return;   // superseded while waiting
+    if(logoImg){ blogoL.src=logoImg.src; blogoR.src=logoImg.src; blogoL.style.visibility=""; blogoR.style.visibility=""; }
+    if(photoImg && gsp){
+      gsp.style.width="112px";          // reserve the avatar's footprint next to the name
+      fitBanner();                      // re-fit text now that the gap exists
+      const gspR=gsp.getBoundingClientRect(), bnrR=bnr.getBoundingClientRect();
+      const scale=(bnrR.width/1920)||1; // #stage may be CSS-scaled for the desktop preview
+      gav.style.left=((gspR.left-bnrR.left)/scale)+"px";
+      gavImg.src=photoImg.src; gav.classList.add("show");
+    } else { fitBanner(); }
     void bnr.offsetWidth;
-    bnr.classList.add("show");          // wipe in (L->R), 250ms
+    bnr.classList.add("show");          // wipe in (L->R), 250ms — logo + photo already in place
     setTimeout(()=>{
       bnr.classList.remove("show"); bnr.classList.add("hide");   // wipe out (L->R), 250ms
       setTimeout(()=>{ bnr.classList.remove("hide"); bnr.style.display="none";
