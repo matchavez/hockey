@@ -44,6 +44,15 @@
   .col:last-child{border-right:0;}
   .col h2{font-size:.62em;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--sub);margin-bottom:.5em;text-align:center;white-space:nowrap;}
   .col.penalties h2{color:#e7b3b8;}
+  /* Penalty Summary reads as info, not points — set it apart from the scoring
+     columns with a faint red wash (matches the pink/red penalty accent already
+     used for its heading and infraction text) and a double-line rule in place
+     of the single hairline the scoring columns use between each other. The
+     scoring column immediately before it drops its own hairline (.pre-penalties,
+     added in JS) so there's exactly one clean divider, not two stacked lines.
+     (Mat, 2026-07-05) */
+  .col.penalties{background:linear-gradient(180deg, rgba(196,58,66,.09), rgba(196,58,66,.03));border-left:6px double rgba(224,150,150,.4);}
+  .col.pre-penalties{border-right:0;}
   /* a scoring period with zero goals collapses to a slim strip (rotated label only)
      instead of a full-width column of empty "No Goals" space. (Mat, 2026-07-06) */
   .col.collapsed{display:flex;flex-direction:column;align-items:center;padding:16px 4px 8px;}
@@ -338,6 +347,7 @@ function render(P){
     }
     grid.appendChild(col);
   });
+  if(grid.lastElementChild) grid.lastElementChild.classList.add("pre-penalties");
   const pcol=document.createElement("div");pcol.className="col penalties";pcol.innerHTML=`<h2>Penalty Summary</h2>`;let any=false;
   periods.forEach(([k,label])=>{const ps=P.pens.filter(z=>z.p===k);if(!ps.length)return;any=true;
     const h=document.createElement("div");h.className="psubhd";h.textContent=label;pcol.appendChild(h);
