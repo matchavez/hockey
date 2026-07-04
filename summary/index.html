@@ -23,8 +23,17 @@
   .side .logo{width:120px;height:120px;object-fit:contain;flex:0 0 auto;}
   .tinfo{flex:1 1 auto;min-width:0;}
   .nm{font-weight:800;font-size:33px;line-height:1.04;}
-  .rec{font-weight:600;font-size:24px;color:var(--sub);margin-top:9px;letter-spacing:.01em;}
-  .rec b{color:var(--fg);font-weight:800;}
+  /* Spelled-out, tabular stat block (was a single "SOG 43  PP 1/5  PIM 6" line) —
+     abbreviations weren't clear to the audience. Two grid columns (label, value)
+     stacked 3 rows keep the numbers in a clean aligned column; the value column
+     is right-aligned with tabular-nums so digits line up row to row. Labels are
+     sized down from the old single-line abbreviations so three spelled-out rows
+     don't read as cluttered. justify-content flips per side so the block still
+     hugs the score, same mirroring the name/score already do. (Mat, 2026-07-05) */
+  .rec{margin-top:8px;display:grid;grid-template-columns:auto auto;column-gap:12px;row-gap:2px;justify-content:start;}
+  .side.home .rec{justify-content:end;}
+  .rec .rl{font-size:15px;font-weight:600;color:var(--sub);letter-spacing:.005em;white-space:nowrap;align-self:center;}
+  .rec .rv{font-size:21px;font-weight:800;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;align-self:center;}
   .score{font-weight:900;font-size:112px;line-height:.86;flex:0 0 auto;}
   .side.away .score{margin-right:52px;}
   .side.home .score{margin-left:52px;}
@@ -45,13 +54,13 @@
   .col h2{font-size:.62em;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--sub);margin-bottom:.5em;text-align:center;white-space:nowrap;}
   .col.penalties h2{color:#e7b3b8;}
   /* Penalty Summary reads as info, not points — set it apart from the scoring
-     columns with a faint red wash (matches the pink/red penalty accent already
-     used for its heading and infraction text) and a double-line rule in place
-     of the single hairline the scoring columns use between each other. The
-     scoring column immediately before it drops its own hairline (.pre-penalties,
-     added in JS) so there's exactly one clean divider, not two stacked lines.
-     (Mat, 2026-07-05) */
-  .col.penalties{background:linear-gradient(180deg, rgba(196,58,66,.09), rgba(196,58,66,.03));border-left:6px double rgba(224,150,150,.4);}
+     columns with a slightly lighter neutral fill than the stage background
+     (#222 vs --bg #111 — Mat tried a red wash first, preferred plain neutral)
+     and a double-line rule in place of the single hairline the scoring columns
+     use between each other. The scoring column immediately before it drops its
+     own hairline (.pre-penalties, added in JS) so there's exactly one clean
+     divider, not two stacked lines. (Mat, 2026-07-05) */
+  .col.penalties{background:#222222;border-left:6px double rgba(224,150,150,.4);}
   .col.pre-penalties{border-right:0;}
   /* a scoring period with zero goals collapses to a slim strip (rotated label only)
      instead of a full-width column of empty "No Goals" space. (Mat, 2026-07-06) */
@@ -300,7 +309,9 @@ function render(P){
   washVectors(A,H);
   setLogo(document.getElementById("logoA"),A); setLogo(document.getElementById("logoB"),H);
   document.getElementById("nameA").textContent=A.name; document.getElementById("nameB").textContent=H.name;
-  const rec=t=>`<b>SOG</b> ${t.sog||"–"} &nbsp; <b>PP</b> ${t.pp||"–"} &nbsp; <b>PIM</b> ${t.pim||"–"}`;
+  const rec=t=>`<span class="rl">Shots On Goal</span><span class="rv">${t.sog||"–"}</span>`+
+    `<span class="rl">Power Plays</span><span class="rv">${t.pp||"–"}</span>`+
+    `<span class="rl">Penalty Minutes</span><span class="rv">${t.pim||"–"}</span>`;
   document.getElementById("recA").innerHTML=rec(A); document.getElementById("recB").innerHTML=rec(H);
   document.getElementById("status").textContent=P.status;
   document.getElementById("date").textContent=P.date;
