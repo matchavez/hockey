@@ -388,9 +388,17 @@ async function resolve(){
     }
     showMsg("No game found for “"+slugTeam+"”. Check the team slug, or that a game is scheduled."); return null;
   }
-  const now=Date.now(), LIVE=5*3600*1000;                  // a game up to 5h old still counts as "current"
-  const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);  // soonest live/upcoming first
-  const pick=live[0] || cands.sort((a,b)=>b.dt-a.dt)[0];   // else the most recent
+  const now=Date.now(), LIVE=5*3600*1000;                  // a game that started up to 5h ago still counts as "current"
+  // A game only counts as "live" if it has actually started — otherwise a team's
+  // NEXT scheduled game (still hours or a day away) satisfies `dt>=now-LIVE` too
+  // (nothing excluded it just for being in the future) and gets shown as a live
+  // 0-0 pregame shell instead of the real, already-finished game that should
+  // still be on screen. (Mat, 2026-07-05 — caught between the Jul 4 OT game
+  // and the Jul 5 rematch: the page jumped to Jul 5's empty pregame box score
+  // and labelled it "Live" hours before puck drop.)
+  const started=cands.filter(c=>c.dt<=now);
+  const live=started.filter(c=>c.dt>=now-LIVE).sort((a,b)=>b.dt-a.dt);   // most recently started first
+  const pick=live[0] || started.sort((a,b)=>b.dt-a.dt)[0] || cands.sort((a,b)=>a.dt-b.dt)[0];  // else the last completed game; else (nothing's started yet) the soonest upcoming
   const best=pick.gm, bestM=pick.m;
   return {m:bestM, gid:best.gameid, venue:best.venue||"", leagueName:bestM.league==="nzwihl"?"New Zealand Women's Ice Hockey League":"New Zealand Ice Hockey League"};
 }
