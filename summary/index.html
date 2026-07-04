@@ -64,10 +64,12 @@
      one clean divider, not two stacked lines. (Mat, 2026-07-05) */
   .col.penalties{background:#171717;border-left:6px double rgba(224,150,150,.4);}
   .col.pre-penalties{border-right:0;}
-  /* a scoring period with zero goals collapses to a slim strip (rotated label only)
-     instead of a full-width column of empty "No Goals" space. (Mat, 2026-07-06) */
+  /* a scoring period with zero goals collapses to a slim strip (rotated
+     "X Period - No Scoring" label, light weight) instead of a full-width
+     column of empty "No Goals" space — narrowed further to 0.2fr and the
+     label text updated per Mat, 2026-07-06. */
   .col.collapsed{display:flex;flex-direction:column;align-items:center;padding:16px 4px 8px;}
-  .col.collapsed h2{writing-mode:vertical-rl;transform:rotate(180deg);margin:0;white-space:nowrap;}
+  .col.collapsed h2{writing-mode:vertical-rl;transform:rotate(180deg);margin:0;white-space:nowrap;font-weight:300;}
   .goal{display:flex;align-items:center;gap:.5em;padding:.4em 0;border-bottom:1px solid var(--line2);}
   .goal:last-child{border-bottom:0;}
   .accent{flex:0 0 .2em;align-self:stretch;border-radius:.12em;min-width:4px;}
@@ -348,14 +350,14 @@ function render(P){
   // scoring column — so it never visually competes with scoring (Mat's call,
   // same date).
   const groupHasGoals=g=>g.some(([k])=>P.goals.some(z=>z.p===k));
-  const colFr=groups.map(g=>groupHasGoals(g)?1:0.4);
+  const colFr=groups.map(g=>groupHasGoals(g)?1:0.2);
   grid.style.gridTemplateColumns = colFr.map(f=>f+"fr").join(" ") + " 0.8fr";
   grid.style.padding = groups.length===1 ? "0 180px" : "0";
   groups.forEach((group,i)=>{
     const collapsed = colFr[i]<1;
     const col=document.createElement("div");col.className="col"+(collapsed?" collapsed":"");
     const [,firstLabel]=group[0];
-    col.innerHTML=`<h2>${firstLabel}</h2>`;
+    col.innerHTML=`<h2>${collapsed?firstLabel+" - No Scoring":firstLabel}</h2>`;
     if(!collapsed){
       group.forEach(([k,label],idx)=>{
         if(idx>0){ const h=document.createElement("div");h.className="psubhd";h.textContent=label;col.appendChild(h); }
