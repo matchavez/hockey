@@ -71,7 +71,13 @@
   .goal{display:flex;align-items:center;gap:.5em;padding:.4em 0;border-bottom:1px solid var(--line2);}
   .goal:last-child{border-bottom:0;}
   .accent{flex:0 0 .2em;align-self:stretch;border-radius:.12em;min-width:4px;}
-  .shot{flex:0 0 auto;width:2.6em;height:2.6em;max-width:74px;max-height:74px;border-radius:50%;overflow:hidden;background:#1b2029;display:flex;align-items:center;justify-content:center;}
+  /* "Bigger and Bolder" goal entries (Mat approved 2026-07-05, prod-testing —
+     may back out): raised the photo cap from 74px so sparse periods get a
+     noticeably larger, bolder presence. Safe from overrun because .shot's size
+     is still driven by the column's em-scaled font-size (set by fitCols, which
+     only ever picks a size that already fits) — this only raises the CEILING
+     reached in roomy periods, never forces a size that doesn't fit. */
+  .shot{flex:0 0 auto;width:2.6em;height:2.6em;max-width:92px;max-height:92px;border-radius:50%;overflow:hidden;background:#1b2029;display:flex;align-items:center;justify-content:center;}
   .shot img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;}
   .shot .ini{font-weight:800;font-size:.82em;color:#aeb6c2;}
   .gmain{flex:1 1 auto;min-width:0;}
@@ -373,8 +379,14 @@ function render(P){
   // locks in a too-small size that never gets recomputed. Re-run once webfonts settle.
   if(document.fonts&&document.fonts.ready){document.fonts.ready.then(layout);}
 }
-function fillHeight(col){const rows=col.querySelectorAll(".goal, .pen");if(!rows.length)return;
-  const extra=col.clientHeight-col.scrollHeight;if(extra<=2)return;const add=Math.min(extra/rows.length,30);
+// cap defaults to 30 (penalty column, unchanged) — goal columns pass a bigger
+// cap (see layout()) as part of "Bigger and Bolder". Still strictly bounded:
+// `add` never exceeds `extra/rows.length`, and extra itself is the column's
+// actual measured leftover space, so total padding added can never exceed
+// what's really free — raising the cap only lets sparse periods use more of
+// that already-available room, it can't manufacture overrun.
+function fillHeight(col,cap=30){const rows=col.querySelectorAll(".goal, .pen");if(!rows.length)return;
+  const extra=col.clientHeight-col.scrollHeight;if(extra<=2)return;const add=Math.min(extra/rows.length,cap);
   rows.forEach(r=>{const p=(parseFloat(getComputedStyle(r).paddingTop)||0)+add/2;r.style.paddingTop=p+"px";r.style.paddingBottom=p+"px";});}
 function fitCols(cols,max){if(!cols.length)return;let lo=12,hi=max,best=12;
   for(let i=0;i<18;i++){const u=(lo+hi)/2;cols.forEach(c=>c.style.fontSize=u+"px");cols[0].getBoundingClientRect();
@@ -391,7 +403,15 @@ function fitText(){
 function layout(){const grid=document.getElementById("grid");const cols=[...grid.querySelectorAll(".col")];
   const pcol=cols.find(c=>c.classList.contains("penalties"));const scoring=cols.filter(c=>c!==pcol);
   grid.querySelectorAll(".goal, .pen").forEach(r=>{r.style.paddingTop="";r.style.paddingBottom="";});
-  if(scoring.length)fitCols(scoring,33);if(pcol)fitCols([pcol],30);fitText();scoring.forEach(fillHeight);if(pcol)fillHeight(pcol);}
+  // scoring columns get a higher font-size ceiling (42 vs the old 33) and a
+  // bigger fillHeight cap (56 vs 30) as part of "Bigger and Bolder" — the
+  // penalty column keeps the original caps so it stays visually subordinate
+  // to scoring, per the earlier 80%-width call. fitCols' own binary search
+  // still only accepts a size that fits (cols.every(...scrollHeight<=...)),
+  // so a higher ceiling only helps sparse periods grow bigger; it can never
+  // pick a size that overflows a busier one — same guarantee as before, just
+  // a higher number to search up to.
+  if(scoring.length)fitCols(scoring,42);if(pcol)fitCols([pcol],30);fitText();scoring.forEach(c=>fillHeight(c,56));if(pcol)fillHeight(pcol);}
 function fitWindow(){document.getElementById("stage").style.transform="scale("+Math.min(innerWidth/1840,innerHeight/1000)+")";}
 addEventListener("resize",fitWindow);
 function showMsg(t){const m=document.getElementById("msg");m.style.display="flex";m.textContent=t;}
