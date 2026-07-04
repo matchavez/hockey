@@ -44,6 +44,10 @@
   .col:last-child{border-right:0;}
   .col h2{font-size:.62em;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--sub);margin-bottom:.5em;text-align:center;white-space:nowrap;}
   .col.penalties h2{color:#e7b3b8;}
+  /* a scoring period with zero goals collapses to a slim strip (rotated label only)
+     instead of a full-width column of empty "No Goals" space. (Mat, 2026-07-06) */
+  .col.collapsed{display:flex;flex-direction:column;align-items:center;padding:16px 4px 8px;}
+  .col.collapsed h2{writing-mode:vertical-rl;transform:rotate(180deg);margin:0;white-space:nowrap;}
   .goal{display:flex;align-items:center;gap:.5em;padding:.4em 0;border-bottom:1px solid var(--line2);}
   .goal:last-child{border-bottom:0;}
   .accent{flex:0 0 .2em;align-self:stretch;border-radius:.12em;min-width:4px;}
@@ -258,6 +262,27 @@ function applyMatchupAccents(A,H){
   const ids=[A.teamID,H.teamID];
   if(ids.includes("674109") && ids.includes("675633")){ (A.teamID==="674109"?A:H).ink="#F7AF28"; }
 }
+// Merge "3rd Period" + "Overtime" into a single scoring column whenever a game
+// actually reached OT, so the grid tops out at 4 columns (1st, 2nd, 3rd+OT,
+// Penalty Summary) instead of 5. Uses the same sub-heading pattern the Penalty
+// Summary column already uses to separate periods within one column. When
+// there's no OT, 3rd stays its own column exactly like today. (Mat, 2026-07-06)
+function buildColumnGroups(periods){
+  const has=k=>periods.some(([kk])=>kk===k);
+  const hasOT=has("OT"), has3=has("3");
+  const groups=[];
+  periods.forEach(entry=>{
+    const [k]=entry;
+    if(k==="OT" && hasOT && has3) return;  // folded into the "3" group below
+    if(k==="3" && hasOT && has3){
+      const otEntry=periods.find(([kk])=>kk==="OT");
+      groups.push([entry, otEntry]);
+      return;
+    }
+    groups.push([entry]);
+  });
+  return groups;
+}
 function render(P){
   const A=teamObj(P.away), H=teamObj(P.home);
   applyMatchupAccents(A,H);
@@ -286,14 +311,31 @@ function render(P){
     const ord=["1","2","3","OT","SO"], idx=ord.indexOf(P.curPeriod);
     if(idx>=0) periods=periods.filter(([k])=>ord.indexOf(k)<=idx);
   }
+  const groups=buildColumnGroups(periods);
   const grid=document.getElementById("grid"); grid.innerHTML="";
-  grid.style.gridTemplateColumns=`repeat(${periods.length+1}, 1fr)`;
-  grid.style.padding = periods.length===1 ? "0 180px" : "0";
-  periods.forEach(([k,label])=>{
-    const col=document.createElement("div");col.className="col";col.innerHTML=`<h2>${label}</h2>`;
-    const gs=P.goals.filter(z=>z.p===k);
-    if(!gs.length){const e=document.createElement("div");e.className="gast";e.style.cssText="opacity:.4;text-align:center;padding:.5em 0";e.textContent="No Goals";col.appendChild(e);}
-    gs.forEach(z=>col.appendChild(goalEl(z,inkOf(z.teamID))));
+  // Column widths: a scoring period/group with zero goals collapses to a slim
+  // strip instead of a full 1fr column of empty "No Goals" space (Mat's call,
+  // 2026-07-06) — the freed width goes to the columns that actually have
+  // scoring in them. Penalty Summary is capped at 0.8fr — 80% of a full
+  // scoring column — so it never visually competes with scoring (Mat's call,
+  // same date).
+  const groupHasGoals=g=>g.some(([k])=>P.goals.some(z=>z.p===k));
+  const colFr=groups.map(g=>groupHasGoals(g)?1:0.4);
+  grid.style.gridTemplateColumns = colFr.map(f=>f+"fr").join(" ") + " 0.8fr";
+  grid.style.padding = groups.length===1 ? "0 180px" : "0";
+  groups.forEach((group,i)=>{
+    const collapsed = colFr[i]<1;
+    const col=document.createElement("div");col.className="col"+(collapsed?" collapsed":"");
+    const [,firstLabel]=group[0];
+    col.innerHTML=`<h2>${firstLabel}</h2>`;
+    if(!collapsed){
+      group.forEach(([k,label],idx)=>{
+        if(idx>0){ const h=document.createElement("div");h.className="psubhd";h.textContent=label;col.appendChild(h); }
+        const gs=P.goals.filter(z=>z.p===k);
+        if(!gs.length){const e=document.createElement("div");e.className="gast";e.style.cssText="opacity:.4;text-align:center;padding:.5em 0";e.textContent="No Goals";col.appendChild(e);}
+        gs.forEach(z=>col.appendChild(goalEl(z,inkOf(z.teamID))));
+      });
+    }
     grid.appendChild(col);
   });
   const pcol=document.createElement("div");pcol.className="col penalties";pcol.innerHTML=`<h2>Penalty Summary</h2>`;let any=false;
