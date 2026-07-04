@@ -204,10 +204,24 @@ function parse(html){
   // status / date / time from full text
   const all=doc.body.textContent.replace(/\s+/g," ");
   let status="Live";const fm=all.match(/FINAL\s*\/?\s*(OT|SO)?/i);if(fm)status="Final"+(fm[1]?" / "+fm[1].toUpperCase():"");
+  // how far the game has actually progressed — esportsdesk always prints all
+  // regulation period headers (1/2/3) in the SCORING table up front, even
+  // 11 minutes into the 1st, so we can't rely on pcols alone to know which
+  // columns have real data yet. Pull the live "X:XX of the Nth period" /
+  // "End of Nth period" clock text (or OT/Shootout wording) instead. Only
+  // meaningful while status is "Live" — a Final game keeps every period it
+  // actually played, OT/SO included. (Mat, 2026-07-04)
+  let curPeriod=null;
+  if(status==="Live"){
+    const cpm=all.match(/of the (\d+)(?:st|nd|rd|th)\s*period/i) || all.match(/end of (?:the )?(\d+)(?:st|nd|rd|th)/i);
+    if(cpm) curPeriod=cpm[1];
+    else if(/overtime|(?:^|\s)OT\d*(?:\s|$)/i.test(all)) curPeriod="OT";
+    else if(/shoot ?out/i.test(all)) curPeriod="SO";
+  }
   let date="";const dm=all.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,\s*(\d{4})/);
   if(dm){const d=new Date(+dm[3],MON.findIndex(x=>dm[1].startsWith(x)),+dm[2]);date=WD[d.getDay()]+" "+dm[2]+" "+MON[d.getMonth()]+" "+dm[3];}
   const tm=all.match(/\b(\d{1,2}):(\d{2})\s*([AP]M)\b/i);const time=tm?(tm[1]+":"+tm[2]+" "+tm[3].toUpperCase()):"";
-  return {pcols,away,home,goals,pens,status,date:(date+(time?" · "+time:"")),teammap:{[away.teamID]:"away",[home.teamID]:"home"}};
+  return {pcols,away,home,goals,pens,status,curPeriod,date:(date+(time?" · "+time:"")),teammap:{[away.teamID]:"away",[home.teamID]:"home"}};
 }
 
 // ---- render (v9 visuals) ----------------------------------------------
@@ -258,8 +272,15 @@ function render(P){
   document.getElementById("pgrid").innerHTML="<tr><th></th>"+keys.map(k=>`<th>${k}</th>`).join("")+"<th>T</th></tr>"+
     [A,H].map(t=>`<tr><td class="lbl"><span class="chip" style="background:${t.ink}"></span>${t.code||""}</td>`+
       t.line.map(v=>`<td>${v}</td>`).join("")+`<td class="tot">${t.tot}</td></tr>`).join("");
-  // scoring columns = regulation/OT periods present in pcols
-  const periods=PORDER.filter(([k])=>keys.includes(k));
+  // scoring columns = regulation/OT periods present in pcols, gated to what's
+  // actually been played so far when the game is live (see curPeriod above) —
+  // otherwise a game 11 minutes into the 1st already shows empty 2nd/3rd/OT
+  // columns just because esportsdesk's header always lists them.
+  let periods=PORDER.filter(([k])=>keys.includes(k));
+  if(P.curPeriod){
+    const ord=["1","2","3","OT","SO"], idx=ord.indexOf(P.curPeriod);
+    if(idx>=0) periods=periods.filter(([k])=>ord.indexOf(k)<=idx);
+  }
   const grid=document.getElementById("grid"); grid.innerHTML="";
   grid.style.gridTemplateColumns=`repeat(${periods.length+1}, 1fr)`;
   grid.style.padding = periods.length===1 ? "0 180px" : "0";
