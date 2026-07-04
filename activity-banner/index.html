@@ -395,9 +395,19 @@ function fireTest(t, kind, hold){
            photoWho: kind==="goal" ? t.goalWho : undefined,   // goals only, same field doubles as the display name
            hold: hold || (kind==="pen"?HOLD_PEN:HOLD_GOAL)});
 }
+// If ?team=<slug> is present alongside ?test=1, scope the demo to just that club
+// (e.g. ?test=1&team=botany-swarm shows only Botany Swarm's G/P buttons + label,
+// and "Play all" cycles just that one team) instead of all 9 — same test harness,
+// narrowed to the team being reviewed.
+let ACTIVE_TEST_TEAMS = TEST_TEAMS;
 function buildTestButtons(){
   const wrap=document.getElementById("teamBtns");
-  TEST_TEAMS.forEach(t=>{
+  const teamParam = Q.get("team");
+  const matched = teamParam ? TEST_TEAMS.filter(t=>slug(t.name)===slug(teamParam)) : [];
+  ACTIVE_TEST_TEAMS = matched.length ? matched : TEST_TEAMS;
+  const lbl=document.querySelector("#test .lbl");
+  if(lbl) lbl.textContent = matched.length ? ("TEST · GOAL / PEN · "+matched[0].name.toUpperCase()) : "TEST · GOAL / PEN · EACH TEAM";
+  ACTIVE_TEST_TEAMS.forEach(t=>{
     const g=document.createElement("span"); g.className="tg";
     const lab=document.createElement("span"); lab.className="ab"; lab.textContent=t.abbr; g.appendChild(lab);
     const bg=document.createElement("button"); bg.className="tb gb"; bg.textContent="G"; bg.title=t.name+" — goal banner";    bg.onclick=()=>fireTest(t,"goal"); g.appendChild(bg);
@@ -405,7 +415,7 @@ function buildTestButtons(){
     wrap.appendChild(g);
   });
 }
-function playAll(){ TEST_TEAMS.forEach(t=>{ fireTest(t,"goal",2400); fireTest(t,"pen",2400); }); }   // cycle every team: goal then penalty
+function playAll(){ ACTIVE_TEST_TEAMS.forEach(t=>{ fireTest(t,"goal",2400); fireTest(t,"pen",2400); }); }   // cycle the active team set: goal then penalty
 
 /* ====================== INIT ====================== */
 function fitWindow(){document.getElementById("stage").style.transform="scale("+Math.min(innerWidth/1920,innerHeight/1080)+")";}
