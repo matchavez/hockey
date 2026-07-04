@@ -38,10 +38,11 @@
   .rec .rv{font-size:23px;font-weight:400;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;align-self:center;}
   /* Season record pill (Idea 3, 2026-07-06) — pulled live from the standings
      page, same bounded/indented treatment as .rec directly above it so the
-     two blocks read as one stacked unit. Neutral surface (matches .shot's
-     #1b2029) rather than red/green win-loss coding — kept in the site's
-     existing dim-label visual language instead of inventing a new semantic. */
-  .rank{margin-top:8px;width:fit-content;background:#1b2029;color:var(--sub);font-size:13px;font-weight:600;padding:4px 11px;border-radius:6px;letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums;}
+     two blocks read as one stacked unit. Colored per-team (dark bg + ink
+     text, same pair used for the header wash), matching the demo mockup —
+     background/color set inline in render() since they're per-team, not a
+     fixed value here. */
+  .rank{margin-top:8px;width:fit-content;font-size:13px;font-weight:600;padding:4px 11px;border-radius:6px;letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .side.away .rank{margin-left:6px;}
   .side.home .rank{margin-left:auto;margin-right:6px;}
   .score{font-weight:900;font-size:112px;line-height:.86;flex:0 0 auto;}
@@ -343,7 +344,9 @@ function render(P){
   const rankA=document.getElementById("rankA"), rankB=document.getElementById("rankB");
   const lineA=rankLine(A), lineB=rankLine(H);
   rankA.textContent=lineA; rankA.style.display=lineA?"":"none";
+  rankA.style.background=A.dark; rankA.style.color=inkOf(A.teamID);
   rankB.textContent=lineB; rankB.style.display=lineB?"":"none";
+  rankB.style.background=H.dark; rankB.style.color=inkOf(H.teamID);
   document.getElementById("status").textContent=P.status;
   document.getElementById("date").textContent=P.date;
   document.getElementById("divider").innerHTML=`<span>${LEAGUE_NAME}</span>`+(VENUE?`<span class="sep">|</span><span>${VENUE}</span>`:"");
