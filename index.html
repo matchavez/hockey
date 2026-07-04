@@ -578,8 +578,14 @@ async function loadBoxscores(){
     // now self-prunes boxscores.json too, but this gives immediate effect
     // without waiting for the next cron run, and is a safety net if a league
     // has no upcoming game to replace an old one with.
+    //
+    // boxscores.json also carries games further out (up to 11 days, flagged
+    // in_core_window:false) so the /hockeyrosters page can show them as
+    // 'coming soon'. The portal keeps its original narrower window by only
+    // showing in_core_window:true entries (missing flag = older manifest
+    // entry from before this field existed, treated as core/true).
     const todayISO = nzTodayISO();
-    const fresh = games.filter(g => daysPast(g.date || g.datetime, todayISO) <= STALE_CUTOFF_DAYS);
+    const fresh = games.filter(g => g.in_core_window !== false && daysPast(g.date || g.datetime, todayISO) <= STALE_CUTOFF_DAYS);
     if(!fresh.length){
       document.getElementById('boxscore-grid').innerHTML =
         `<div class="game card" style="opacity:.55"><div class="day">No games this weekend</div>
