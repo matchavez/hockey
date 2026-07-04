@@ -17,10 +17,10 @@
   .livedot{position:absolute;top:16px;left:22px;z-index:6;width:14px;height:14px;border-radius:50%;background:#5fe39a;box-shadow:0 0 0 0 rgba(95,227,154,.6);opacity:0;transition:opacity .2s ease;}
   .livedot.scraping{opacity:1;animation:pl 2.2s ease-out infinite;}
   @keyframes pl{0%{box-shadow:0 0 0 0 rgba(95,227,154,.55)}70%{box-shadow:0 0 0 11px rgba(95,227,154,0)}100%{box-shadow:0 0 0 0 rgba(95,227,154,0)}}
-  header{height:188px;flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 60px;position:relative;z-index:1;}
+  header{height:208px;flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 60px;position:relative;z-index:1;}
   .side{display:flex;align-items:center;gap:26px;}
   .side.home{flex-direction:row-reverse;text-align:right;}
-  .side .logo{width:120px;height:120px;object-fit:contain;flex:0 0 auto;}
+  .side .logo{width:132px;height:132px;object-fit:contain;flex:0 0 auto;}
   .tinfo{flex:1 1 auto;min-width:0;}
   .nm{font-weight:800;font-size:33px;line-height:1.04;}
   /* Spelled-out, tabular stat block (was a single "SOG 43  PP 1/5  PIM 6" line) —
@@ -31,11 +31,11 @@
      Away gets a small left indent off the name's edge; home's box just hugs the
      name's right edge (margin-left:auto) with the same internal alignment.
      (Mat, 2026-07-05) */
-  .rec{margin-top:13px;width:240px;display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:2px;}
+  .rec{margin-top:13px;width:255px;display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:2px;}
   .side.away .rec{margin-left:6px;}
   .side.home .rec{margin-left:auto;margin-right:6px;}
-  .rec .rl{font-size:15px;font-weight:600;color:var(--sub);letter-spacing:.005em;white-space:nowrap;align-self:center;text-align:left;}
-  .rec .rv{font-size:21px;font-weight:400;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;align-self:center;}
+  .rec .rl{font-size:16px;font-weight:600;color:var(--sub);letter-spacing:.005em;white-space:nowrap;align-self:center;text-align:left;}
+  .rec .rv{font-size:23px;font-weight:400;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;align-self:center;}
   .score{font-weight:900;font-size:112px;line-height:.86;flex:0 0 auto;}
   .side.away .score{margin-right:52px;}
   .side.home .score{margin-left:52px;}
@@ -44,9 +44,9 @@
   .date{font-weight:700;font-size:18px;color:var(--sub);margin-top:4px;}
   .pg{margin:11px auto 0;border-collapse:collapse;}
   .pg th{color:var(--dim);font-weight:800;font-size:13px;letter-spacing:.05em;padding:2px 14px;}
-  .pg td{font-weight:800;font-size:23px;color:var(--fg);padding:2px 14px;text-align:center;}
-  .pg td.lbl{text-align:left;font-size:17px;color:var(--sub);}
-  .pg td.tot{color:var(--gold);font-size:26px;}
+  .pg td{font-weight:400;font-size:23px;color:var(--fg);padding:2px 14px;text-align:center;}
+  .pg td.lbl{text-align:left;font-size:17px;color:var(--sub);font-weight:800;}
+  .pg td.tot{color:var(--gold);font-size:26px;font-weight:800;}
   .pg .chip{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:8px;vertical-align:-1px;}
   .divider{height:42px;flex:0 0 auto;position:relative;z-index:1;background:#2a2a2a;display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;font-weight:800;font-size:18px;letter-spacing:.1em;text-transform:uppercase;}
   .divider .sep{color:#ffffff7a;font-weight:700;margin:0 4px;}
