@@ -264,7 +264,7 @@ function goalEl(x,ink){const el=document.createElement("div");el.className="goal
   const dispName=properCase(x.who);
   el.innerHTML=`<span class="accent" style="background:${ink}"></span>
     <span class="shot"><span class="ini">${ini(x.who)}</span></span>
-    <span class="gmain"><div class="gname"><span class="no">#${x.no}</span><span class="nmt">${dispName}</span></div>
+    <span class="gmain"><div class="gname"><span class="no">${x.no}</span><span class="nmt">${dispName}</span></div>
       <div class="gsub"><span class="gast">${fmtAssist(x.a)}</span>${x.tag?`<span class="gtag">${x.tag}</span>`:""}<span class="gtime">${x.t}</span></div></span>`;
   const shot=el.querySelector(".shot"),img=new Image();
   img.onload=()=>{shot.innerHTML="";shot.appendChild(img);shot.style.boxShadow=`0 0 0 2px ${ink}`;};img.src=shotURL(x.who);
@@ -272,7 +272,7 @@ function goalEl(x,ink){const el=document.createElement("div");el.className="goal
 function penEl(x,ink){const el=document.createElement("div");el.className="pen";
   const dispName=properCase(x.who), dispInf=properCase(x.inf);
   el.innerHTML=`<span class="accent" style="background:${ink}"></span>
-    <span class="pwho"><div class="pname"><span class="no">${x.no?'#'+x.no:''}</span><span class="nmt">${dispName}</span></div>
+    <span class="pwho"><div class="pname"><span class="no">${x.no||''}</span><span class="nmt">${dispName}</span></div>
       <div class="psub"><span class="pinf">${dispInf}</span><span class="ppim">${x.dur}</span><span class="ptime">${x.t}</span></div></span>`;
   el.querySelector(".nmt").dataset.full=dispName;return el;}
 // Per-matchup accent overrides — when two teams' accents would clash (same hue), one swaps.
