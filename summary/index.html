@@ -36,6 +36,14 @@
   .side.home .rec{margin-left:auto;margin-right:6px;}
   .rec .rl{font-size:16px;font-weight:600;color:var(--sub);letter-spacing:.005em;white-space:nowrap;align-self:center;text-align:left;}
   .rec .rv{font-size:23px;font-weight:400;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;align-self:center;}
+  /* Season record pill (Idea 3, 2026-07-06) — pulled live from the standings
+     page, same bounded/indented treatment as .rec directly above it so the
+     two blocks read as one stacked unit. Neutral surface (matches .shot's
+     #1b2029) rather than red/green win-loss coding — kept in the site's
+     existing dim-label visual language instead of inventing a new semantic. */
+  .rank{margin-top:8px;width:fit-content;background:#1b2029;color:var(--sub);font-size:13px;font-weight:600;padding:4px 11px;border-radius:6px;letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .side.away .rank{margin-left:6px;}
+  .side.home .rank{margin-left:auto;margin-right:6px;}
   .score{font-weight:900;font-size:112px;line-height:.86;flex:0 0 auto;}
   .side.away .score{margin-right:52px;}
   .side.home .score{margin-left:52px;}
@@ -82,7 +90,7 @@
   .shot img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;}
   .shot .ini{font-weight:800;font-size:.82em;color:#aeb6c2;}
   .gmain{flex:1 1 auto;min-width:0;}
-  .gname{font-weight:800;font-size:1.0em;line-height:1.08;white-space:nowrap;}
+  .gname{font-weight:800;font-size:.85em;line-height:1.08;white-space:nowrap;}
   .gname .no{color:var(--dim);font-weight:700;margin-right:.25em;}
   .gsub{display:flex;align-items:baseline;gap:.55em;margin-top:.12em;white-space:nowrap;}
   .gast{flex:1 1 auto;min-width:0;overflow:hidden;font-size:.62em;color:var(--dim);}
@@ -94,7 +102,7 @@
   .pen{display:flex;align-items:center;gap:.5em;padding:.36em 0;border-bottom:1px solid var(--line2);}
   .pen:last-child{border-bottom:0;}
   .pwho{flex:1 1 auto;min-width:0;}
-  .pname{font-weight:700;font-size:.9em;line-height:1.08;white-space:nowrap;}
+  .pname{font-weight:700;font-size:.765em;line-height:1.08;white-space:nowrap;}
   .pname .no{color:var(--dim);font-weight:700;margin-right:.24em;}
   .psub{display:flex;align-items:baseline;gap:.5em;margin-top:.1em;white-space:nowrap;}
   .pinf{flex:1 1 auto;min-width:0;overflow:hidden;font-size:.58em;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;font-style:italic;font-weight:300;}
@@ -109,9 +117,9 @@
   <div id="wash"></div>
   <span class="livedot"></span>
   <header>
-    <div class="side away"><img class="logo" id="logoA" alt=""><div class="tinfo"><div class="nm" id="nameA"></div><div class="rec" id="recA"></div></div><div class="score" id="sA"></div></div>
+    <div class="side away"><img class="logo" id="logoA" alt=""><div class="tinfo"><div class="nm" id="nameA"></div><div class="rec" id="recA"></div><div class="rank" id="rankA"></div></div><div class="score" id="sA"></div></div>
     <div class="center"><div class="status" id="status"></div><div class="date" id="date"></div><table class="pg" id="pgrid"></table></div>
-    <div class="side home"><img class="logo" id="logoB" alt=""><div class="tinfo"><div class="nm" id="nameB"></div><div class="rec" id="recB"></div></div><div class="score" id="sB"></div></div>
+    <div class="side home"><img class="logo" id="logoB" alt=""><div class="tinfo"><div class="nm" id="nameB"></div><div class="rec" id="recB"></div><div class="rank" id="rankB"></div></div><div class="score" id="sB"></div></div>
   </header>
   <div class="divider" id="divider"></div>
   <div id="grid"></div>
@@ -129,6 +137,11 @@ const MANIFESTS = [
 ];
 const LOGO="https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
 const SHOT="https://admin.esportsdesk.com/media/leagues/6795/graphics/";
+// Season record pill (Idea 3, 2026-07-06) — same esportsdesk admin host as the
+// box score, standings.cfm isn't in worker.js's committed ALLOWED list yet but
+// the live Worker already permits it (same drift as stats_1team.cfm before —
+// verified working 2026-07-06). worker.js updated to match either way.
+const STANDINGS_URL="https://admin.esportsdesk.com/leagues/standings.cfm";
 // team visuals keyed by nzihl teamID
 const REG={
  // dark = official Half-Dark "Scorebug BG" per 2026 style guide (used for the header wash vectors)
@@ -262,6 +275,7 @@ function parse(html){
 
 // ---- render (v9 visuals) ----------------------------------------------
 let LEAGUE_NAME="New Zealand Ice Hockey League", VENUE="";
+let STANDINGS_MAP={};   // populated in tick() before each render() — see ensureStandings
 function teamObj(p){const v=vis(p.teamID);return {teamID:p.teamID,name:p.name,code:v.code||p.code,ink:v.ink,dark:v.dark,logo:v.logo,sog:p.sog,pp:p.pp,pim:p.pim,line:p.line,tot:p.tot};}
 function washVectors(a,h){document.getElementById("wash").style.background=
   `linear-gradient(90deg, ${a.dark} 0%, ${a.dark} 6%, transparent 42%),`+
@@ -322,6 +336,14 @@ function render(P){
     `<span class="rl">Power Plays</span><span class="rv">${t.pp||"–"}</span>`+
     `<span class="rl">Penalty Minutes</span><span class="rv">${t.pim||"–"}</span>`;
   document.getElementById("recA").innerHTML=rec(A); document.getElementById("recB").innerHTML=rec(H);
+  // Season record pill (Idea 3) — hidden entirely if the standings fetch
+  // failed or this team isn't found, rather than showing a broken/empty pill.
+  const rankLine=t=>{const rec=findRecord(STANDINGS_MAP,t.name);
+    return rec?`${rec.w}-${rec.l}-${rec.otw}-${rec.otl} · ${rec.pts} PTS · ${ORD(rec.rank)}`:"";};
+  const rankA=document.getElementById("rankA"), rankB=document.getElementById("rankB");
+  const lineA=rankLine(A), lineB=rankLine(H);
+  rankA.textContent=lineA; rankA.style.display=lineA?"":"none";
+  rankB.textContent=lineB; rankB.style.display=lineB?"":"none";
   document.getElementById("status").textContent=P.status;
   document.getElementById("date").textContent=P.date;
   document.getElementById("divider").innerHTML=`<span>${LEAGUE_NAME}</span>`+(VENUE?`<span class="sep">|</span><span>${VENUE}</span>`:"");
@@ -424,6 +446,48 @@ function hideMsg(){document.getElementById("msg").style.display="none";}
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
 function boxURL(m,gid){return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
+function standingsURL(m){return `${STANDINGS_URL}?clientID=${m.clientid}&leagueID=${m.leagueid}&printPage=1&_=${Date.now()}`;}
+// standings.cfm has no teamID links (unlike the box score / stats pages), so
+// rows are matched back to a team by name: esportsdesk runs the team's full
+// name immediately into its code with no separator ("Dunedin ThunderDUN"),
+// so a case-insensitive startsWith on the known team name is reliable.
+// Column position is looked up by header label, same convention as the rest
+// of this file, since esportsdesk's column layout has drifted before.
+function parseStandings(html){
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
+  const tbl=[...doc.querySelectorAll("table")].find(t=>{const r=t.querySelector("tr");return r&&/PTS/i.test(txt(r));});
+  if(!tbl) return {};
+  const rows=[...tbl.querySelectorAll("tr")];
+  if(!rows.length) return {};
+  const hdr=[...rows[0].querySelectorAll("th,td")].map(c=>txt(c).toUpperCase());
+  const col=(label,fallback)=>{const i=hdr.indexOf(label);return i>=0?i:fallback;};
+  const iTeam=col("TEAM",0), iW=col("W",2), iL=col("L",3), iOTW=col("OTW",4), iOTL=col("OTL",5), iPTS=col("PTS",6);
+  const need=Math.max(iTeam,iW,iL,iOTW,iOTL,iPTS);
+  const out={};
+  rows.slice(1).forEach((r,idx)=>{
+    const c=[...r.children].map(txt);
+    if(c.length<=need) return;
+    const teamCell=c[iTeam];
+    if(!teamCell) return;
+    out[teamCell.toLowerCase()]={w:c[iW]||"0",l:c[iL]||"0",otw:c[iOTW]||"0",otl:c[iOTL]||"0",pts:c[iPTS]||"0",rank:idx+1};
+  });
+  return out;
+}
+function findRecord(map,teamName){
+  const n=(teamName||"").toLowerCase();
+  const key=Object.keys(map).find(k=>k.startsWith(n));
+  return key?map[key]:null;
+}
+const ORD=n=>{const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+const STANDINGS_CACHE={};   // keyed by `${clientid}-${leagueid}` — fetched once per league per page load
+async function ensureStandings(m){
+  const key=`${m.clientid}-${m.leagueid}`;
+  if(STANDINGS_CACHE[key]) return STANDINGS_CACHE[key];
+  try{ const html=await getText(standingsURL(m)); STANDINGS_CACHE[key]=parseStandings(html); }
+  catch(e){ STANDINGS_CACHE[key]={}; }
+  return STANDINGS_CACHE[key];
+}
 
 async function resolve(){
   const q=new URLSearchParams(location.search);
@@ -506,6 +570,10 @@ async function tick(){
     const P=parse(html);
     VENUE = TARGET.venue || vis(P.home.teamID).venue || "";
     LEAGUE_NAME = TARGET.leagueName;
+    // Season record (Idea 3) — one table covers both teams, cached per league
+    // per page load (see ensureStandings), so this only actually fetches once
+    // per session, not on every 15s poll.
+    STANDINGS_MAP = await ensureStandings(TARGET.m);
     hideMsg(); render(P); renderedOnce=true; fitWindow();
   }catch(e){ if(!renderedOnce) showMsg("Couldn’t load the live box score — retrying…"); }
   finally{ if(dot){ const wait=Math.max(0,900-(Date.now()-t0)); setTimeout(()=>dot.classList.remove("scraping"),wait); } } // ensure ≥1 visible pulse, then OFF until next poll
