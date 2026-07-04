@@ -46,7 +46,6 @@
   .pg th{color:var(--dim);font-weight:800;font-size:13px;letter-spacing:.05em;padding:2px 14px;}
   .pg td{font-weight:400;font-size:23px;color:var(--fg);padding:2px 14px;text-align:center;}
   .pg td.lbl{text-align:left;font-size:17px;color:var(--sub);font-weight:800;}
-  .pg td.tot{color:var(--gold);font-size:26px;font-weight:800;}
   .pg .chip{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:8px;vertical-align:-1px;}
   .divider{height:42px;flex:0 0 auto;position:relative;z-index:1;background:#2a2a2a;display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;font-weight:800;font-size:18px;letter-spacing:.1em;text-transform:uppercase;}
   .divider .sep{color:#ffffff7a;font-weight:700;margin:0 4px;}
@@ -329,9 +328,11 @@ function render(P){
   const sA=document.getElementById("sA"),sB=document.getElementById("sB");
   sA.textContent=A.tot; sA.style.color=A.ink; sB.textContent=H.tot; sB.style.color=H.ink;
   const keys=P.pcols.length?P.pcols:["1","2","3"];
-  document.getElementById("pgrid").innerHTML="<tr><th></th>"+keys.map(k=>`<th>${k}</th>`).join("")+"<th>T</th></tr>"+
+  // Total column dropped (Mat, 2026-07-06) — redundant with the big score
+  // numbers already shown either side of this table.
+  document.getElementById("pgrid").innerHTML="<tr><th></th>"+keys.map(k=>`<th>${k}</th>`).join("")+"</tr>"+
     [A,H].map(t=>`<tr><td class="lbl"><span class="chip" style="background:${t.ink}"></span>${t.code||""}</td>`+
-      t.line.map(v=>`<td>${v}</td>`).join("")+`<td class="tot">${t.tot}</td></tr>`).join("");
+      t.line.map(v=>`<td>${v}</td>`).join("")+`</tr>`).join("");
   // scoring columns = regulation/OT periods present in pcols, gated to what's
   // actually been played so far when the game is live (see curPeriod above) —
   // otherwise a game 11 minutes into the 1st already shows empty 2nd/3rd/OT
