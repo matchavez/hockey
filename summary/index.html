@@ -31,9 +31,9 @@
      Away gets a small left indent off the name's edge; home's box just hugs the
      name's right edge (margin-left:auto) with the same internal alignment.
      (Mat, 2026-07-05) */
-  .rec{margin-top:8px;width:240px;display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:2px;}
+  .rec{margin-top:13px;width:240px;display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:2px;}
   .side.away .rec{margin-left:6px;}
-  .side.home .rec{margin-left:auto;}
+  .side.home .rec{margin-left:auto;margin-right:6px;}
   .rec .rl{font-size:15px;font-weight:600;color:var(--sub);letter-spacing:.005em;white-space:nowrap;align-self:center;text-align:left;}
   .rec .rv{font-size:21px;font-weight:400;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;align-self:center;}
   .score{font-weight:900;font-size:112px;line-height:.86;flex:0 0 auto;}
@@ -56,14 +56,13 @@
   .col h2{font-size:.62em;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--sub);margin-bottom:.5em;text-align:center;white-space:nowrap;}
   .col.penalties h2{color:#e7b3b8;}
   /* Penalty Summary reads as info, not points — set it apart from the scoring
-     columns — tried a red wash, then a lighter #222 fill, but Mat settled on
-     matching the stage's own background (--bg #111) exactly, so separation
-     comes only from the double-line rule, not a background difference —
-     in place of the single hairline the scoring columns use between each
-     other. The scoring column immediately before it drops its own hairline
-     (.pre-penalties, added in JS) so there's exactly one clean divider, not
-     two stacked lines. (Mat, 2026-07-05) */
-  .col.penalties{background:var(--bg);border-left:6px double rgba(224,150,150,.4);}
+     columns with a barely-there fill (#171717, just a hair lighter than the
+     stage's own --bg #111 — tried a red wash, then #222, before landing here)
+     plus a double-line rule in place of the single hairline the scoring
+     columns use between each other. The scoring column immediately before it
+     drops its own hairline (.pre-penalties, added in JS) so there's exactly
+     one clean divider, not two stacked lines. (Mat, 2026-07-05) */
+  .col.penalties{background:#171717;border-left:6px double rgba(224,150,150,.4);}
   .col.pre-penalties{border-right:0;}
   /* a scoring period with zero goals collapses to a slim strip (rotated label only)
      instead of a full-width column of empty "No Goals" space. (Mat, 2026-07-06) */
