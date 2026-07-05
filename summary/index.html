@@ -176,7 +176,9 @@ const decamel=s=>s.replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$
 const ini=n=>n.split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
 const shotURL=n=>SHOT+encodeURIComponent(n.replace(/\s+/g,""))+".jpg";
 const nameInit=n=>{const x=n.split(/\s+/);return x.length<2?n:x[0][0]+". "+x.slice(1).join(" ");};
-const surnameOnly=n=>{const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?w.slice(1).join(" "):(w[0]||"");};
+// first-initial + surname (siblings on a roster can share a surname, e.g. two Ruski-Jones
+// players — the initial disambiguates). Applied everywhere a name is shortened.
+const initSurname=n=>{const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?(w[0][0]+". "+w.slice(1).join(" ")):(w[0]||"");};
 // esportsdesk source data sometimes arrives ALL CAPS or all lower-case (names, penalty
 // infractions). Detect wholesale one-case text (not stylised mixed case like "McDonald" or
 // "O'Brien", which is left untouched) and normalise to Title Case for DISPLAY only — raw
@@ -193,7 +195,7 @@ function properCase(s){
 function fmtAssist(a){
   if(/^unassisted$/i.test(a)) return '<span class="unassist">Unassisted</span>';
   const parts=a.split(",").map(s=>properCase(decamel(s).trim())).filter(Boolean);
-  return parts.map(surnameOnly).join(", ");
+  return parts.map(initSurname).join(", ");
 }
 const PORDER=[["1","1st Period"],["2","2nd Period"],["3","3rd Period"],["OT","Overtime"]];
 const normP=s=>{s=s.toUpperCase();if(s.startsWith("1"))return"1";if(s.startsWith("2"))return"2";if(s.startsWith("3"))return"3";if(/OT|OVER/.test(s))return"OT";if(/SO|SHOOT/.test(s))return"SO";return s;};
@@ -287,7 +289,7 @@ function washVectors(a,h){document.getElementById("wash").style.background=
   `linear-gradient(270deg, ${h.dark} 0%, ${h.dark} 6%, transparent 42%)`;}
 function setLogo(el,t){if(t.logo){el.src=LOGO+encodeURIComponent(t.logo);el.style.visibility="";}else el.style.visibility="hidden";}
 function goalEl(x,ink){const el=document.createElement("div");el.className="goal";
-  const dispName=properCase(x.who);
+  const dispName=initSurname(properCase(x.who));
   el.innerHTML=`<span class="accent" style="background:${ink}"></span>
     <span class="shot"><span class="ini">${ini(x.who)}</span></span>
     <span class="gmain"><div class="gname"><span class="no">${x.no}</span><span class="nmt">${dispName}</span></div>
@@ -296,7 +298,7 @@ function goalEl(x,ink){const el=document.createElement("div");el.className="goal
   img.onload=()=>{shot.innerHTML="";shot.appendChild(img);shot.style.boxShadow=`0 0 0 2px ${ink}`;};img.src=shotURL(x.who);
   el.querySelector(".nmt").dataset.full=dispName;return el;}
 function penEl(x,ink){const el=document.createElement("div");el.className="pen";
-  const dispName=properCase(x.who), dispInf=properCase(x.inf);
+  const dispName=initSurname(properCase(x.who)), dispInf=properCase(x.inf);
   el.innerHTML=`<span class="accent" style="background:${ink}"></span>
     <span class="pwho"><div class="pname"><span class="no">${x.no||''}</span><span class="nmt">${dispName}</span></div>
       <div class="psub"><span class="pinf">${dispInf}</span><span class="ppim">${x.dur}</span><span class="ptime">${x.t}</span></div></span>`;

@@ -179,12 +179,24 @@ function placeBug(){
 
 /* ====================== NAME / TEXT HELPERS ====================== */
 const decamel=s=>String(s||"").replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
-const titleCase=s=>String(s||"").replace(/\w\S*/g,w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase());
+// esportsdesk source data sometimes arrives ALL CAPS or all lower-case. Detect wholesale
+// one-case text (not stylised mixed case like "McDonald" or "O'Brien", which is left
+// untouched) and normalise to Title Case, capitalising after spaces/hyphens/apostrophes/
+// periods so compound surnames like "Ruski-Jones" keep BOTH halves capitalised (ported
+// from summary.html's properCase() — was the bug behind "Ruski-Jones" -> "Ruski-jones").
+function properCase(s){s=String(s||"");if(!s)return s;
+  const letters=s.replace(/[^a-zA-Z]/g,"");if(!letters)return s;
+  const allUpper=letters===letters.toUpperCase()&&letters!==letters.toLowerCase();
+  const allLower=letters===letters.toLowerCase()&&letters!==letters.toUpperCase();
+  if(!allUpper&&!allLower)return s;
+  return s.toLowerCase().replace(/(^|[\s\-'.(])([a-z])/g,(m,p1,p2)=>p1+p2.toUpperCase());}
 // last-name-only: de-camelCase first, then take the final token (handles
 // "First Last", camelCase "FirstLast", and Maori multi-given-name "Te Rangi Henare" -> "Henare")
-function surname(n){const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w[w.length-1]||"";}
-function surnameUC(n){return surname(n).toUpperCase();}
-function surnameTC(n){return titleCase(surname(n));}
+// first-initial + surname (siblings on a roster can share a surname — the initial
+// disambiguates, e.g. two Ruski-Jones players). Applied to every shortened name.
+function initSurname(n){const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?(w[0][0]+". "+w[w.length-1]):(w[0]||"");}
+function surnameUC(n){return initSurname(n).toUpperCase();}
+function surnameTC(n){return properCase(initSurname(n));}
 function assistList(a){
   if(!a||/^unassisted$/i.test(a)) return "";
   return a.split(",").map(s=>surnameTC(s.trim())).filter(Boolean).join(", ");
