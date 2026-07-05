@@ -6,7 +6,7 @@
 <style>
 @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
 @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable-Italic.woff2') format('woff2');}
-  :root{ --bg:rgba(9,9,11,.80); --line:#2a2f3a; --line2:#20242e;
+  :root{ --bg:rgba(9,9,11,.92); --line:#2a2f3a; --line2:#20242e;
     --fg:#f4f6fa; --sub:#c3c9d4; --dim:#878d99; --gold:#FFCF49; --redA:#b42026; --redB:#7c1014; }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{background:transparent;font-family:Inter,-apple-system,Segoe UI,sans-serif;font-feature-settings:"tnum" 1,"cv05" 1;-webkit-font-smoothing:antialiased;}
@@ -47,7 +47,7 @@
   .pg td{font-weight:400;font-size:23px;color:var(--fg);padding:2px 14px;text-align:center;}
   .pg td.lbl{text-align:left;font-size:17px;color:var(--sub);font-weight:800;}
   .pg .chip{display:inline-block;width:13px;height:13px;border-radius:3px;margin-right:8px;vertical-align:-1px;}
-  .divider{height:42px;flex:0 0 auto;position:relative;z-index:1;background:rgba(42,42,42,.80);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;font-weight:800;font-size:18px;letter-spacing:.1em;text-transform:uppercase;}
+  .divider{height:42px;flex:0 0 auto;position:relative;z-index:1;background:rgba(42,42,42,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;font-weight:800;font-size:18px;letter-spacing:.1em;text-transform:uppercase;}
   .divider .sep{color:#ffffff7a;font-weight:700;margin:0 4px;}
   #grid{flex:1 1 auto;min-height:0;display:grid;gap:0;position:relative;z-index:1;}
   .col{min-width:0;height:100%;overflow:hidden;padding:16px 26px 8px;border-right:1px solid var(--line2);}
@@ -61,7 +61,7 @@
      columns use between each other. The scoring column immediately before it
      drops its own hairline (.pre-penalties, added in JS) so there's exactly
      one clean divider, not two stacked lines. (Mat, 2026-07-05) */
-  .col.penalties{background:rgba(20,20,20,.80);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-left:6px double rgba(224,150,150,.4);}
+  .col.penalties{background:rgba(20,20,20,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-left:6px double rgba(224,150,150,.4);}
   .col.pre-penalties{border-right:0;}
   /* a scoring period with zero goals collapses to a slim strip (rotated
      "X Period - No Scoring" label, light weight) instead of a full-width
