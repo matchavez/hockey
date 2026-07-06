@@ -198,6 +198,17 @@ const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;","
 const SHIM=u=>WORKER?(WORKER.replace(/\/$/,"")+"?url="+encodeURIComponent(u)):null;
 const normP=s=>{s=String(s).toUpperCase();if(s.startsWith("1"))return"1";if(s.startsWith("2"))return"2";if(s.startsWith("3"))return"3";if(/OT|OVER/.test(s))return"OT";if(/SO|SHOOT/.test(s))return"SO";return s;};
 function parse(html){
+  // esportsdesk wraps a player's jersey#/first-name in a responsive "d-sm-inline d-none"
+  // <span> (shown only at wider breakpoints) with the surname as trailing plain text right
+  // after it. Usually that's "...</span> Surname" (a real space), but at least one field
+  // (assist lists) sometimes omits the space entirely: "...</span>beckstead)". When the
+  // first name also happens to be stored lowercase (a known esportsdesk quirk, e.g. "cole"),
+  // there's no letter-case boundary left for decamel() to split on either, so the two names
+  // silently fuse into one word ("Cole" + "Beckstead" -> "colebeckstead", caught live 2026-07-06).
+  // Force a space after every closing </span> up front, before anything reads .textContent —
+  // harmless where a space/tag already followed (collapsed back down by the \s+ normalisation
+  // every cell-text reader already does), and it fixes this at the source for every field.
+  html=html.replace(/<\/span>/gi,"</span> ");
   const doc=new DOMParser().parseFromString(html,"text/html");
   const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
   const h5=[...doc.querySelectorAll("h5")];
