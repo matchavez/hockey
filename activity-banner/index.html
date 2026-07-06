@@ -32,14 +32,18 @@
   #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;
     transform-origin:0 0;overflow:hidden;}
 
-  /* --- live banner (full width, top) --- */
-  /* banner height matches the scorebug bar (~66px) + a hair, so it sits at/just below the bug */
+  /* --- live banner (full width, BOTTOM of frame) ---
+     Moved from top:0 to bottom:0 (Mat, 2026-07-06): every Activity Banner is being re-cut so the
+     transparent 1920x1080 source drops straight into the bottom-third/lower-third slot with no
+     resize or reposition in the switcher — every pixel of the banner sits flush against the
+     bottom edge of the frame, matching how it'll actually be composited on air. */
+  /* banner height matches the scorebug bar (~66px) + a hair */
   /* Flat solid fill = the team's official Half-Dark "Scorebug BG" colour (--dark in REG); no
      fade/gradient, so white text sits on a uniform high-contrast bed across the whole bar. */
-  #bnr{position:absolute;left:0;top:0;width:1920px;height:78px;z-index:5;
+  #bnr{position:absolute;left:0;bottom:0;width:1920px;height:78px;z-index:5;
     display:flex;align-items:center;
     background:var(--dark);
-    box-shadow:0 8px 24px rgba(0,0,0,.42);
+    box-shadow:0 -8px 24px rgba(0,0,0,.42);
     clip-path:inset(0 100% 0 0);opacity:0;display:none;
     will-change:clip-path,opacity;}
   #bnr.show{display:flex;clip-path:inset(0 0 0 0);opacity:1;
@@ -53,9 +57,9 @@
   /* --- goal-scorer avatar (added 2026-07-01, aligned-to-name 2026-07-01) ---
      100px circle — deliberately taller than the 78px bar, vertically centered on the bar's
      MIDDLE via top:50%/translateY(-50%) so it overhangs top+bottom evenly by design (Mat's call:
-     "centre at the vertical centre... even though there will be overhang"). Top overhang gets
-     clipped by the #stage frame edge (bar sits at top:0); bottom overhang bleeds visibly into the
-     transparent frame below.
+     "centre at the vertical centre... even though there will be overhang"). Now that the bar sits
+     at bottom:0 (2026-07-06), the CLIPPED side flipped: bottom overhang gets clipped by the
+     #stage frame's bottom edge, top overhang bleeds visibly into the transparent frame above.
      It tracks a specific word rather than sitting in a fixed slot: a zero-width inline spacer (.gsp)
      is baked into goalHTML() immediately before the <span class="team"> (Mat: left of the TEAM NAME,
      not the scorer's name — moved here 2026-07-01 after first trying left-of-name), and once the
@@ -87,7 +91,9 @@
   .btxt .sep{opacity:.55;font-weight:700;padding:0 .15em;}
 
   /* --- test controls (only with ?test=1) --- */
-  #test{position:absolute;left:24px;bottom:22px;right:24px;z-index:9;display:none;gap:8px;
+  /* pinned to the TOP now (was bottom:22px) so the dev panel doesn't sit on top of the
+     banner, which now lives at the bottom of the frame (2026-07-06). */
+  #test{position:absolute;left:24px;top:22px;right:24px;z-index:9;display:none;gap:8px;
     flex-wrap:wrap;align-items:center;font-family:Inter,sans-serif;}
   #test button{font:600 15px Inter,sans-serif;color:#fff;background:#15181d;
     border:1px solid #333a44;border-radius:9px;padding:10px 16px;cursor:pointer;}
