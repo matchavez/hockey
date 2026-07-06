@@ -327,7 +327,7 @@
 
   <!-- ACTIVITY BANNER TEAM SLUGS -->
   <section id="bannerslugs">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source</span></span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source - (<a target="_blank" rel="noopener" href="activity-banner/?test=1">test</a>)</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="banner-nzihl" class="grid g3"></div>
     <div class="league-label">NZWIHL</div>
@@ -413,7 +413,8 @@
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters">nzihl-broadcast-rosters</a> ·
     <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">nzwihl-broadcast-rosters</a>
     <div style="margin-top:8px">Tools: <a target="_blank" rel="noopener" href="https://cockpit.49ing.ch/dashboard">49ing Cockpit ↗</a></div>
-    <div style="margin-top:8px" id="scorebug-test-links">Scorebug + Live Banner test/demo (beta), per team:</div>
+    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="scorebug/?test=1">Red Devils Scorebug + Live Banner (beta) ↗</a></div>
+    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="scorebug/?team=canterbury-inferno&test=1">Inferno Scorebug + Live Banner (beta) ↗</a></div>
     <div style="margin-top:8px"><a target="_blank" rel="noopener" href="activity-banner/?test=1">Activity Banner — goal/penalty only, no scorebug (beta) ↗</a></div>
     <div style="margin-top:8px"><a href="https://matchavez.com">matchavez.com</a> / hockey</div>
     <div style="margin-top:8px"><a target="_blank" rel="noopener" href="https://app.singular.live/appinstances/6104631/control">Christchurch Scorebug Login ↗</a></div>
@@ -506,23 +507,13 @@ function bannerCard(t){
   const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   const path = `activity-banner/?team=${sl}`;
   const full = `https://matchavez.com/hockey/${path}`;
-  const testPath = `activity-banner/?team=${sl}&test=1`;
   return `<div class="team">${idw(t)}<span class="acts">
     <a class="pill ext" title="Open the live overlay" target="_blank" rel="noopener" href="${path}">Open</a>
-    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a>
-    <a class="pill ext" title="Open the test/demo panel for this team (fake goal + penalty, fires on click)" target="_blank" rel="noopener" href="${testPath}">(t)</a></span></div>`;
+    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
 }
 // Mako left out (no 2026 games) — 9 teams, matching the Game Summary slug list.
 document.getElementById('banner-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(bannerCard).join('');
 document.getElementById('banner-nzwihl').innerHTML = NZWIHL.map(bannerCard).join('');
-
-function scorebugTestLink(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  return `<a target="_blank" rel="noopener" href="scorebug/?team=${sl}&test=1">${t.nick} (t)</a>`;
-}
-document.getElementById('scorebug-test-links').innerHTML =
-  'Scorebug + Live Banner test/demo (beta), per team: ' +
-  [...NZIHL.filter(t=>t.nm!=="Auckland Mako"), ...NZWIHL].map(scorebugTestLink).join(' &middot; ');
 
 // Games/rosters older than this many days (past their date) are treated as
 // stale and hidden from the portal's "current" sections, rather than lingering
