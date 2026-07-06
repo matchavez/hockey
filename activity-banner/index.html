@@ -420,16 +420,16 @@ async function tick(){
    using each team's official scorebug-BG (dark) flat fill + crest. Auckland Mako is
    included here for the demo only (no 2026 games -> not in the live REG). */
 const TEST_TEAMS = [
- {abbr:"ADM", name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", goalWho:"Henderson", goalA:"Patel, Cole", penWho:"Cole",       penDur:"2:00", penInf:"Tripping"},
- {abbr:"BSW", name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png",     goalWho:"Mikaere",   goalA:"Tane, Reid",  penWho:"Mikaere",    penDur:"2:00", penInf:"Hooking"},
- {abbr:"SCS", name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", goalWho:"Scott Henry", goalA:"Reid",      penWho:"O'Connor",   penDur:"2:00", penInf:"Slashing"},
- {abbr:"DUN", name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png",            goalWho:"Nico Hemming", goalA:"Stegmann", penWho:"Sutherland", penDur:"5:00", penInf:"Fighting"},
- {abbr:"MAK", name:"Auckland Mako",         ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png",    goalWho:"Tane",      goalA:"Brooks, Lee", penWho:"Brooks",     penDur:"2:00", penInf:"Interference"},
- {abbr:"CRD", name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png",      goalWho:"Justin Daigle", goalA:"Walker",   penWho:"Walker",     penDur:"2:00", penInf:"Cross-checking"},
- {abbr:"AST", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png",       goalWho:"Thompson",  goalA:"Nair",        penWho:"Nair",       penDur:"2:00", penInf:"Holding"},
- {abbr:"CIN", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png",              goalWho:"Morgan",    goalA:"Lee",         penWho:"Morgan",     penDur:"2:00", penInf:"Hooking"},
- {abbr:"DTW", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png",        goalWho:"Justin Daigle", goalA:"Park",    penWho:"Park",       penDur:"2:00", penInf:"Tripping"}, // longest team name + a real confirmed-photo scorer, deliberately, for the avatar stress test
- {abbr:"WLD", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png",        goalWho:"Anderson",  goalA:"Frost, Bell", penWho:"Frost",      penDur:"2:00", penInf:"Slashing"},
+ {abbr:"ADM", name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", goalWho:"Marcus Henderson", goalA:"Sanjay Patel, Ethan Cole", penWho:"Ethan Cole",       penDur:"2:00", penInf:"Tripping"},
+ {abbr:"BSW", name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png",     goalWho:"Wiremu Mikaere",   goalA:"Hemi Tane, Josh Reid",  penWho:"Wiremu Mikaere",    penDur:"2:00", penInf:"Hooking"},
+ {abbr:"SCS", name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", goalWho:"Scott Henry", goalA:"Josh Reid",      penWho:"Aiden O'Connor",   penDur:"2:00", penInf:"Slashing"},
+ {abbr:"DUN", name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png",            goalWho:"Nico Hemming", goalA:"Luka Stegmann", penWho:"Grant Sutherland", penDur:"5:00", penInf:"Fighting"},
+ {abbr:"MAK", name:"Auckland Mako",         ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png",    goalWho:"Hemi Tane",      goalA:"Connor Brooks, Isaac Lee", penWho:"Connor Brooks",     penDur:"2:00", penInf:"Interference"},
+ {abbr:"CRD", name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png",      goalWho:"Ollie Ruski-Jones", goalA:"Leo Ruski-Jones",   penWho:"Tyler Walker",     penDur:"2:00", penInf:"Cross-checking"},
+ {abbr:"AST", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png",       goalWho:"Ben Thompson",  goalA:"Arjun Nair",        penWho:"Arjun Nair",       penDur:"2:00", penInf:"Holding"},
+ {abbr:"CIN", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png",              goalWho:"Callum Morgan",    goalA:"Isaac Lee",         penWho:"Callum Morgan",     penDur:"2:00", penInf:"Hooking"},
+ {abbr:"DTW", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png",        goalWho:"Justin Daigle", goalA:"Rebecca Park",    penWho:"Rebecca Park",       penDur:"2:00", penInf:"Tripping"}, // longest team name + a real confirmed-photo scorer, deliberately, for the avatar stress test
+ {abbr:"WLD", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png",        goalWho:"Jack Anderson",  goalA:"Sam Frost, Riley Bell", penWho:"Sam Frost",      penDur:"2:00", penInf:"Slashing"},
 ];
 function fireTest(t, kind, hold){
   const html = kind==="pen"
