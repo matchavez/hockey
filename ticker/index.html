@@ -320,7 +320,8 @@ function buildItems(events){
 
 /* ====================== MARQUEE ENGINE ====================== */
 const tick=document.getElementById("tick"), track=document.getElementById("track");
-let items=[], dirty=true, unitW=0, offset=0, lastTs=0, running=false, visible=false;
+let items=[], dirty=true, unitW=0, offset=0, running=false, visible=false;
+let traveled=0, lastT=0, cycles=0;   // wall-clock-driven: position stays correct even if frames throttle
 function placeTick(){
   tick.style.left=TICK.x+"px"; tick.style.top=TICK.y+"px";
   tick.style.width=TICK.w+"px"; tick.style.height=TICK.h+"px";
@@ -336,25 +337,33 @@ function rebuild(){
   track.innerHTML=new Array(copies).fill(unit).join("");
   dirty=false;
 }
-function raf(ts){
+// Position is a pure function of elapsed wall-clock time, NOT accumulated frame deltas —
+// rAF throttles to ~1fps in occluded/hidden windows (caught live 2026-07-07), and some capture
+// devices throttle too. Time-based travel means any frame rate shows the CORRECT position;
+// the 250ms interval fallback keeps it moving even when rAF stalls entirely.
+function step(now){
   if(!running)return;
-  if(!lastTs)lastTs=ts;
-  const dt=Math.min(100,ts-lastTs)/1000; lastTs=ts;
-  offset-=SPEED*dt;
-  if(unitW>0&&offset<=-unitW){ offset+=unitW; if(dirty)rebuild();
-    while(unitW>0&&offset<=-unitW)offset+=unitW; }   // unitW may shrink on rebuild — never strand offset
+  now=(now==null||now<=0)?performance.now():now;
+  if(!lastT)lastT=now;
+  traveled+=Math.max(0,now-lastT)/1000*SPEED; lastT=now;
+  if(unitW>0){
+    const c=Math.floor(traveled/unitW);
+    if(c!==cycles){ cycles=c; if(dirty){ rebuild(); traveled=0; cycles=0; } }  // splice new events at the seam
+    offset=-(traveled%unitW);
+  }
   track.style.transform="translateX("+offset+"px)";
-  requestAnimationFrame(raf);
 }
+function raf(ts){ if(!running)return; step(ts); requestAnimationFrame(raf); }
 function startTicker(){
   if(running)return; running=true;
   if(dirty)rebuild();
   requestAnimationFrame(raf);
+  setInterval(()=>step(),250);   // fallback cadence when rAF is throttled
 }
 function showTicker(){ if(visible)return; visible=true; tick.classList.add("on"); startTicker(); updDiag(); }
 function setItems(list){
   items=list; dirty=true;
-  if(!visible||unitW<1){ rebuild(); offset=0; }   // not on air (or first fill): rebuild immediately
+  if(!visible||unitW<1){ rebuild(); offset=0; traveled=0; cycles=0; }   // not on air (or first fill): rebuild immediately
   // else: rebuild happens seamlessly at the next loop boundary
 }
 const FONTS=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
