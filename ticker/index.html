@@ -311,7 +311,11 @@ async function fetchLeaders(){
     const tbl=doc.querySelector("table"); if(!tbl)return;
     const list=[...tbl.querySelectorAll("tr")].slice(1).map((r,i)=>{
       const c=[...r.children].map(x=>x.textContent.replace(/\s+/g," ").trim());
-      return {k:normName(c[1]), rank:+c[0]||i+1, G:+c[7]||0};
+      // full display name = the wide-viewport span ("Alex Gagnon"), minus IM/AF import badges
+      const wide=r.children[1]&&r.children[1].querySelector("span.d-none");
+      const disp=properCase(String((wide?wide.textContent:c[1])||"").replace(/\b(IM|AF)\b/g,"").replace(/\s+/g," ").trim());
+      return {k:normName(c[1]), disp, no:c[2]||"", teamK:normName(c[5]),
+              rank:+c[0]||i+1, G:+c[7]||0, A:+c[8]||0, PTS:+c[9]||0};
     }).filter(r=>r.k);
     [...list].sort((a,b)=>b.G-a.G).forEach((r,i)=>r.gRank=i+1);
     if(list.length){LEADERS=list; lastSig="";}   // force a rebuild with fresh season context
@@ -403,6 +407,83 @@ function penSentence(e){
     default:return `${P} went to the box for ${inf}${tagS}${time}.`;
   }
 }
+/* ---------- GAME-PHASE AWARENESS (2026-07-07): pregame preview / live recap / FINAL ----------
+   Accuracy rule (Mat): every line is scraped or calculated — anything unresolved is OMITTED. */
+let GM=null, ISFINAL=false, FINTYPE="", STAND=null, LASTMEET=null, pregameKicked=false;
+async function fetchStandings(){
+  if(!TARGET)return;
+  try{
+    const u=`https://admin.esportsdesk.com/leagues/standings.cfm?clientid=${TARGET.m.clientid}&leagueid=${TARGET.m.leagueid}&printPage=1&_=${Date.now()}`;
+    const doc=new DOMParser().parseFromString(await getText(u),"text/html");
+    const tbl=doc.querySelector("table"); if(!tbl)return;
+    const rows=[...tbl.querySelectorAll("tr")].slice(1).map((r,i)=>{
+      const c=[...r.children].map(x=>x.textContent.replace(/\s+/g," ").trim());
+      return {k:normName(c[0]), pos:i+1, gp:+c[1]||0, pts:+c[6]||0};
+    }).filter(r=>r.k);
+    if(rows.length){STAND=rows; lastSig="";}
+  }catch(e){}
+}
+const standOf=name=>{const q=normName(name);return (q&&STAND)?STAND.find(r=>r.k.includes(q)):null;};
+// most recent completed meeting between tonight's clubs — walk sequential gameids downward;
+// completed games have goals, shells don't (a real final can't be 0-0: OT/SO decides)
+async function findLastMeeting(){
+  if(!AWAYID||!HOMEID||!TARGET)return;
+  const pair=[String(AWAYID),String(HOMEID)].sort().join("|");
+  for(let g=+TARGET.gid-1; g>+TARGET.gid-26; g--){
+    let P; try{ P=parse(await getText(boxURL(TARGET.m,g))); }catch(e){ continue; }
+    if([String(P.away.teamID),String(P.home.teamID)].sort().join("|")!==pair) continue;
+    if(!P.goals.length) continue;
+    const aw=P.away.tot>P.home.tot;
+    LASTMEET={wID:aw?P.away.teamID:P.home.teamID, wN:aw?P.away.name:P.home.name,
+      ws:Math.max(P.away.tot,P.home.tot), ls:Math.min(P.away.tot,P.home.tot),
+      ot:P.goals.some(x=>x.p==="OT"), so:P.goals.some(x=>x.p==="SO")};
+    lastSig=""; return;
+  }
+}
+// FINAL comes ONLY from the schedule page's own status text — never inferred from scores
+async function fetchFinal(){
+  if(ISFINAL||!TARGET)return;
+  try{
+    const u=`https://admin.esportsdesk.com/leagues/schedules.cfm?clientid=${TARGET.m.clientid}&leagueid=${TARGET.m.leagueid}&printPage=1&_=${Date.now()}`;
+    const h=await getText(u);
+    const i=h.indexOf("gameid="+TARGET.gid); if(i<0)return;
+    const chunk=h.slice(i,i+400).replace(/<[^>]+>/g," ").replace(/\s+/g," ");
+    const m=chunk.match(/Final(?:\s*\/\s*(OT|SO))?/i);
+    if(m){ISFINAL=true; FINTYPE=(m[1]||"").toUpperCase(); lastSig="";}
+  }catch(e){}
+}
+// pregame preview strip — shown instead of events while the game has none
+function pregameItems(){
+  const out=[];
+  const va=vis(AWAYID), vh=vis(HOMEID);
+  const A=`<span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span>`;
+  const H=`<span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span>`;
+  const lgCrest=`<span class="crest"><img src="${LEAGUE_LOGO[LEAGUE]||LEAGUE_LOGO.nzihl}" alt=""></span>`;
+  if(GM&&GM.datetime&&Date.now()<new Date(GM.datetime).getTime()+30*60000){
+    const d=new Date(GM.datetime), today=new Date().toDateString()===d.toDateString();
+    const when=today?"today":d.toLocaleDateString("en-NZ",{weekday:"long",day:"numeric",month:"long"});
+    out.push(lgCrest+`<span class="sent">Puck drop <span class="tt">${esc(GM.time||"")}</span> ${esc(when)}${GM.venue?` at ${esc(GM.venue)}`:""}</span>`);
+  }
+  const sa=standOf(AWAYN), sh=standOf(HOMEN);
+  if(sa&&sh){
+    const thru=sa.gp===sh.gp&&sa.gp>0?`Through ${sa.gp} games, `:"";
+    out.push(crestHTML(AWAYID)+`<span class="sent">${thru}${A} sit <span class="sc">${ordN(sa.pos)}</span> in the ${LEAGUE.toUpperCase()} with <span class="sc">${sa.pts}</span> points — ${H} sit <span class="sc">${ordN(sh.pos)}</span> with <span class="sc">${sh.pts}</span> points</span>`+crestHTML(HOMEID));
+  }
+  [[AWAYID,AWAYN],[HOMEID,HOMEN]].forEach(([id,name])=>{
+    const q=normName(name); if(!q||!LEADERS.length)return;
+    const best=LEADERS.find(r=>r.teamK&&r.teamK.includes(q)); if(!best||!best.disp)return;
+    const v=vis(id), rp=rankPhrase(best);
+    const T=`<span class="tm" style="color:${v.ink}">${esc(name)}</span>`;
+    out.push(crestHTML(id)+`<span class="sent">${playerSpan(best.no,best.disp,v.ink)} leads ${T} this season with <span class="sc">${best.PTS}</span> points — <span class="sc">${best.G}</span> goals and <span class="sc">${best.A}</span> assists${rp?`, <span class="ms">${rp}</span>`:""}</span>`);
+  });
+  if(LASTMEET){
+    const wv=vis(LASTMEET.wID);
+    const tail=LASTMEET.so?" in a shootout":LASTMEET.ot?" in overtime":"";
+    out.push(crestHTML(LASTMEET.wID)+`<span class="sent"><span class="tm" style="color:${wv.ink}">${esc(LASTMEET.wN)}</span> took the last meeting between these clubs <span class="sc">${LASTMEET.ws}-${LASTMEET.ls}</span>${tail}</span>`);
+  }
+  return out;
+}
+
 /* ---------- AD SLOT (pre-wired 2026-07-07; goes live when a sponsor entry is added) ----------
    Select per broadcast via ?ad=<slug>. No param (or unknown slug) = no ad, page unchanged.
    The ad renders as a native strip item — sponsor logo in the crest slot + one styled line —
@@ -443,7 +524,7 @@ function sepHTML(){return `<span class="lsep"><img src="${LEAGUE_LOGO[LEAGUE]||L
 function scoreItem(){
   const va=vis(AWAYID), vh=vis(HOMEID);
   return crestHTML(AWAYID)
-    +`<span class="sent"><span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span> `
+    +`<span class="sent">${ISFINAL?`<span class="div">FINAL${FINTYPE?" ("+FINTYPE+")":""}</span> — `:""}<span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span> `
     +`<span class="sc">${AWAYTOT}</span> <span class="scd">-</span> <span class="sc">${HOMETOT}</span> `
     +`<span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span></span>`
     +crestHTML(HOMEID);
@@ -480,6 +561,13 @@ function buildItems(events){
         else if(myA>oppB&&myB===oppB) sit=everLed[k]?`putting ${T} back in front`:`giving ${T} their first lead of the night`;
         else if(myA<oppB&&oppB-myA===1) sit=`pulling ${T} back within one`;
       }
+      // game-winning goal (only once the schedule says FINAL): the winner's goal that the
+      // loser never answered — standard definition, loserTotal+1
+      if(ISFINAL&&AWAYTOT!==HOMETOT){
+        const wId=AWAYTOT>HOMETOT?String(AWAYID):String(HOMEID);
+        if(k===wId&&counts[k]===Math.min(AWAYTOT,HOMETOT)+1)
+          sit=(e.per==="OT")?"the overtime winner":"the game-winning goal";
+      }
       if(myA>oppB)everLed[k]=true;
       return crestHTML(e.teamID)+`<span class="sent">${goalSentence(e,counts[k]-1,{first:total===1,cnt:byPlayer[pk],sea,sit})} <span class="sc">(${ta}-${th})</span></span>`;
     }
@@ -497,6 +585,7 @@ function buildItems(events){
     }
   });
   sorted.filter(e=>!ORDER.includes(e.per)).forEach(e=>out.push(renderEv(e)));   // unknown periods: tail
+  if(!sorted.length) out.push(...pregameItems());   // no events yet: the preview show
   if(AD&&!adPlaced) out.push(adItem());          // no divider yet (e.g. mid-P1): end of loop
   return out;
 }
@@ -708,13 +797,17 @@ async function start(){
   if(TARGET&&TARGET.gm){AWAYN=AWAYN||TARGET.gm.away;HOMEN=HOMEN||TARGET.gm.home;}
 
   updDiag();
+  GM=TARGET&&TARGET.gm;
   if(TARGET&&WORKER){
     await fetchLeaders();   // season context in place before the first strip renders
     await tickPoll();
     if(!items.length) setItems(buildItems([]));   // score line loops until the first event
+    if(!TESTMODE&&!lastEv.length&&!pregameKicked){ pregameKicked=true; fetchStandings(); findLastMeeting(); }
+    if(!TESTMODE&&PERSDONE>=3)fetchFinal();
     const t0=Date.now(); let n=0;
     const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;}
-      if(++n%5===0)fetchLeaders();   // leaders refresh ~every 60s, box score every 12s
+      if(++n%5===0){ fetchLeaders();   // leaders refresh ~every 60s, box score every 12s
+        if(!TESTMODE&&PERSDONE>=3&&!ISFINAL)fetchFinal(); }
       tickPoll(); },POLL_MS);
   } else if(!items.length){ setItems(buildItems([])); }
 }
