@@ -315,7 +315,7 @@ function timeClause(kind,t,per){
   const pp=periodPhrase(per);
   if(per==="SO"||t2s(t)<0) return ` in ${pp}`;
   const word=kind==="goal"?"remaining":"left";
-  return `, with <span class="tt">${esc(t)}</span> ${word} in ${pp}`;
+  return (kind==="goal"?", with ":" with ")+`<span class="tt">${esc(t)}</span> ${word} in ${pp}`;
 }
 // Broadcast-style goal call (Mat 2026-07-07: "make the language better"). Shapes:
 //   game's 1st goal:  "75 Kieran Higgins opened the scoring for Canterbury Red Devils,
