@@ -153,7 +153,7 @@ function checkSources(){
       h=>{const n=(h.match(/<tr/gi)||[]).length-1;return n>0?"OK · "+n+" rows":"";});
     checkSource("c-std-"+m.league,m.league.toUpperCase()+" standings",
       `https://admin.esportsdesk.com/leagues/standings.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`,
-      h=>{const n=(h.match(/teamID=/gi)||[]).length;return n>0?"OK":"";});
+      h=>{const n=(h.match(/<tr/gi)||[]).length-1;return n>0?"OK · "+n+" rows":"";});
     checkSource("c-sch-"+m.league,m.league.toUpperCase()+" schedule",
       `https://admin.esportsdesk.com/leagues/schedules.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`,
       h=>{const n=(h.match(/gameid=/gi)||[]).length;return "OK · "+n+" current-round links";});
