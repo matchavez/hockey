@@ -21,6 +21,7 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | `activity-banner/` | Transparent 1920×1080, goal/penalty banner ONLY (no scorebug), flush bottom | `?team=` `?g=` `?test=1` |
 | `summary/` | Live Game Summary graphic (1840×1000-style card) | `?team=` `?g=` `?w=1` `?bg=opaque` |
 | `box/` | Auto-refreshing box-score iframe card with team logos | `?g=` `?w=1` `?s=<secs>` (refresh, default 35, min 8) |
+| `preflight/` | **Broadcast Pre-Flight** (producer tool, not an overlay): worker round-trip, manifest freshness (GitHub commits API), leaders/standings/schedule reach, per-club game resolution + BUGMAP status + box-score probe + FINAL status, copy-ready overlay URLs with per-club `?bs=`/`?tk=` tuning persisted in localStorage | — |
 | `assets/fonts/` | InterVariable (+Italic) woff2 — the 2026 house font | — |
 
 Common params across live pages: `?team=<slug>` picks the club's live/next game from the roster
@@ -175,7 +176,10 @@ stable across rebuilds.
 3. **Penalty calls** — 3 rotated shapes ("was called for" / "took a[n] X penalty" / "went to the
    box for"); team penalties "TEAM were called for". 2-min minors carry NO duration; 4 →
    "(double minor)", 5 → "(major)", 10 → "(misconduct)", text durations parenthesised lowercase.
-4. **Period dividers** — "END OF THE FIRST PERIOD — Away 2, Home 1 — Shots 13-7" (score at the
+4. **Period dividers** — the LATEST break also carries the goaltender line ("Alexa Gibson has
+   stopped 24 of 27" — SA/SV straight from the GOALIES tables, cols `# | Name | SA | GA | SV |
+   SV% | MP | PIM`, skip rows with MP 0:00; present-tense truth means earlier breaks omit it;
+   test mode derives numbers from the two-period fiction). Dividers otherwise read — "END OF THE FIRST PERIOD — Away 2, Home 1 — Shots 13-7" (score at the
    break from the tally walk; shots cumulative from the SOG parens) after each period the game
    has moved PAST (`PERSDONE` = max(SOG paren count, highest event period)).
 5. **Pregame preview** (while the game has zero events): puck drop (manifest time/venue, only

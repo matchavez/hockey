@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Broadcast Pre-Flight</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+  /* ============================================================
+     NZIHL / NZWIHL — BROADCAST PRE-FLIGHT (producer tool, NOT an overlay)
+     One page that answers "will tonight's overlays work?" BEFORE going live:
+       • system checks: worker round-trip, manifest freshness, leaders/standings/schedule reach
+       • per-club board: resolved game, Singular BUGMAP status, box-score probe, FINAL status
+       • copy-ready overlay URLs, with per-club ?bs= / ?tk= tuning persisted in localStorage
+     ============================================================ */
+  :root{--bg:#0d0f13;--card:#14171d;--line:#242a33;--txt:#dfe4ea;--dim:#8a93a0;
+        --ok:#36d399;--warn:#f5b942;--bad:#ef5b5b;--acc:#7db2ff;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--txt);font:400 15px/1.5 Inter,-apple-system,"Segoe UI",sans-serif;
+       padding:28px 30px 60px;-webkit-font-smoothing:antialiased;}
+  h1{font-size:24px;font-weight:800;letter-spacing:.01em;}
+  h1 small{color:var(--dim);font-weight:500;font-size:14px;margin-left:10px;}
+  h2{font-size:15px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;
+     margin:30px 0 10px;}
+  #sys{display:flex;gap:10px;flex-wrap:wrap;}
+  .chk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+       min-width:190px;flex:1 1 190px;}
+  .chk .nm{font-weight:600;font-size:13px;color:var(--dim);}
+  .chk .st{font-weight:700;font-size:15px;margin-top:3px;}
+  .chk .dt{font-size:12.5px;color:var(--dim);margin-top:2px;}
+  .ok{color:var(--ok);} .warn{color:var(--warn);} .bad{color:var(--bad);} .pend{color:var(--dim);}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+        border-radius:12px;overflow:hidden;}
+  th{font-size:11.5px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;
+     text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);}
+  td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px;}
+  tr:last-child td{border-bottom:0;}
+  .club{display:flex;align-items:center;gap:9px;font-weight:600;white-space:nowrap;}
+  .club img{width:26px;height:26px;object-fit:contain;}
+  .gm{white-space:nowrap;} .gm .op{font-weight:600;} .gm .meta{color:var(--dim);font-size:12.5px;display:block;}
+  .chip{display:inline-block;font-size:11.5px;font-weight:700;border-radius:7px;padding:2px 8px;
+        letter-spacing:.03em;white-space:nowrap;}
+  .chip.ok{background:rgba(54,211,153,.12);color:var(--ok);}
+  .chip.warn{background:rgba(245,185,66,.13);color:var(--warn);}
+  .chip.bad{background:rgba(239,91,91,.13);color:var(--bad);}
+  .chip.dim{background:rgba(138,147,160,.12);color:var(--dim);}
+  button{font:600 12.5px Inter,sans-serif;color:#fff;background:#1b2028;border:1px solid #333a44;
+         border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap;}
+  button:hover{background:#232a35;border-color:#4a5562;}
+  button.copied{border-color:var(--ok);color:var(--ok);}
+  .urls{display:flex;gap:5px;flex-wrap:wrap;}
+  input.tune{font:500 12.5px Inter,monospace;color:var(--txt);background:#0e1116;border:1px solid var(--line);
+             border-radius:7px;padding:5px 8px;width:150px;}
+  input.tune::placeholder{color:#525a66;}
+  .probe{font-size:12.5px;color:var(--dim);max-width:260px;}
+  #foot{margin-top:26px;color:var(--dim);font-size:12.5px;}
+  #foot a{color:var(--acc);}
+  #rerun{margin-left:14px;}
+</style>
+</head>
+<body>
+<h1>Broadcast Pre-Flight <small id="now"></small><button id="rerun">↻ Re-run checks</button></h1>
+
+<h2>System</h2>
+<div id="sys"></div>
+
+<h2>Clubs — tonight / next game</h2>
+<table id="board">
+  <thead><tr>
+    <th>Club</th><th>Next / live game</th><th>Game ID</th><th>Status</th><th>Scorebug map</th>
+    <th>Box-score probe</th><th>Tuning (bs / tk)</th><th>Copy overlay URL</th>
+  </tr></thead>
+  <tbody></tbody>
+</table>
+
+<div id="foot">
+  Everything here is fetched live through the same worker + endpoints the overlays use — a green
+  board means the overlays will resolve the same way. Tuning values are stored in this browser
+  (localStorage) and appended to copied Ticker/Scorebug URLs.
+  Docs: <a href="https://github.com/matchavez/hockey#readme" target="_blank" rel="noopener">repo README</a>.
+</div>
+
+<script>
+/* ====================== shared constants (keep in sync with ticker/scorebug) ====================== */
+const WORKER="https://blue-butterfly-aa69.matchavez.workers.dev";
+const SHIM=u=>WORKER.replace(/\/$/,"")+"?url="+encodeURIComponent(u);
+const BASE="https://matchavez.com/hockey/";
+const LOGO="https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+const MANIFESTS=[
+  {league:"nzihl",  repo:"nzihl-broadcast-rosters",  url:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",  clientid:7131, leagueid:35499},
+  {league:"nzwihl", repo:"nzwihl-broadcast-rosters", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json", clientid:7132, leagueid:35501},
+];
+const BUG_CHC="7wvd7ZPATlYl3NoLxtxmkF";
+const BUGMAP={"canterbury-red-devils":BUG_CHC,"canterbury-inferno":BUG_CHC};
+const TEAMS=[
+ {slug:"canterbury-red-devils", name:"Canterbury Red Devils", logo:"Red Devils 2000x2000r.png"},
+ {slug:"botany-swarm",          name:"Botany Swarm",          logo:"Botany Swarm 2000x2000.png"},
+ {slug:"skycity-stampede",      name:"SkyCity Stampede",      logo:"Skycity Stampede 2000x2000.png"},
+ {slug:"dunedin-thunder",       name:"Dunedin Thunder",       logo:"Dunedin_Thunder.png"},
+ {slug:"pure-nz-admirals",      name:"Pure NZ Admirals",      logo:"Pure-NZ-Admirals-2000x2000.png"},
+ {slug:"auckland-steel",        name:"Auckland Steel",        logo:"Auckland-Steel-White.png"},
+ {slug:"canterbury-inferno",    name:"Canterbury Inferno",    logo:"Inferno-White.png"},
+ {slug:"dunedin-thunder-women", name:"Dunedin Thunder Women", logo:"thunder-women-white.png"},
+ {slug:"wakatipu-wild",         name:"Wakatipu Wild",         logo:"Wakatipu-wild-white.png"},
+];
+const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const boxURL=(m,gid)=>`https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;
+async function shimText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return r.text();}
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
+
+/* ====================== system checks ====================== */
+const sys=document.getElementById("sys");
+function card(id,nm){const d=document.createElement("div");d.className="chk";d.id=id;
+  d.innerHTML=`<div class="nm">${nm}</div><div class="st pend">checking…</div><div class="dt"></div>`;
+  sys.appendChild(d);return d;}
+function setCard(d,cls,st,dt){d.querySelector(".st").className="st "+cls;
+  d.querySelector(".st").textContent=st;d.querySelector(".dt").textContent=dt||"";}
+
+let MDATA={};   // league -> manifest json
+async function checkWorker(){
+  const d=card("c-worker","Cloudflare worker");
+  try{const t0=performance.now();
+    await shimText(`https://admin.esportsdesk.com/leagues/standings.cfm?clientid=7131&leagueid=35499&printPage=1&_=${Date.now()}`);
+    const ms=Math.round(performance.now()-t0);
+    setCard(d,ms<4000?"ok":"warn","OK · "+ms+" ms","proxy → admin.esportsdesk.com");
+  }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
+}
+async function checkManifest(m){
+  const d=card("c-man-"+m.league,m.league.toUpperCase()+" manifest");
+  try{
+    const j=await getJSON(m.url); MDATA[m.league]=j;
+    const n=(j.games||[]).filter(g=>g.gameid).length;
+    let when="", cls="ok";
+    try{const c=await getJSON(`https://api.github.com/repos/matchavez/${m.repo}/commits?path=boxscores.json&per_page=1`);
+      const ts=new Date(c[0].commit.committer.date), h=(Date.now()-ts)/36e5;
+      when="pipeline ran "+(h<1?Math.round(h*60)+" min":Math.round(h)+" h")+" ago";
+      if(h>36)cls="warn";
+    }catch(e){when="(commit time unavailable)";}
+    setCard(d,n?cls:"warn",(j.games||[]).length+" games · "+n+" with gameid",when);
+  }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
+}
+async function checkSource(id,nm,u,probe){
+  const d=card(id,nm);
+  try{const h=await shimText(u); const r=probe(h);
+    setCard(d,r?"ok":"warn",r||"unexpected content","");
+  }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
+}
+function checkSources(){
+  MANIFESTS.forEach(m=>{
+    checkSource("c-led-"+m.league,m.league.toUpperCase()+" leaders",
+      `https://admin.esportsdesk.com/leagues/stats_hockey.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`,
+      h=>{const n=(h.match(/<tr/gi)||[]).length-1;return n>0?"OK · "+n+" rows":"";});
+    checkSource("c-std-"+m.league,m.league.toUpperCase()+" standings",
+      `https://admin.esportsdesk.com/leagues/standings.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`,
+      h=>{const n=(h.match(/teamID=/gi)||[]).length;return n>0?"OK":"";});
+    checkSource("c-sch-"+m.league,m.league.toUpperCase()+" schedule",
+      `https://admin.esportsdesk.com/leagues/schedules.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`,
+      h=>{const n=(h.match(/gameid=/gi)||[]).length;return "OK · "+n+" current-round links";});
+  });
+}
+
+/* ====================== club board ====================== */
+const tbody=document.querySelector("#board tbody");
+function resolveFor(sl){
+  const cands=[];
+  MANIFESTS.forEach(m=>{const j=MDATA[m.league];if(!j)return;
+    (j.games||[]).forEach(gm=>{
+      if(!gm.gameid)return;
+      if(slug(gm.away)!==sl&&slug(gm.home)!==sl)return;
+      cands.push({m,gm,gid:gm.gameid,dt:new Date(gm.datetime||gm.date).getTime()||0});});});
+  if(!cands.length)return null;
+  const now=Date.now(),LIVE=5*3600*1000;
+  const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);
+  return live[0]||cands.sort((a,b)=>b.dt-a.dt)[0];
+}
+const store=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}};
+const read=k=>{try{return localStorage.getItem(k)||"";}catch(e){return "";}};
+function copyBtn(label,build){
+  const b=document.createElement("button");b.textContent=label;
+  b.onclick=async()=>{try{await navigator.clipboard.writeText(build());
+    b.classList.add("copied");b.textContent="✓ "+label;
+    setTimeout(()=>{b.classList.remove("copied");b.textContent=label;},1600);}catch(e){prompt("Copy:",build());}};
+  return b;
+}
+async function probeGame(t,r,cell,statusCell){
+  cell.textContent="probing…";
+  try{
+    const h=await shimText(boxURL(r.m,r.gid));
+    const doc=new DOMParser().parseFromString(h.replace(/<\/span>/gi,"</span> "),"text/html");
+    const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
+    const rows=[...(doc.querySelector("table")||{querySelectorAll:()=>[]}).querySelectorAll("tr")];
+    const nm=i=>rows[i]?txt(rows[i].children[0]).replace(/\s+[A-Z]{2,4}$/,""):"?";
+    const h5=[...doc.querySelectorAll("h5")];
+    const cnt=re=>{const H=h5.find(x=>re.test(x.textContent));if(!H)return 0;let e=H.nextElementSibling,n=0;
+      while(e&&!/^H5$/.test(e.tagName)){const tb=e.tagName==="TABLE"?e:(e.querySelector&&e.querySelector("table"));
+        if(tb)n+=[...tb.querySelectorAll("tr")].filter(x=>/#?\d+\s/.test(txt(x.children[0]))).length;e=e.nextElementSibling;}return n;};
+    const g=cnt(/SCORING SUMMARY/i),p=cnt(/PENALTY SUMMARY/i);
+    cell.innerHTML=`<span class="ok">parses ✓</span> ${esc(nm(1))} @ ${esc(nm(2))} · ${g} goals, ${p} pens`;
+    // FINAL status from the schedule (the only trustworthy game-over signal)
+    try{
+      const sch=await shimText(`https://admin.esportsdesk.com/leagues/schedules.cfm?clientid=${r.m.clientid}&leagueid=${r.m.leagueid}&printPage=1&_=${Date.now()}`);
+      const i=sch.search(new RegExp("gameid="+r.gid+"\\b","i"));
+      if(i>=0){const chunk=sch.slice(i,i+400).replace(/<[^>]+>/g," ");
+        const f=chunk.match(/Final(?:\s*\/\s*(OT|SO))?/i);
+        statusCell.innerHTML=f?`<span class="chip dim">FINAL${f[1]?" ("+f[1].toUpperCase()+")":""}</span>`
+                              :`<span class="chip ok">scheduled / live</span>`;}
+      else statusCell.innerHTML=`<span class="chip dim">not in current round</span>`;
+    }catch(e){}
+  }catch(e){cell.innerHTML=`<span class="bad">probe failed</span> ${esc(String(e.message||e))}`;}
+}
+function buildBoard(){
+  tbody.innerHTML="";
+  TEAMS.forEach(t=>{
+    const tr=document.createElement("tr");
+    const r=resolveFor(t.slug);
+    // club
+    const c1=document.createElement("td");
+    c1.innerHTML=`<span class="club"><img src="${LOGO+encodeURIComponent(t.logo)}" alt="">${esc(t.name)}</span>`;
+    // game
+    const c2=document.createElement("td");c2.className="gm";
+    if(r){const opp=slug(r.gm.away)===t.slug?r.gm.home:r.gm.away;
+      const ha=slug(r.gm.away)===t.slug?"@":"vs";
+      c2.innerHTML=`<span class="op">${ha} ${esc(opp)}</span><span class="meta">${esc(r.gm.date)} ${esc(r.gm.time||"")} · ${esc(r.gm.venue||"")}</span>`;
+    } else c2.innerHTML=`<span class="chip dim">no game in manifest</span>`;
+    // gameid
+    const c3=document.createElement("td");c3.textContent=r?r.gid:"—";
+    // status (filled by probe)
+    const c4=document.createElement("td");c4.innerHTML=r?`<span class="chip dim">—</span>`:"";
+    // bugmap
+    const c5=document.createElement("td");
+    c5.innerHTML=BUGMAP[t.slug]?`<span class="chip ok">mapped</span>`
+      :`<span class="chip warn">⚠ CHC fallback — needs Singular id</span>`;
+    // probe
+    const c6=document.createElement("td");c6.className="probe";
+    if(r){const soon=Math.abs(r.dt-Date.now())<48*3600*1000;
+      if(soon)probeGame(t,r,c6,c4);
+      else{const b=document.createElement("button");b.textContent="Probe";
+        b.onclick=()=>probeGame(t,r,c6,c4);c6.appendChild(b);}
+    } else c6.textContent="—";
+    // tuning
+    const c7=document.createElement("td");
+    const bs=document.createElement("input"),tk=document.createElement("input");
+    bs.className=tk.className="tune";
+    bs.placeholder="bs=scale,x,y,w,h,cx,cy";tk.placeholder="tk=x,y,w,h";
+    bs.value=read("preflight.bs."+t.slug);tk.value=read("preflight.tk."+t.slug);
+    bs.onchange=()=>store("preflight.bs."+t.slug,bs.value||null);
+    tk.onchange=()=>store("preflight.tk."+t.slug,tk.value||null);
+    c7.appendChild(bs);c7.appendChild(document.createTextNode(" "));c7.appendChild(tk);
+    // copy urls
+    const c8=document.createElement("td");
+    const wrap=document.createElement("div");wrap.className="urls";
+    const tune=()=>{let q="";if(bs.value.trim())q+="&bs="+bs.value.replace(/^bs=/,"").trim();
+                    if(tk.value.trim())q+="&tk="+tk.value.replace(/^tk=/,"").trim();return q;};
+    wrap.appendChild(copyBtn("Ticker",()=>BASE+`ticker/?team=${t.slug}`+tune()));
+    wrap.appendChild(copyBtn("Scorebug",()=>BASE+`scorebug/?team=${t.slug}`+(bs.value.trim()?"&bs="+bs.value.replace(/^bs=/,"").trim():"")));
+    wrap.appendChild(copyBtn("Banner",()=>BASE+`activity-banner/?team=${t.slug}`));
+    wrap.appendChild(copyBtn("Summary",()=>BASE+`summary/?team=${t.slug}`));
+    if(r)wrap.appendChild(copyBtn("Box",()=>BASE+`box/?g=${r.gid}`+(r.m.league==="nzwihl"?"&w=1":"")));
+    c8.appendChild(wrap);
+    [c1,c2,c3,c4,c5,c6,c7,c8].forEach(td=>tr.appendChild(td));
+    tbody.appendChild(tr);
+  });
+}
+
+/* ====================== run ====================== */
+async function run(){
+  sys.innerHTML=""; MDATA={};
+  document.getElementById("now").textContent=new Date().toLocaleString("en-NZ");
+  checkWorker(); checkSources();
+  await Promise.all(MANIFESTS.map(checkManifest));
+  buildBoard();
+}
+document.getElementById("rerun").onclick=run;
+run();
+</script>
+</body>
+</html>
