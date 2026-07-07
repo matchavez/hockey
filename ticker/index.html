@@ -63,6 +63,8 @@
   .sent .lg{font-weight:600;color:#fff;letter-spacing:.04em;}
   .sent .sc{font-weight:600;color:#fff;font-variant-numeric:tabular-nums;}   /* score digits */
   .sent .scd{color:#E8E8E8;}                                                 /* score dash */
+  .sent .ms{color:#fff;}                                                     /* milestone clause */
+  .sent .div{font-weight:700;color:#fff;letter-spacing:.07em;}               /* period-divider label */
 
   /* --- test controls (only with ?test=1) --- */
   #test{position:absolute;left:24px;bottom:22px;right:24px;z-index:9;display:none;gap:8px;
@@ -210,13 +212,20 @@ function penTag(d){d=String(d||"").trim(); if(!d)return "";
     if(n===10)return " (misconduct)";
     return " ("+n+" minutes)";}
   return " ("+d.toLowerCase()+")";}   // e.g. "Game Misconduct" -> "(game misconduct)"
-// Goal-type pill from the box score's middle column -> spoken phrase
-function flagPhrase(f){f=String(f||"").trim().toUpperCase();
+// Goal-type pill from the box score's middle column -> spoken adverbial phrase
+function flagAdv(f){f=String(f||"").trim().toUpperCase();
   if(!f)return "";
-  if(/^PP/.test(f))return ", a power play goal,";
-  if(/^SH/.test(f))return ", a short handed goal,";
-  if(/^EN/.test(f))return ", an empty net goal,";
-  if(/^PS/.test(f))return ", a penalty shot goal,";
+  if(/^PP/.test(f))return " on the power play";
+  if(/^SH/.test(f))return " while short handed";
+  if(/^EN/.test(f))return " into an empty net";
+  if(/^PS/.test(f))return " on a penalty shot";
+  return "";}
+// scorer's Nth of the game -> trailing clause (uses league pronoun; NZWIHL = her)
+const pron=()=>LEAGUE==="nzwihl"?"her":"his";
+function milestone(n){
+  if(n===2)return `${pron()} second of the game`;
+  if(n===3)return "completing the hat trick";
+  if(n>=4)return `${pron()} ${["fourth","fifth","sixth","seventh","eighth"][n-4]||(n+"th")} of the game`;
   return "";}
 const t2s=t=>{const m=String(t||"").match(/^(\d+):(\d{2})$/);return m?(+m[1]*60)+(+m[2]):-1;};
 const PERI={1:0,2:1,3:2,"OT":3,"SO":4};
@@ -269,7 +278,13 @@ function parse(html){
     const who=pm?pm[2].trim():cell.replace(/\s*\([^)]*\)\s*$/,"").trim();
     const id=matchTeam(tm?tm[1].trim():"") || (pm?teamOfName(who):null);
     return {p:o.per,t:o.c[o.c.length-1]||"",no:pm?+pm[1]:"",who,inf:o.c[1]||"",dur:o.c[2]||"",teamID:id};}):[];
-  return {away,home,goals,pens,skaters};
+  // shots by period: the SOG details cell reads "38 (13-11-14)" — parens = per-period counts
+  const dTbl=tables.find(t=>/SOG/.test(txt(t.querySelector("tr"))));
+  const sogRow=tr=>{if(!tr)return[];const c=[...tr.children].map(txt);const m=(c[1]||"").match(/\(([^)]*)\)/);
+    return m?m[1].split(/[-–]/).map(s=>+s.trim()||0):[];};
+  let sogA=[],sogH=[];
+  if(dTbl){const dr=[...dTbl.querySelectorAll("tr")];sogA=sogRow(dr[1]);sogH=sogRow(dr[2]);}
+  return {away,home,goals,pens,skaters,sogA,sogH};
 }
 // best-effort jersey number for a name (assist lists carry no numbers): find the roster row
 // containing the name, take its leading number. Empty string if not found — statement omits it.
@@ -282,6 +297,7 @@ function lookupNum(skaters,name){
 /* ====================== EVENT MODEL -> STATEMENTS ====================== */
 // event = {kind:'goal'|'pen', teamID, per, t, no, name, assists:[{no,name}], inf, dur, teamPen}
 let AWAYN="",HOMEN="",AWAYID=null,HOMEID=null,LEAGUE="nzihl",VENUE="",AWAYTOT=0,HOMETOT=0;
+let SOGA=[],SOGH=[],PERSDONE=1;   // shots by period + how far the game has progressed (dividers)
 function sortEvents(ev){
   return ev.map((e,i)=>({e,i})).sort((a,b)=>{
     const pa=PERI[a.e.per]!=null?PERI[a.e.per]:9, pb=PERI[b.e.per]!=null?PERI[b.e.per]:9;
@@ -294,30 +310,54 @@ function sortEvents(ev){
 function numSpan(no,ink){return no?`<span class="no" style="color:${ink}">${esc(no)}</span> `:"";}
 function nameSpan(nm,ink){return `<span class="pn" style="color:${ink}">${esc(nm)}</span>`;}
 function playerSpan(no,nm,ink){return numSpan(no,ink)+nameSpan(nm,ink);}
+// time clause WITHOUT trailing punctuation, so milestone clauses can follow it
 function timeClause(kind,t,per){
   const pp=periodPhrase(per);
-  if(per==="SO"||t2s(t)<0) return kind==="goal"?`Goal scored in ${pp}.`:`in ${pp}.`;
+  if(per==="SO"||t2s(t)<0) return ` in ${pp}`;
   const word=kind==="goal"?"remaining":"left";
-  return (kind==="goal"?`Goal scored with `:`with `)+`<span class="tt">${esc(t)}</span> ${word} in ${pp}.`;
+  return `, with <span class="tt">${esc(t)}</span> ${word} in ${pp}`;
 }
-function goalSentence(e,nth){
+// Broadcast-style goal call (Mat 2026-07-07: "make the language better"). Shapes:
+//   game's 1st goal:  "75 Kieran Higgins opened the scoring for Canterbury Red Devils,
+//                      assisted by 22 Luke Tappin, with 17:56 remaining in the first period."
+//   otherwise:        "SkyCity Stampede's third goal came from 24 Lachlan Frear on the power
+//                      play, assisted by ..., with 0:50 remaining in the first period."
+//   scorer's 2nd/3rd+ appends " — his second of the game" / " — completing the hat trick".
+function goalSentence(e,nth,o){
   const v=vis(e.teamID), team=e.teamName||teamNameOf(e.teamID);
   const scorer=playerSpan(e.no,e.name,v.ink);
-  let ast;
-  if(!e.assists||!e.assists.length) ast="unassisted";
-  else{
-    const parts=e.assists.map(a=>playerSpan(a.no,a.name,v.ink));
-    ast="assisted by "+(parts.length===1?parts[0]:parts.slice(0,-1).join(", ")+" and "+parts[parts.length-1]);
-  }
-  const fp=flagPhrase(e.flag);
-  const flag=fp?`<span class="flag">${fp}</span>`:"";
-  return `<span class="tm" style="color:${v.ink}">${esc(poss(team))}</span> ${ordinal(nth)} goal${flag} was scored by ${scorer}, ${ast}. ${timeClause("goal",e.t,e.per)}`;
+  const T=`<span class="tm" style="color:${v.ink}">${esc(team)}</span>`;
+  const fa=flagAdv(e.flag), flag=fa?`<span class="flag">${fa}</span>`:"";
+  const ast=(!e.assists||!e.assists.length)?", unassisted"
+    :", assisted by "+(e.assists.length===1?playerSpan(e.assists[0].no,e.assists[0].name,v.ink)
+      :e.assists.slice(0,-1).map(a=>playerSpan(a.no,a.name,v.ink)).join(", ")+" and "
+       +playerSpan(e.assists[e.assists.length-1].no,e.assists[e.assists.length-1].name,v.ink));
+  const core=o&&o.first
+    ? `${scorer} opened the scoring for ${T}${flag}`
+    : `<span class="tm" style="color:${v.ink}">${esc(poss(team))}</span> ${ordinal(nth)} goal came from ${scorer}${flag}`;
+  const ms=milestone(o?o.cnt:1);
+  return core+ast+timeClause("goal",e.t,e.per)+(ms?` — <span class="ms">${ms}</span>`:"")+".";
 }
+// "26 Tristan Darling was called for Boarding with 9:43 left in the first period."
+// Team penalty: "Dunedin Thunder were called for Too Many Men ..."
 function penSentence(e){
   const v=vis(e.teamID), team=e.teamName||teamNameOf(e.teamID);
-  const target=e.teamPen?`<span class="tm" style="color:${v.ink}">${esc(team)}</span>`:playerSpan(e.no,e.name,v.ink);
+  const target=e.teamPen?`<span class="tm" style="color:${v.ink}">${esc(team)}</span> were`
+    :playerSpan(e.no,e.name,v.ink)+" was";
   const tag=penTag(e.dur);
-  return `Penalty for <span class="inf">${esc((e.inf||"").trim())}</span>${tag?`<span class="dur">${esc(tag)}</span>`:""} was called on ${target} ${timeClause("pen",e.t,e.per)}`;
+  return `${target} called for <span class="inf">${esc((e.inf||"").trim())}</span>${tag?`<span class="dur">${esc(tag)}</span>`:""}${timeClause("pen",e.t,e.per)}.`;
+}
+// "END OF THE FIRST PERIOD — Dunedin Thunder 2, Canterbury Red Devils 1 — Shots 13-7"
+function dividerItem(p,a,h){
+  const va=vis(AWAYID), vh=vis(HOMEID);
+  let shots="";
+  if(SOGA.length>=p&&SOGH.length>=p){
+    const sa=SOGA.slice(0,p).reduce((x,y)=>x+y,0), sh=SOGH.slice(0,p).reduce((x,y)=>x+y,0);
+    shots=` — Shots <span class="sc">${sa}-${sh}</span>`;
+  }
+  return `<span class="sent"><span class="div">END OF THE ${["FIRST","SECOND","THIRD"][p-1]} PERIOD</span>`
+    +` — <span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span> <span class="sc">${a}</span>,`
+    +` <span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span> <span class="sc">${h}</span>${shots}</span>`;
 }
 function teamNameOf(id){return id===AWAYID?AWAYN:id===HOMEID?HOMEN:(vis(id).code||"");}
 function crestHTML(id){const v=vis(id);
@@ -335,19 +375,27 @@ function scoreItem(){
 }
 function buildItems(events){
   const sorted=sortEvents(events);
-  const counts={}; const out=[];
-  let ta=0, th=0;   // running away/home tally — each goal announcement ends "(a-h)" (Mat 2026-07-07)
-  if(AWAYN||HOMEN) out.push(scoreItem());
-  sorted.forEach(e=>{
+  const out=[]; if(AWAYN||HOMEN) out.push(scoreItem());
+  const counts={}, byPlayer={};
+  let ta=0, th=0, total=0;   // running away/home tally — each goal call ends "(a-h)"
+  const renderEv=e=>{
     if(e.kind==="goal"){
-      const k=String(e.teamID); counts[k]=(counts[k]||0);
-      if(String(e.teamID)===String(AWAYID))ta++; else if(String(e.teamID)===String(HOMEID))th++;
-      out.push(crestHTML(e.teamID)+`<span class="sent">${goalSentence(e,counts[k])} <span class="sc">(${ta}-${th})</span></span>`);
-      counts[k]++;
-    }else{
-      out.push(crestHTML(e.teamID)+`<span class="sent">${penSentence(e)}</span>`);
+      const k=String(e.teamID); counts[k]=(counts[k]||0)+1;
+      const pk=k+"|"+e.name; byPlayer[pk]=(byPlayer[pk]||0)+1;
+      if(k===String(AWAYID))ta++; else if(k===String(HOMEID))th++;
+      total++;
+      return crestHTML(e.teamID)+`<span class="sent">${goalSentence(e,counts[k]-1,{first:total===1,cnt:byPlayer[pk]})} <span class="sc">(${ta}-${th})</span></span>`;
     }
+    return crestHTML(e.teamID)+`<span class="sent">${penSentence(e)}</span>`;
+  };
+  // walk the game period by period; drop an END OF PERIOD divider (score at the break +
+  // cumulative shots) after each period the game has moved past
+  const ORDER=["1","2","3","OT","SO"];
+  ORDER.forEach(p=>{
+    sorted.filter(e=>e.per===p).forEach(e=>out.push(renderEv(e)));
+    if(["1","2","3"].includes(p)&&+p<PERSDONE) out.push(dividerItem(+p,ta,th));
   });
+  sorted.filter(e=>!ORDER.includes(e.per)).forEach(e=>out.push(renderEv(e)));   // unknown periods: tail
   return out;
 }
 
@@ -474,17 +522,25 @@ async function tickPoll(){
   let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   lastEv=liveEvents(P);
+  const PNUM={"1":1,"2":2,"3":3,"OT":4,"SO":5};
   if(TESTMODE){
     // test pretends we're heading into the SECOND INTERMISSION: only periods 1+2 exist,
-    // and the score line reflects just those goals (Mat 2026-07-07)
+    // the score line reflects just those goals, and dividers close periods 1 AND 2
     lastEv=lastEv.filter(e=>e.per==="1"||e.per==="2");
     AWAYTOT=lastEv.filter(e=>e.kind==="goal"&&e.teamID===AWAYID).length;
     HOMETOT=lastEv.filter(e=>e.kind==="goal"&&e.teamID===HOMEID).length;
+    SOGA=(P.sogA||[]).slice(0,2); SOGH=(P.sogH||[]).slice(0,2);
+    PERSDONE=3;
   }else{
     AWAYTOT=P.away.tot||0; HOMETOT=P.home.tot||0;
+    SOGA=P.sogA||[]; SOGH=P.sogH||[];
+    // how far has the game progressed? shots-paren entries appear per period as it's played,
+    // and any event in a later period also moves the marker
+    PERSDONE=Math.max(1,SOGA.length,SOGH.length,...lastEv.map(e=>PNUM[e.per]||0));
   }
   const all=lastEv.concat(extras);
-  const sig=AWAYTOT+"-"+HOMETOT+"~"+all.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf,e.flag].join("|")).join("~");
+  const sig=AWAYTOT+"-"+HOMETOT+"~P"+PERSDONE+"~S"+SOGA.join(".")+"/"+SOGH.join(".")+"~"
+    +all.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf,e.flag].join("|")).join("~");
   if(sig!==lastSig){ lastSig=sig; setItems(buildItems(all)); updDiag(all.length); }
 }
 
