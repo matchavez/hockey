@@ -298,6 +298,35 @@ function lookupNum(skaters,name){
 // event = {kind:'goal'|'pen', teamID, per, t, no, name, assists:[{no,name}], inf, dur, teamPen}
 let AWAYN="",HOMEN="",AWAYID=null,HOMEID=null,LEAGUE="nzihl",VENUE="",AWAYTOT=0,HOMETOT=0;
 let SOGA=[],SOGH=[],PERSDONE=1;   // shots by period + how far the game has progressed (dividers)
+// SEASON CONTEXT (Mat 2026-07-07 "make it awesome"): league scoring leaders from
+// stats_hockey.cfm, refetched every ~60s so live goals stay consistent with the box score.
+let LEADERS=[];
+const normName=s=>String(s||"").toLowerCase().replace(/[^a-z]/g,"");
+const leaderOf=name=>{const q=normName(decamel(name));return q?LEADERS.find(r=>r.k.includes(q)):null;};
+async function fetchLeaders(){
+  if(!TARGET||!WORKER)return;
+  try{
+    const u=`https://admin.esportsdesk.com/leagues/stats_hockey.cfm?clientid=${TARGET.m.clientid}&leagueid=${TARGET.m.leagueid}&printPage=1&_=${Date.now()}`;
+    const doc=new DOMParser().parseFromString((await getText(u)).replace(/<\/span>/gi,"</span> "),"text/html");
+    const tbl=doc.querySelector("table"); if(!tbl)return;
+    const list=[...tbl.querySelectorAll("tr")].slice(1).map((r,i)=>{
+      const c=[...r.children].map(x=>x.textContent.replace(/\s+/g," ").trim());
+      return {k:normName(c[1]), rank:+c[0]||i+1, G:+c[7]||0};
+    }).filter(r=>r.k);
+    [...list].sort((a,b)=>b.G-a.G).forEach((r,i)=>r.gRank=i+1);
+    if(list.length){LEADERS=list; lastSig="";}   // force a rebuild with fresh season context
+  }catch(e){}
+}
+// rank clause used on a leader's FIRST goal of the strip; season count on later goals
+function rankPhrase(row){
+  const LG=LEAGUE.toUpperCase();
+  if(row.gRank===1)   return `the ${LG}'s top goal scorer`;
+  if(row.rank===1)    return `the ${LG}'s leading scorer`;
+  if(row.rank===2)    return `second in ${LG} scoring`;
+  if(row.rank===3)    return `third in ${LG} scoring`;
+  if(row.rank<=10)    return `a top-ten ${LG} scorer`;
+  return "";
+}
 function sortEvents(ev){
   return ev.map((e,i)=>({e,i})).sort((a,b)=>{
     const pa=PERI[a.e.per]!=null?PERI[a.e.per]:9, pb=PERI[b.e.per]!=null?PERI[b.e.per]:9;
@@ -317,35 +346,62 @@ function timeClause(kind,t,per){
   const word=kind==="goal"?"remaining":"left";
   return (kind==="goal"?", with ":" with ")+`<span class="tt">${esc(t)}</span> ${word} in ${pp}`;
 }
-// Broadcast-style goal call (Mat 2026-07-07: "make the language better"). Shapes:
-//   game's 1st goal:  "75 Kieran Higgins opened the scoring for Canterbury Red Devils,
-//                      assisted by 22 Luke Tappin, with 17:56 remaining in the first period."
-//   otherwise:        "SkyCity Stampede's third goal came from 24 Lachlan Frear on the power
-//                      play, assisted by ..., with 0:50 remaining in the first period."
-//   scorer's 2nd/3rd+ appends " — his second of the game" / " — completing the hat trick".
+// deterministic per-event template pick — stable across rebuilds so the strip never
+// rewrites itself at a loop seam (Mat 2026-07-07: vary the wording, less mechanical)
+function hashStr(s){let x=0;for(let i=0;i<s.length;i++){x=(x*31+s.charCodeAt(i))>>>0;}return x;}
+const ordN=n=>{const m=n%100;return n+(m>10&&m<14?"th":["th","st","nd","rd"][Math.min(n%10,4)]||"th");};
+const aAn=w=>/^[aeiou]/i.test(String(w).trim())?"an":"a";
+// Broadcast-style goal call, template rotated per event. Shapes:
+//   "SkyCity Stampede's third goal came from 24 Lachlan Frear on the power play, ..."
+//   "24 Lachlan Frear scored SkyCity Stampede's third goal on the power play, ..."
+//   "24 Lachlan Frear found the net on the power play for SkyCity Stampede's third goal, ..."
+//   "24 Lachlan Frear struck on the power play for SkyCity Stampede's third goal, ..."
+// game's 1st goal always: "{player} opened the scoring for {team}..."
+// o = {first, cnt (scorer's Nth tonight), sea (season/rank clause), sit (lead-change clause)}
 function goalSentence(e,nth,o){
+  o=o||{};
   const v=vis(e.teamID), team=e.teamName||teamNameOf(e.teamID);
-  const scorer=playerSpan(e.no,e.name,v.ink);
+  const P=playerSpan(e.no,e.name,v.ink)+(o.sea?`, <span class="ms">${o.sea}</span>,`:"");
   const T=`<span class="tm" style="color:${v.ink}">${esc(team)}</span>`;
+  const Tp=`<span class="tm" style="color:${v.ink}">${esc(poss(team))}</span>`;
   const fa=flagAdv(e.flag), flag=fa?`<span class="flag">${fa}</span>`:"";
   const ast=(!e.assists||!e.assists.length)?", unassisted"
     :", assisted by "+(e.assists.length===1?playerSpan(e.assists[0].no,e.assists[0].name,v.ink)
       :e.assists.slice(0,-1).map(a=>playerSpan(a.no,a.name,v.ink)).join(", ")+" and "
        +playerSpan(e.assists[e.assists.length-1].no,e.assists[e.assists.length-1].name,v.ink));
-  const core=o&&o.first
-    ? `${scorer} opened the scoring for ${T}${flag}`
-    : `<span class="tm" style="color:${v.ink}">${esc(poss(team))}</span> ${ordinal(nth)} goal came from ${scorer}${flag}`;
-  const ms=milestone(o?o.cnt:1);
-  return core+ast+timeClause("goal",e.t,e.per)+(ms?` — <span class="ms">${ms}</span>`:"")+".";
+  const nthW=ordinal(nth);
+  let core;
+  if(o.first) core=`${P} opened the scoring for ${T}${flag}`;
+  else switch(hashStr(e.name+"|"+e.t+"|"+e.per)%4){
+    case 0: core=`${Tp} ${nthW} goal came from ${P}${flag}`; break;
+    case 1: core=`${P} scored ${Tp} ${nthW} goal${flag}`; break;
+    case 2: core=`${P} found the net${flag} for ${Tp} ${nthW} goal`; break;
+    default:core=`${P} struck${flag} for ${Tp} ${nthW} goal`;
+  }
+  const parts=[];
+  const ms=milestone(o.cnt||1); if(ms)parts.push(ms);
+  if(o.sit)parts.push(o.sit);
+  return core+ast+timeClause("goal",e.t,e.per)
+    +(parts.length?` — <span class="ms">${parts.join(", ")}</span>`:"")+".";
 }
-// "26 Tristan Darling was called for Boarding with 9:43 left in the first period."
-// Team penalty: "Dunedin Thunder were called for Too Many Men ..."
+// Penalty call, template rotated per event:
+//   "26 Tristan Darling was called for Boarding with 9:43 left in the first period."
+//   "26 Tristan Darling took a Boarding penalty with 9:43 left in the first period."
+//   "26 Tristan Darling went to the box for Boarding with 9:43 left in the first period."
+// Team penalty always: "Dunedin Thunder were called for Too Many Men ..."
 function penSentence(e){
   const v=vis(e.teamID), team=e.teamName||teamNameOf(e.teamID);
-  const target=e.teamPen?`<span class="tm" style="color:${v.ink}">${esc(team)}</span> were`
-    :playerSpan(e.no,e.name,v.ink)+" was";
-  const tag=penTag(e.dur);
-  return `${target} called for <span class="inf">${esc((e.inf||"").trim())}</span>${tag?`<span class="dur">${esc(tag)}</span>`:""}${timeClause("pen",e.t,e.per)}.`;
+  const inf=`<span class="inf">${esc((e.inf||"").trim())}</span>`;
+  const tag=penTag(e.dur), tagS=tag?`<span class="dur">${esc(tag)}</span>`:"";
+  const time=timeClause("pen",e.t,e.per);
+  if(e.teamPen)
+    return `<span class="tm" style="color:${v.ink}">${esc(team)}</span> were called for ${inf}${tagS}${time}.`;
+  const P=playerSpan(e.no,e.name,v.ink);
+  switch(hashStr(e.name+"|"+e.t+"|"+e.per)%3){
+    case 0: return `${P} was called for ${inf}${tagS}${time}.`;
+    case 1: return `${P} took ${aAn(e.inf)} ${inf} penalty${tagS}${time}.`;
+    default:return `${P} went to the box for ${inf}${tagS}${time}.`;
+  }
 }
 // "END OF THE FIRST PERIOD — Dunedin Thunder 2, Canterbury Red Devils 1 — Shots 13-7"
 function dividerItem(p,a,h){
@@ -376,15 +432,37 @@ function scoreItem(){
 function buildItems(events){
   const sorted=sortEvents(events);
   const out=[]; if(AWAYN||HOMEN) out.push(scoreItem());
-  const counts={}, byPlayer={};
+  const counts={}, byPlayer={}, tonight={}, everLed={};
+  sorted.forEach(e=>{if(e.kind==="goal"){const pk=String(e.teamID)+"|"+e.name;tonight[pk]=(tonight[pk]||0)+1;}});
   let ta=0, th=0, total=0;   // running away/home tally — each goal call ends "(a-h)"
   const renderEv=e=>{
     if(e.kind==="goal"){
       const k=String(e.teamID); counts[k]=(counts[k]||0)+1;
       const pk=k+"|"+e.name; byPlayer[pk]=(byPlayer[pk]||0)+1;
-      if(k===String(AWAYID))ta++; else if(k===String(HOMEID))th++;
+      const isA=k===String(AWAYID), isH=k===String(HOMEID);
+      const myB=isA?ta:th, oppB=isA?th:ta;   // tallies BEFORE this goal, scorer's perspective
+      if(isA)ta++; else if(isH)th++;
       total++;
-      return crestHTML(e.teamID)+`<span class="sent">${goalSentence(e,counts[k]-1,{first:total===1,cnt:byPlayer[pk]})} <span class="sc">(${ta}-${th})</span></span>`;
+      const myA=myB+1;
+      // season / league-rank clause (leaders table): rank line on the scorer's first goal
+      // of the strip, running season count ("his 14th of the season") on later ones
+      let sea="";
+      const row=leaderOf(e.name);
+      if(row){
+        if(byPlayer[pk]===1) sea=rankPhrase(row);
+        if(!sea){const s=row.G-((tonight[pk]||0)-byPlayer[pk]); if(s>=5) sea=`${pron()} ${ordN(s)} of the season`;}
+      }
+      // lead-change awareness: tie / first lead / regained lead / back within one / OT winner
+      const T=`<span class="tm" style="color:${vis(e.teamID).ink}">${esc(e.teamName||teamNameOf(e.teamID))}</span>`;
+      let sit="";
+      if(e.per==="OT") sit="the overtime winner";
+      else if(total>1&&(isA||isH)){
+        if(myA===oppB) sit=`tying the game at ${myA}`;
+        else if(myA>oppB&&myB===oppB) sit=everLed[k]?`putting ${T} back in front`:`giving ${T} their first lead of the night`;
+        else if(myA<oppB&&oppB-myA===1) sit=`pulling ${T} back within one`;
+      }
+      if(myA>oppB)everLed[k]=true;
+      return crestHTML(e.teamID)+`<span class="sent">${goalSentence(e,counts[k]-1,{first:total===1,cnt:byPlayer[pk],sea,sit})} <span class="sc">(${ta}-${th})</span></span>`;
     }
     return crestHTML(e.teamID)+`<span class="sent">${penSentence(e)}</span>`;
   };
@@ -607,10 +685,13 @@ async function start(){
 
   updDiag();
   if(TARGET&&WORKER){
+    await fetchLeaders();   // season context in place before the first strip renders
     await tickPoll();
-    if(!items.length) setItems(buildItems([]));   // matchup line until first event
-    const t0=Date.now();
-    const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tickPoll(); },POLL_MS);
+    if(!items.length) setItems(buildItems([]));   // score line loops until the first event
+    const t0=Date.now(); let n=0;
+    const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;}
+      if(++n%5===0)fetchLeaders();   // leaders refresh ~every 60s, box score every 12s
+      tickPoll(); },POLL_MS);
   } else if(!items.length){ setItems(buildItems([])); }
 }
 start();
