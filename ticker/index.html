@@ -345,7 +345,9 @@ function step(now){
   if(!running)return;
   now=(now==null||now<=0)?performance.now():now;
   if(!lastT)lastT=now;
-  traveled+=Math.max(0,now-lastT)/1000*SPEED; lastT=now;
+  // rAF timestamps lag performance.now() by a few ms; NEVER move lastT backwards or the
+  // overlap gets double-counted when rAF + interval interleave (measured 1.22x, 2026-07-07)
+  const d=now-lastT; if(d>0){ traveled+=d/1000*SPEED; lastT=now; }
   if(unitW>0){
     const c=Math.floor(traveled/unitW);
     if(c!==cycles){ cycles=c; if(dirty){ rebuild(); traveled=0; cycles=0; } }  // splice new events at the seam
