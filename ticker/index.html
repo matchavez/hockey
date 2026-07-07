@@ -52,9 +52,9 @@
   .lsep img{max-width:100%;max-height:100%;object-fit:contain;}
   /* Weights (Mat 2026-07-07): emphasis = SemiBold 600, everything else Regular 400 */
   .sent{color:#E8E8E8;font-weight:400;line-height:1.25;letter-spacing:.004em;}
-  .sent .tm{font-weight:600;}            /* team name — team readable colour (inline) */
-  .sent .no{font-weight:500;font-size:80%;font-variant-numeric:tabular-nums;}  /* jersey # — team colour, 80% size @500 (Mat 2026-07-07) */
-  .sent .pn{font-weight:600;}            /* player name — team readable colour (inline) */
+  .sent .tm{font-weight:500;}            /* team name — team readable colour (inline) */
+  .sent .no{font-weight:600;font-size:80%;font-variant-numeric:tabular-nums;}  /* jersey # — team colour, 80% size @600 */
+  .sent .pn{font-weight:500;}            /* player name — team readable colour (inline) */
   .sent .inf{font-weight:600;color:#fff;}
   .sent .dur{font-weight:600;color:#fff;}
   .sent .flag{font-weight:600;color:#fff;}
@@ -156,12 +156,12 @@ const TESTMODE = Q.get("test")==="1";
 // scale(1). Runs to the frame's right border (1920) and is clamped inside it.
 // Override live with ?tk=x,y,w,h (e.g. ?tk=794,0,1126,64). To cover the clock/period later,
 // just lower x further.
-let TICK={ x:796, y:0, w:1920-796, h:64 };   // x nudged 794->796 (Mat: "2px too far left")
+let TICK={ x:796, y:0, w:1920-796, h:65 };   // x nudged 794->796; h 64->65 (Mat: "one pixel short")
 if(Q.get("tk")){const a=Q.get("tk").split(",").map(Number);
   if(a.length>=1&&!isNaN(a[0]))TICK.x=a[0]; if(a.length>=2&&!isNaN(a[1]))TICK.y=a[1];
   if(a.length>=3&&!isNaN(a[2]))TICK.w=a[2]; if(a.length>=4&&!isNaN(a[3]))TICK.h=a[3];}
 TICK.w=Math.min(TICK.w,1920-TICK.x);   // never spill past the 1920 frame
-let SPEED = Q.get("speed")?Math.max(10,+Q.get("speed")):90;   // px/s crawl
+let SPEED = Q.get("speed")?Math.max(10,+Q.get("speed")):80;   // px/s crawl (90->80, Mat 2026-07-07)
 
 /* ====================== SCOREBUG IFRAME (same as scorebug/) ====================== */
 function placeBug(){
