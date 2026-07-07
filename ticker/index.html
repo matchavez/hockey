@@ -46,14 +46,16 @@
   .lsep{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
     height:calc(var(--th)*.46);width:calc(var(--th)*.46);margin:0 30px;opacity:.9;}
   .lsep img{max-width:100%;max-height:100%;object-fit:contain;}
-  .sent{color:#E8E8E8;font-weight:600;line-height:1.25;letter-spacing:.004em;}
-  .sent .tm{font-weight:900;}            /* team name — team readable colour (inline) */
-  .sent .no{font-weight:800;font-variant-numeric:tabular-nums;}  /* jersey # — dimmed team colour (inline) */
-  .sent .pn{font-weight:800;}            /* player name — team readable colour (inline) */
-  .sent .inf{font-weight:800;color:#fff;}
-  .sent .dur{font-weight:700;color:#fff;font-variant-numeric:tabular-nums;}
-  .sent .tt{font-weight:700;color:#fff;font-variant-numeric:tabular-nums;}
-  .sent .lg{font-weight:800;color:#fff;letter-spacing:.04em;}
+  /* Weights (Mat 2026-07-07): emphasis = SemiBold 600, everything else Regular 400 */
+  .sent{color:#E8E8E8;font-weight:400;line-height:1.25;letter-spacing:.004em;}
+  .sent .tm{font-weight:600;}            /* team name — team readable colour (inline) */
+  .sent .no{font-weight:600;font-variant-numeric:tabular-nums;}  /* jersey # — dimmed team colour (inline) */
+  .sent .pn{font-weight:600;}            /* player name — team readable colour (inline) */
+  .sent .inf{font-weight:600;color:#fff;}
+  .sent .dur{font-weight:600;color:#fff;}
+  .sent .flag{font-weight:600;color:#fff;}
+  .sent .tt{font-weight:600;color:#fff;font-variant-numeric:tabular-nums;}
+  .sent .lg{font-weight:600;color:#fff;letter-spacing:.04em;}
 
   /* --- test controls (only with ?test=1) --- */
   #test{position:absolute;left:24px;bottom:22px;right:24px;z-index:9;display:none;gap:8px;
@@ -146,14 +148,17 @@ if(Q.get("bs")){const a=Q.get("bs").split(",").map(Number);
   if(a.length>=7){BUG.cropX=a[5];BUG.cropY=a[6];}}
 const TESTMODE = Q.get("test")==="1";
 
-// Ticker geometry: fills from the scorebug clip's right edge to the frame's right border,
-// exactly the height of the scorebug's main bar (~66px at the default 0.78 scale).
-// Override live with ?tk=x,y,w,h (e.g. ?tk=1000,0,920,66). Later, to cover the clock/period,
-// just lower x (the ticker extends left OVER the bug clip; it has the higher z-index).
-let TICK={ x:BUG.clipW, y:0, w:1920-BUG.clipW, h:66 };
+// Ticker geometry (Mat 2026-07-07): left edge sits NEXT TO THE CLOCK — measured at stage x≈794
+// with the default ?bs (clock digits end there; the "5 on 5"/flyout chips extend past it and the
+// ticker simply covers them: ticker wins on z). Height = the scorebug main bar, measured 64px at
+// scale(1). Runs to the frame's right border (1920) and is clamped inside it.
+// Override live with ?tk=x,y,w,h (e.g. ?tk=794,0,1126,64). To cover the clock/period later,
+// just lower x further.
+let TICK={ x:794, y:0, w:1920-794, h:64 };
 if(Q.get("tk")){const a=Q.get("tk").split(",").map(Number);
   if(a.length>=1&&!isNaN(a[0]))TICK.x=a[0]; if(a.length>=2&&!isNaN(a[1]))TICK.y=a[1];
   if(a.length>=3&&!isNaN(a[2]))TICK.w=a[2]; if(a.length>=4&&!isNaN(a[3]))TICK.h=a[3];}
+TICK.w=Math.min(TICK.w,1920-TICK.x);   // never spill past the 1920 frame
 let SPEED = Q.get("speed")?Math.max(10,+Q.get("speed")):90;   // px/s crawl
 // Ticker appearance delay (Mat: ~3 min after load; exact value TBD — ?delay=<seconds> overrides)
 const DELAY_MS = Q.get("delay")!=null ? Math.max(0,+Q.get("delay")*1000) : 180000;
@@ -189,11 +194,25 @@ const ordinal=i=>ORD[i]|| (i+1)+"th";
 // "the first period" / "overtime" / "the shootout"
 function periodPhrase(p){return {1:"the first period",2:"the second period",3:"the third period",
   OT:"overtime",SO:"the shootout"}[p]||("period "+p);}
-// "2 Minutes" -> "2 minutes"; "2:00" -> "2 minutes"; misconducts left as written
-function fmtDurVerbose(d){d=String(d||"").trim();
-  let m=d.match(/^(\d+)\s*min/i); if(m) return m[1]+" minutes";
-  m=d.match(/^(\d+):00$/);        if(m) return m[1]+" minutes";
-  return d;}
+// Penalty severity tag (Mat 2026-07-07): a 2-minute minor is ASSUMED (no tag);
+// 4 -> "(double minor)", 5 -> "(major)", 10 -> "(misconduct)", anything else spelled out.
+function penTag(d){d=String(d||"").trim(); if(!d)return "";
+  let m=d.match(/^(\d+)\s*min/i)||d.match(/^(\d+):00$/);
+  if(m){const n=+m[1];
+    if(n===2)return "";
+    if(n===4)return " (double minor)";
+    if(n===5)return " (major)";
+    if(n===10)return " (misconduct)";
+    return " ("+n+" minutes)";}
+  return " ("+d.toLowerCase()+")";}   // e.g. "Game Misconduct" -> "(game misconduct)"
+// Goal-type pill from the box score's middle column -> spoken phrase
+function flagPhrase(f){f=String(f||"").trim().toUpperCase();
+  if(!f)return "";
+  if(/^PP/.test(f))return ", a power play goal,";
+  if(/^SH/.test(f))return ", a short handed goal,";
+  if(/^EN/.test(f))return ", an empty net goal,";
+  if(/^PS/.test(f))return ", a penalty shot goal,";
+  return "";}
 const t2s=t=>{const m=String(t||"").match(/^(\d+):(\d{2})$/);return m?(+m[1]*60)+(+m[2]):-1;};
 const PERI={1:0,2:1,3:2,"OT":3,"SO":4};
 
@@ -233,7 +252,9 @@ function parse(html){
   const ssH=findH(/SCORING SUMMARY/i),psH=findH(/PENALTY SUMMARY/i),skH=findH(/SKATERS/i);
   const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\((.*)\)\s*$/);
     const who=m?m[2].trim():o.c[0];const id=teamOfName(who);
-    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",teamID:id};}):[];
+    // middle column = goal-type pill (PPG / SHG / ENG); present only when the row has 3+ cells
+    const flag=o.c.length>2?String(o.c[1]||"").trim():"";
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",flag,teamID:id};}):[];
   const normT=s=>String(s||"").toLowerCase().replace(/[^a-z]/g,"");
   const matchTeam=tn=>{const t=normT(tn);if(!t)return null;for(const T of [away,home]){const n=normT(T.name);if(n&&(t===n||t.includes(n)||n.includes(t)))return T.teamID;}return null;};
   const pens=psH?section(psH,skH).map(o=>{
@@ -283,12 +304,15 @@ function goalSentence(e,nth){
     const parts=e.assists.map(a=>playerSpan(a.no,a.name,v.ink));
     ast="assisted by "+(parts.length===1?parts[0]:parts.slice(0,-1).join(", ")+" and "+parts[parts.length-1]);
   }
-  return `<span class="tm" style="color:${v.ink}">${esc(poss(team))}</span> ${ordinal(nth)} goal was scored by ${scorer}, ${ast}. ${timeClause("goal",e.t,e.per)}`;
+  const fp=flagPhrase(e.flag);
+  const flag=fp?`<span class="flag">${fp}</span>`:"";
+  return `<span class="tm" style="color:${v.ink}">${esc(poss(team))}</span> ${ordinal(nth)} goal${flag} was scored by ${scorer}, ${ast}. ${timeClause("goal",e.t,e.per)}`;
 }
 function penSentence(e){
   const v=vis(e.teamID), team=e.teamName||teamNameOf(e.teamID);
   const target=e.teamPen?`<span class="tm" style="color:${v.ink}">${esc(team)}</span>`:playerSpan(e.no,e.name,v.ink);
-  return `Penalty for <span class="inf">${esc((e.inf||"").trim())}</span> / <span class="dur">${esc(fmtDurVerbose(e.dur))}</span> was called on ${target} ${timeClause("pen",e.t,e.per)}`;
+  const tag=penTag(e.dur);
+  return `Penalty for <span class="inf">${esc((e.inf||"").trim())}</span>${tag?`<span class="dur">${esc(tag)}</span>`:""} was called on ${target} ${timeClause("pen",e.t,e.per)}`;
 }
 function teamNameOf(id){return id===AWAYID?AWAYN:id===HOMEID?HOMEN:(vis(id).code||"");}
 function crestHTML(id){const v=vis(id);
@@ -326,7 +350,7 @@ function placeTick(){
   tick.style.left=TICK.x+"px"; tick.style.top=TICK.y+"px";
   tick.style.width=TICK.w+"px"; tick.style.height=TICK.h+"px";
   tick.style.setProperty("--th",TICK.h+"px");
-  track.style.fontSize=Math.max(14,Math.round(TICK.h*0.42))+"px";
+  track.style.fontSize=Math.max(14,Math.round(TICK.h*0.37))+"px";
 }
 let hadContent=false;
 function rebuild(){
@@ -403,7 +427,7 @@ function liveEvents(P){
   P.goals.forEach(g=>{
     const assists=(!g.a||/^unassisted$/i.test(g.a))?[]:g.a.split(",").map(s=>s.trim()).filter(Boolean)
       .map(raw=>({no:lookupNum(P.skaters,raw),name:properFull(raw)}));
-    ev.push({kind:"goal",teamID:g.teamID,per:g.p,t:g.t,no:g.no,name:properFull(g.who),assists});
+    ev.push({kind:"goal",teamID:g.teamID,per:g.p,t:g.t,no:g.no,name:properFull(g.who),assists,flag:g.flag});
   });
   P.pens.forEach(p=>{
     const teamPen=!p.no;
@@ -416,32 +440,31 @@ async function tickPoll(){
   if(!TARGET||!WORKER)return;
   let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
-  const ev=liveEvents(P);
-  const sig=ev.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf].join("|")).join("~");
-  if(sig!==lastSig){ lastSig=sig; setItems(buildItems(ev)); updDiag(ev.length); }
+  lastEv=liveEvents(P);
+  const all=lastEv.concat(extras);
+  const sig=all.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf,e.flag].join("|")).join("~");
+  if(sig!==lastSig){ lastSig=sig; setItems(buildItems(all)); updDiag(all.length); }
 }
 
-/* ====================== TEST MODE ====================== */
-const TEST_EVENTS=[
- {kind:"goal",teamID:"675635",per:"1",t:"12:34",no:23,name:"Dan Smith",assists:[{no:54,name:"John Jones"},{no:2,name:"Davey Crockett"}]},
- {kind:"pen", teamID:"675633",per:"1",t:"8:12", no:17,name:"Sam Frost",inf:"Tripping",dur:"2 Minutes"},
- {kind:"goal",teamID:"675633",per:"2",t:"15:02",no:9, name:"Ollie Ruski-Jones",assists:[{no:11,name:"Leo Ruski-Jones"}]},
- {kind:"pen", teamID:"675635",per:"2",t:"0:25", no:88,name:"Jimmy John",inf:"Hooking",dur:"4 Minutes"},
- {kind:"goal",teamID:"675635",per:"3",t:"10:11",no:23,name:"Dan Smith",assists:[]},
-];
-let testEv=[];
-const TPOOL={goals:[{no:7,name:"Te Rangi Henare"},{no:41,name:"Marcus Henderson"},{no:12,name:"Wiremu Mikaere"}],
-  pens:[["Slashing","2 Minutes"],["Cross-checking","2 Minutes"],["Fighting","5 Minutes"]]};
-function pushTestGoal(){const p=TPOOL.goals[testEv.length%3];
-  testEv.push({kind:"goal",teamID:testEv.length%2?"675633":"675635",per:"3",
-    t:(Math.floor(Math.random()*15)+1)+":"+String(Math.floor(Math.random()*60)).padStart(2,"0"),
-    no:p.no,name:p.name,assists:testEv.length%2?[]:[{no:4,name:"Josh Reid"}]});
-  setItems(buildItems(testEv)); updDiag(testEv.length);}
-function pushTestPen(){const p=TPOOL.pens[testEv.length%3];
-  testEv.push({kind:"pen",teamID:testEv.length%2?"675635":"675633",per:"3",
-    t:(Math.floor(Math.random()*15)+1)+":"+String(Math.floor(Math.random()*60)).padStart(2,"0"),
+/* ====================== TEST MODE ======================
+   ?test=1 feeds a REAL prior game through the live pipeline (DEMO_GAME below; ?g= overrides),
+   so the test exercises the actual parser/roster-number/pill path (Mat 2026-07-07).
+   The +Goal/+Penalty buttons append SYNTHETIC extra events on top of the real feed to
+   exercise mid-crawl splicing, PP/SH phrasing and severity tags on demand. */
+const DEMO_GAME=2519942;   // 2026-07-05 SkyCity Stampede @ Botany Swarm (completed)
+let lastEv=[], extras=[];
+const TPOOL={goals:[{no:7,name:"Te Rangi Henare",flag:"PPG"},{no:41,name:"Marcus Henderson",flag:"SHG"},{no:12,name:"Wiremu Mikaere",flag:""}],
+  pens:[["Slashing","2 Minutes"],["Hooking","4 Minutes"],["Fighting","5 Minutes"]]};
+const rndT=()=> (Math.floor(Math.random()*15)+1)+":"+String(Math.floor(Math.random()*60)).padStart(2,"0");
+function refreshTest(){ setItems(buildItems(lastEv.concat(extras))); updDiag(lastEv.length+extras.length); }
+function pushTestGoal(){const p=TPOOL.goals[extras.length%3];
+  extras.push({kind:"goal",teamID:(extras.length%2?HOMEID:AWAYID)||"675635",per:"OT",t:rndT(),
+    no:p.no,name:p.name,flag:p.flag,assists:extras.length%2?[]:[{no:4,name:"Josh Reid"}]});
+  refreshTest();}
+function pushTestPen(){const p=TPOOL.pens[extras.length%3];
+  extras.push({kind:"pen",teamID:(extras.length%2?AWAYID:HOMEID)||"675633",per:"OT",t:rndT(),
     no:19,name:"Tyler Walker",inf:p[0],dur:p[1]});
-  setItems(buildItems(testEv)); updDiag(testEv.length);}
+  refreshTest();}
 
 /* ====================== INIT ====================== */
 let stageScale=1;
@@ -475,19 +498,14 @@ async function start(){
     document.getElementById("tFast").onclick=()=>{SPEED+=20;updDiag();};
   }
 
-  TARGET=await resolveTarget();
+  if(TESTMODE&&!Q.get("g")&&!Q.get("gameid")){
+    TARGET={m:MANIFESTS[0], gid:DEMO_GAME, gm:null};   // test = a real prior game through the live pipeline
+  }else{
+    TARGET=await resolveTarget();
+  }
   if(TARGET&&TARGET.m)LEAGUE=TARGET.m.league;
   if(TARGET&&TARGET.gm&&TARGET.gm.venue)VENUE=TARGET.gm.venue;
   if(TARGET&&TARGET.gm){AWAYN=AWAYN||TARGET.gm.away;HOMEN=HOMEN||TARGET.gm.home;}
-
-  if(TESTMODE&&!Q.get("live")){
-    // demo game: SkyCity Stampede @ Canterbury Red Devils with the spec's sample statements
-    AWAYID="675635";HOMEID="675633";AWAYN="SkyCity Stampede";HOMEN="Canterbury Red Devils";
-    VENUE=VENUE||"Alpine Ice Centre";
-    testEv=TEST_EVENTS.slice();
-    setItems(buildItems(testEv)); updDiag(testEv.length);
-    return;   // no live polling in demo mode (?test=1&live=1 to test-drive a real game)
-  }
 
   updDiag();
   if(TARGET&&WORKER){
