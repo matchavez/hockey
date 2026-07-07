@@ -286,7 +286,23 @@ function parse(html){
     return m?m[1].split(/[-–]/).map(s=>+s.trim()||0):[];};
   let sogA=[],sogH=[];
   if(dTbl){const dr=[...dTbl.querySelectorAll("tr")];sogA=sogRow(dr[1]);sogH=sogRow(dr[2]);}
-  return {away,home,goals,pens,skaters,sogA,sogH};
+  // goalies: per-team "<TEAM> GOALIES" tables, cols # | Name | SA | GA | SV | SV% | MP | PIM.
+  // Name cell duplicates responsively + carries ST/W/OTL badges — full name = the wide span.
+  const goalies=[];
+  h5.filter(x=>/GOALIES/i.test(x.textContent)).forEach(gh=>{
+    const tid=matchTeam(gh.textContent.replace(/GOALIES/i," ").trim());
+    let e2=gh.nextElementSibling,gt=null;
+    while(e2&&!/^H5$/.test(e2.tagName)){gt=(e2.tagName==="TABLE"?e2:(e2.querySelector&&e2.querySelector("table")));if(gt)break;e2=e2.nextElementSibling;}
+    if(gt)[...gt.querySelectorAll("tr")].slice(1).forEach(r=>{
+      const c=[...r.children].map(txt);
+      const sa=+c[2], sv=+c[4];
+      if(!c[6]||c[6]==="0:00"||isNaN(sa))return;   // didn't play / no data
+      const wide=r.children[1]&&r.children[1].querySelector("span.d-none");
+      const nm=properCase(String((wide?wide.textContent:c[1])||"").replace(/\b(ST|OTL|OTW|SOL|SOW|W|L|SO|OT)\b/g," ").replace(/\s+/g," ").trim());
+      if(nm)goalies.push({teamID:tid,name:nm,sa,sv});
+    });
+  });
+  return {away,home,goals,pens,skaters,sogA,sogH,goalies};
 }
 // best-effort jersey number for a name (assist lists carry no numbers): find the roster row
 // containing the name, take its leading number. Empty string if not found — statement omits it.
@@ -300,6 +316,7 @@ function lookupNum(skaters,name){
 // event = {kind:'goal'|'pen', teamID, per, t, no, name, assists:[{no,name}], inf, dur, teamPen}
 let AWAYN="",HOMEN="",AWAYID=null,HOMEID=null,LEAGUE="nzihl",VENUE="",AWAYTOT=0,HOMETOT=0;
 let SOGA=[],SOGH=[],PERSDONE=1;   // shots by period + how far the game has progressed (dividers)
+let GLS=[];                       // goalies who have played: {teamID,name,sa,sv} from the GOALIES tables
 // SEASON CONTEXT (Mat 2026-07-07 "make it awesome"): league scoring leaders from
 // stats_hockey.cfm, refetched every ~60s so live goals stay consistent with the box score.
 let LEADERS=[];
@@ -505,17 +522,26 @@ function adItem(){
     +`<span class="sent">${esc(AD.lead)} <span class="tm" style="color:${AD.accent}">${esc(AD.brand)}</span>`
     +(AD.url?` — <span class="ms">${esc(AD.url)}</span>`:"")+`</span>`;
 }
-// "END OF THE FIRST PERIOD — Dunedin Thunder 2, Canterbury Red Devils 1 — Shots 13-7"
-function dividerItem(p,a,h){
+// "END OF THE FIRST PERIOD — Dunedin Thunder 2, Canterbury Red Devils 1 — Shots 13-7
+//  — Alexa Gibson has stopped 24 of 27; Aston Brookes has stopped 22 of 24"
+// Goalie clause rides ONLY the LATEST divider: SA/SV are live-cumulative, so present-tense
+// "has stopped" is only true at the current break — earlier breaks would be misstated.
+function dividerItem(p,a,h,latest){
   const va=vis(AWAYID), vh=vis(HOMEID);
   let shots="";
   if(SOGA.length>=p&&SOGH.length>=p){
     const sa=SOGA.slice(0,p).reduce((x,y)=>x+y,0), sh=SOGH.slice(0,p).reduce((x,y)=>x+y,0);
     shots=` — Shots <span class="sc">${sa}-${sh}</span>`;
   }
+  let gl="";
+  if(latest&&GLS.length){
+    const line=g=>`<span class="pn" style="color:${vis(g.teamID).ink}">${esc(g.name)}</span> has stopped <span class="sc">${g.sv}</span> of <span class="sc">${g.sa}</span>`;
+    const parts=GLS.filter(g=>String(g.teamID)===String(AWAYID)).concat(GLS.filter(g=>String(g.teamID)===String(HOMEID))).map(line);
+    if(parts.length)gl=` — ${parts.join("; ")}`;
+  }
   return `<span class="sent"><span class="div">END OF THE ${["FIRST","SECOND","THIRD"][p-1]} PERIOD</span>`
     +` — <span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span> <span class="sc">${a}</span>,`
-    +` <span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span> <span class="sc">${h}</span>${shots}</span>`;
+    +` <span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span> <span class="sc">${h}</span>${shots}${gl}</span>`;
 }
 function teamNameOf(id){return id===AWAYID?AWAYN:id===HOMEID?HOMEN:(vis(id).code||"");}
 function crestHTML(id){const v=vis(id);
@@ -582,7 +608,7 @@ function buildItems(events){
   ORDER.forEach(p=>{
     sorted.filter(e=>e.per===p).forEach(e=>out.push(renderEv(e)));
     if(["1","2","3"].includes(p)&&+p<PERSDONE){
-      out.push(dividerItem(+p,ta,th));
+      out.push(dividerItem(+p,ta,th,+p===Math.min(PERSDONE-1,3)));   // latest break carries the goalie line
       if(AD){out.push(adItem());adPlaced=true;}   // sponsor line rides the period break
     }
   });
@@ -724,15 +750,25 @@ async function tickPoll(){
     HOMETOT=lastEv.filter(e=>e.kind==="goal"&&e.teamID===HOMEID).length;
     SOGA=(P.sogA||[]).slice(0,2); SOGH=(P.sogH||[]).slice(0,2);
     PERSDONE=3;
+    // goalie numbers re-derived for the two-period fiction: SA = opponent shots through P2,
+    // SV = SA − goals conceded through P2; attributed to each team's primary (highest-SA) goalie
+    GLS=[];
+    const prim=id=>(P.goalies||[]).filter(g=>String(g.teamID)===String(id)).sort((x,y)=>y.sa-x.sa)[0];
+    const ga=prim(AWAYID), gh=prim(HOMEID);
+    const sHome=SOGH.reduce((x,y)=>x+y,0), sAway=SOGA.reduce((x,y)=>x+y,0);
+    if(ga&&sHome)GLS.push({teamID:AWAYID,name:ga.name,sa:sHome,sv:sHome-HOMETOT});
+    if(gh&&sAway)GLS.push({teamID:HOMEID,name:gh.name,sa:sAway,sv:sAway-AWAYTOT});
   }else{
     AWAYTOT=P.away.tot||0; HOMETOT=P.home.tot||0;
     SOGA=P.sogA||[]; SOGH=P.sogH||[];
+    GLS=P.goalies||[];
     // how far has the game progressed? shots-paren entries appear per period as it's played,
     // and any event in a later period also moves the marker
     PERSDONE=Math.max(1,SOGA.length,SOGH.length,...lastEv.map(e=>PNUM[e.per]||0));
   }
   const all=lastEv.concat(extras);
-  const sig=AWAYTOT+"-"+HOMETOT+"~P"+PERSDONE+"~S"+SOGA.join(".")+"/"+SOGH.join(".")+"~"
+  const sig=AWAYTOT+"-"+HOMETOT+"~P"+PERSDONE+"~S"+SOGA.join(".")+"/"+SOGH.join(".")
+    +"~G"+GLS.map(g=>g.name+g.sv+"/"+g.sa).join(",")+"~"
     +all.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf,e.flag].join("|")).join("~");
   if(sig!==lastSig){ lastSig=sig; setItems(buildItems(all)); updDiag(all.length); }
 }
