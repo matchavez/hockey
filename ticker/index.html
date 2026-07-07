@@ -41,6 +41,7 @@
   #swrap{flex:1 1 auto;position:relative;overflow:hidden;}
   #track{position:absolute;left:0;top:0;height:100%;display:inline-flex;align-items:center;
     white-space:nowrap;will-change:transform;}
+  .scoreit{display:inline-flex;align-items:center;}   /* startup: score line alone, centered + held */
   .item{display:inline-flex;align-items:center;}
   /* fixed square boxes for every logo so track width is stable before images load */
   .crest{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
@@ -52,9 +53,9 @@
   .lsep img{max-width:100%;max-height:100%;object-fit:contain;}
   /* Weights (Mat 2026-07-07): emphasis = SemiBold 600, everything else Regular 400 */
   .sent{color:#E8E8E8;font-weight:400;line-height:1.25;letter-spacing:.004em;}
-  .sent .tm{font-weight:500;}            /* team name — team readable colour (inline) */
-  .sent .no{font-weight:600;font-size:80%;font-variant-numeric:tabular-nums;}  /* jersey # — team colour, 80% size @600 */
-  .sent .pn{font-weight:500;}            /* player name — team readable colour (inline) */
+  .sent .tm{font-weight:600;}            /* team name — team readable colour (inline) */
+  .sent .no{font-weight:800;font-size:80%;font-variant-numeric:tabular-nums;}  /* jersey # — team colour, 80% size @800 */
+  .sent .pn{font-weight:600;}            /* player name — team readable colour (inline) */
   .sent .inf{font-weight:600;color:#fff;}
   .sent .dur{font-weight:600;color:#fff;}
   .sent .flag{font-weight:600;color:#fff;}
@@ -351,6 +352,20 @@ const tick=document.getElementById("tick"), track=document.getElementById("track
 let items=[], dirty=true, unitW=0, offset=0, running=false, visible=false;
 let traveled=0, lastT=0, cycles=0;   // wall-clock-driven: position stays correct even if frames throttle
 let SW=0;                            // scroll-area width (right of the fixed "Recap:" label)
+// Startup (Mat 2026-07-07): the score line appears ALONE, CENTERED, holds 7s, then the crawl
+// begins (score slides left, the recap feed follows in from the right).
+const HOLD_MS=7000;
+let ENTRY=0, holdUntil=0, holding=false;
+function enterHold(){
+  if(!items.length){holding=false;return;}
+  track.innerHTML=`<span class="item"><span class="scoreit">${items[0]}</span></span>`;
+  SW=document.getElementById("swrap").clientWidth;
+  const w0=track.querySelector(".scoreit").offsetWidth;
+  ENTRY=Math.max(0,(SW-w0)/2);
+  traveled=0; cycles=0; dirty=true;          // full strip re-rendered when the hold ends
+  holdUntil=performance.now()+HOLD_MS; holding=true;
+  offset=ENTRY; track.style.transform="translateX("+ENTRY+"px)";
+}
 function placeTick(){
   tick.style.left=TICK.x+"px"; tick.style.top=TICK.y+"px";
   tick.style.width=TICK.w+"px"; tick.style.height=TICK.h+"px";
@@ -379,14 +394,18 @@ function step(now){
   if(!lastT)lastT=now;
   // rAF timestamps lag performance.now() by a few ms; NEVER move lastT backwards or the
   // overlap gets double-counted when rAF + interval interleave (measured 1.22x, 2026-07-07)
+  if(holding){
+    if(now<holdUntil){ lastT=now; return; }        // score line parked centre — clock doesn't accrue
+    holding=false; rebuild(); traveled=0; cycles=0; lastT=now;   // hold over: full strip, crawl begins
+  }
   const d=now-lastT; if(d>0){ traveled+=d/1000*SPEED; lastT=now; }
   if(unitW>0){
-    if(traveled<SW){ offset=SW-traveled; }   // entry: the score line leads in from the very right edge
+    if(traveled<ENTRY){ offset=ENTRY-traveled; }   // entry: score slides left from centre; feed follows from the right
     else{
-      const t2=traveled-SW;
+      const t2=traveled-ENTRY;
       const c=Math.floor(t2/unitW);
-      if(c!==cycles){ cycles=c; if(dirty){ rebuild(); traveled=SW; cycles=0; } }  // splice new events at the seam
-      offset=-((traveled-SW)%unitW);
+      if(c!==cycles){ cycles=c; if(dirty){ rebuild(); traveled=ENTRY; cycles=0; } }  // splice new events at the seam
+      offset=-((traveled-ENTRY)%unitW);
     }
   }
   track.style.transform="translateX("+offset+"px)";
@@ -401,11 +420,11 @@ function startTicker(){
 function showTicker(){ if(visible)return; visible=true; tick.classList.add("on"); startTicker(); updDiag(); }
 function setItems(list){
   items=list; dirty=true;
-  if(!visible||unitW<1||!hadContent){ rebuild(); traveled=0; cycles=0; }   // not on air, or strip was empty: rebuild + re-enter from the right
+  if(!visible||unitW<1||!hadContent){ rebuild(); enterHold(); }   // fresh start: score centred + 7s hold, then crawl
   // else: rebuild happens seamlessly at the next loop boundary
 }
 const FONTS=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
-FONTS.then(()=>{ if(items.length){ dirty=true; if(!visible){rebuild();traveled=0;cycles=0;} } });
+FONTS.then(()=>{ if(items.length){ dirty=true; if(holding)enterHold(); else if(!visible){rebuild();traveled=0;cycles=0;} } });   // re-measure the centred hold once Inter lands
 
 /* ====================== LIVE DETECTION ====================== */
 let TARGET=null, lastSig="";
