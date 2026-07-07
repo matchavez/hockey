@@ -14,9 +14,8 @@
        • Upper-right: a continuous verbose scrolling ticker of the game's scoring + penalties,
                       exactly as tall as the scorebug bar, black (#000000) bed.
      NO activity banner on this page (by design — Mat 2026-07-07).
-     The ticker's appearance is DELAYED (default 3 min) after page load; ?test=1 offers a
-     "Skip delay" button, or pass ?delay=<seconds> (e.g. ?delay=0).
-     Geometry tunable live: ?tk=x,y,w,h  (defaults: x=scorebug clipW, y=0, w=1920-x, h=66)
+     The ticker appears immediately on load (the 3-min delay was tested and removed — Mat 2026-07-07).
+     Geometry tunable live: ?tk=x,y,w,h  (defaults: x=794 next to the clock, y=0, w=1920-x, h=64)
      Speed tunable: ?speed=<px per second>  (default 90)
      ============================================================ */
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -63,7 +62,6 @@
   #test button{font:600 15px Inter,sans-serif;color:#fff;background:#15181d;
     border:1px solid #333a44;border-radius:9px;padding:10px 16px;cursor:pointer;}
   #test button:hover{background:#1d2128;border-color:#4a5562;}
-  #test button#tSkip{background:#1c2630;border-color:#395066;}
   #test .lbl{color:#7e8794;font:600 13px Inter,sans-serif;align-self:center;
     background:#0d0f13;border:1px solid #222;border-radius:8px;padding:8px 12px;}
   #diag{position:absolute;right:18px;bottom:16px;z-index:9;color:#5d646e;
@@ -78,7 +76,6 @@
 
   <div id="test">
     <span class="lbl">TICKER TEST</span>
-    <button id="tSkip">⏩ Skip delay</button>
     <button id="tGoal">+ Goal</button>
     <button id="tPen">+ Penalty</button>
     <button id="tSlow">− Slower</button>
@@ -160,8 +157,6 @@ if(Q.get("tk")){const a=Q.get("tk").split(",").map(Number);
   if(a.length>=3&&!isNaN(a[2]))TICK.w=a[2]; if(a.length>=4&&!isNaN(a[3]))TICK.h=a[3];}
 TICK.w=Math.min(TICK.w,1920-TICK.x);   // never spill past the 1920 frame
 let SPEED = Q.get("speed")?Math.max(10,+Q.get("speed")):90;   // px/s crawl
-// Ticker appearance delay (Mat: ~3 min after load; exact value TBD — ?delay=<seconds> overrides)
-const DELAY_MS = Q.get("delay")!=null ? Math.max(0,+Q.get("delay")*1000) : 180000;
 
 /* ====================== SCOREBUG IFRAME (same as scorebug/) ====================== */
 function placeBug(){
@@ -473,7 +468,7 @@ function fitWindow(){stageScale=Math.min(innerWidth/1920,innerHeight/1080);
 addEventListener("resize",fitWindow);
 const diag=document.getElementById("diag");
 function updDiag(n){ if(!TESTMODE)return;
-  diag.textContent=(TARGET?("game "+TARGET.gid):"demo")+" · "+(visible?"visible":"delayed")
+  diag.textContent=(TARGET?("game "+TARGET.gid):"no-game")
     +" · "+(n!=null?n+" events":"")+" · "+SPEED+"px/s"; }
 
 async function start(){
@@ -485,13 +480,11 @@ async function start(){
   }
   fitWindow(); placeBug(); placeTick();
 
-  // delayed appearance (scorebug shows immediately; only the ticker waits)
-  setTimeout(showTicker, DELAY_MS);
+  showTicker();   // no delay — ticker is on from load (Mat 2026-07-07)
 
   if(TESTMODE){
     document.getElementById("test").style.display="flex";
     diag.style.display="block";
-    document.getElementById("tSkip").onclick=showTicker;
     document.getElementById("tGoal").onclick=pushTestGoal;
     document.getElementById("tPen").onclick=pushTestPen;
     document.getElementById("tSlow").onclick=()=>{SPEED=Math.max(20,SPEED-20);updDiag();};
