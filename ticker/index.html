@@ -328,7 +328,9 @@ function placeTick(){
   tick.style.setProperty("--th",TICK.h+"px");
   track.style.fontSize=Math.max(14,Math.round(TICK.h*0.42))+"px";
 }
+let hadContent=false;
 function rebuild(){
+  hadContent=items.length>0;
   const unit=`<span class="item">`+items.map(i=>i+sepHTML()).join("")+`</span>`;
   track.innerHTML=unit;
   unitW=track.firstElementChild.getBoundingClientRect().width/(stageScale||1);
@@ -365,7 +367,7 @@ function startTicker(){
 function showTicker(){ if(visible)return; visible=true; tick.classList.add("on"); startTicker(); updDiag(); }
 function setItems(list){
   items=list; dirty=true;
-  if(!visible||unitW<1){ rebuild(); offset=0; traveled=0; cycles=0; }   // not on air (or first fill): rebuild immediately
+  if(!visible||unitW<1||!hadContent){ rebuild(); offset=0; traveled=0; cycles=0; }   // not on air, or strip was empty: rebuild immediately
   // else: rebuild happens seamlessly at the next loop boundary
 }
 const FONTS=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
