@@ -157,7 +157,11 @@ const TESTMODE = Q.get("test")==="1";
 // scale(1). Runs to the frame's right border (1920) and is clamped inside it.
 // Override live with ?tk=x,y,w,h (e.g. ?tk=794,0,1126,64). To cover the clock/period later,
 // just lower x further.
-let TICK={ x:796, y:0, w:1920-796, h:65 };   // x nudged 794->796; h 64->65 (Mat: "one pixel short")
+// Height: the scorebug bar is a 0.78-SCALED iframe — its bottom edge is FRACTIONAL:
+// 83 native px * 0.78 = 64.74. Integer 64 showed a gap, 65 a bump (Mat caught both).
+// Derive from BUG.scale so the seam stays flush even if ?bs rescales the bug.
+const BAR_NATIVE=83;   // scorebug main-bar height in Singular composition px (cropY 500 -> 583)
+let TICK={ x:796, y:0, w:1920-796, h:Math.round(BUG.scale*BAR_NATIVE*100)/100 };
 if(Q.get("tk")){const a=Q.get("tk").split(",").map(Number);
   if(a.length>=1&&!isNaN(a[0]))TICK.x=a[0]; if(a.length>=2&&!isNaN(a[1]))TICK.y=a[1];
   if(a.length>=3&&!isNaN(a[2]))TICK.w=a[2]; if(a.length>=4&&!isNaN(a[3]))TICK.h=a[3];}
