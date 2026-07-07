@@ -446,7 +446,7 @@ async function fetchFinal(){
   try{
     const u=`https://admin.esportsdesk.com/leagues/schedules.cfm?clientid=${TARGET.m.clientid}&leagueid=${TARGET.m.leagueid}&printPage=1&_=${Date.now()}`;
     const h=await getText(u);
-    const i=h.indexOf("gameid="+TARGET.gid); if(i<0)return;
+    const i=h.search(new RegExp("gameid="+TARGET.gid+"\\b","i")); if(i<0)return;   // page writes "gameID=" — case-insensitive
     const chunk=h.slice(i,i+400).replace(/<[^>]+>/g," ").replace(/\s+/g," ");
     const m=chunk.match(/Final(?:\s*\/\s*(OT|SO))?/i);
     if(m){ISFINAL=true; FINTYPE=(m[1]||"").toUpperCase(); lastSig="";}
