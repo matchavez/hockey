@@ -32,8 +32,13 @@
   #bug{position:absolute;border:0;background:transparent;transform-origin:0 0;width:1920px;height:1080px;}
 
   /* --- ticker (upper-right, exactly the scorebug bar height) --- */
-  #tick{position:absolute;background:#000000;overflow:hidden;z-index:4;visibility:hidden;}
+  #tick{position:absolute;background:#000000;overflow:hidden;z-index:4;visibility:hidden;
+    display:flex;align-items:stretch;}
   #tick.on{visibility:visible;}
+  /* fixed "Recap:" title — always present, never moves; crawl clips at its right edge */
+  #label{flex:0 0 auto;display:flex;align-items:center;padding:0 20px 0 18px;
+    color:#fff;font-weight:600;letter-spacing:.01em;background:#000;position:relative;z-index:2;}
+  #swrap{flex:1 1 auto;position:relative;overflow:hidden;}
   #track{position:absolute;left:0;top:0;height:100%;display:inline-flex;align-items:center;
     white-space:nowrap;will-change:transform;}
   .item{display:inline-flex;align-items:center;}
@@ -48,13 +53,15 @@
   /* Weights (Mat 2026-07-07): emphasis = SemiBold 600, everything else Regular 400 */
   .sent{color:#E8E8E8;font-weight:400;line-height:1.25;letter-spacing:.004em;}
   .sent .tm{font-weight:600;}            /* team name — team readable colour (inline) */
-  .sent .no{font-weight:600;font-variant-numeric:tabular-nums;}  /* jersey # — dimmed team colour (inline) */
+  .sent .no{font-weight:200;font-variant-numeric:tabular-nums;}  /* jersey # — team colour, ExtraLight (Mat 2026-07-07) */
   .sent .pn{font-weight:600;}            /* player name — team readable colour (inline) */
   .sent .inf{font-weight:600;color:#fff;}
   .sent .dur{font-weight:600;color:#fff;}
   .sent .flag{font-weight:600;color:#fff;}
   .sent .tt{font-weight:600;color:#fff;font-variant-numeric:tabular-nums;}
   .sent .lg{font-weight:600;color:#fff;letter-spacing:.04em;}
+  .sent .sc{font-weight:600;color:#fff;font-variant-numeric:tabular-nums;}   /* score digits */
+  .sent .scd{color:#E8E8E8;}                                                 /* score dash */
 
   /* --- test controls (only with ?test=1) --- */
   #test{position:absolute;left:24px;bottom:22px;right:24px;z-index:9;display:none;gap:8px;
@@ -72,7 +79,7 @@
 <div id="stage">
   <div id="bugclip"><iframe id="bug" title="Scorebug" allowtransparency="true" scrolling="no"></iframe></div>
 
-  <div id="tick"><div id="track"></div></div>
+  <div id="tick"><div id="label">Recap:</div><div id="swrap"><div id="track"></div></div></div>
 
   <div id="test">
     <span class="lbl">TICKER TEST</span>
@@ -130,10 +137,8 @@ const REG={
 };
 const DEFV={code:"", ink:"#9aa3ad", dark:"#262a31", logo:""};
 const vis=id=>REG[id]||DEFV;
-// jersey-number colour = the team accent dimmed to ~50% brightness (still legible on #000)
-function dim(hex,f){f=f==null?0.55:f;const n=parseInt(hex.slice(1),16);
-  const r=Math.round(((n>>16)&255)*f),g=Math.round(((n>>8)&255)*f),b=Math.round((n&255)*f);
-  return "rgb("+r+","+g+","+b+")";}
+// Jersey numbers use the SAME team ink as the rest of the recap text (Mat 2026-07-07 — one
+// palette everywhere, no dimmed variant, avoids colour conflicts); weight 200 sets them apart.
 
 /* ====================== URL OVERRIDES ====================== */
 const Q=new URLSearchParams(location.search);
@@ -151,7 +156,7 @@ const TESTMODE = Q.get("test")==="1";
 // scale(1). Runs to the frame's right border (1920) and is clamped inside it.
 // Override live with ?tk=x,y,w,h (e.g. ?tk=794,0,1126,64). To cover the clock/period later,
 // just lower x further.
-let TICK={ x:794, y:0, w:1920-794, h:64 };
+let TICK={ x:796, y:0, w:1920-796, h:64 };   // x nudged 794->796 (Mat: "2px too far left")
 if(Q.get("tk")){const a=Q.get("tk").split(",").map(Number);
   if(a.length>=1&&!isNaN(a[0]))TICK.x=a[0]; if(a.length>=2&&!isNaN(a[1]))TICK.y=a[1];
   if(a.length>=3&&!isNaN(a[2]))TICK.w=a[2]; if(a.length>=4&&!isNaN(a[3]))TICK.h=a[3];}
@@ -271,7 +276,7 @@ function lookupNum(skaters,name){
 
 /* ====================== EVENT MODEL -> STATEMENTS ====================== */
 // event = {kind:'goal'|'pen', teamID, per, t, no, name, assists:[{no,name}], inf, dur, teamPen}
-let AWAYN="",HOMEN="",AWAYID=null,HOMEID=null,LEAGUE="nzihl",VENUE="";
+let AWAYN="",HOMEN="",AWAYID=null,HOMEID=null,LEAGUE="nzihl",VENUE="",AWAYTOT=0,HOMETOT=0;
 function sortEvents(ev){
   return ev.map((e,i)=>({e,i})).sort((a,b)=>{
     const pa=PERI[a.e.per]!=null?PERI[a.e.per]:9, pb=PERI[b.e.per]!=null?PERI[b.e.per]:9;
@@ -281,7 +286,7 @@ function sortEvents(ev){
     return a.i-b.i;
   }).map(o=>o.e);
 }
-function numSpan(no,ink){return no?`<span class="no" style="color:${dim(ink)}">${esc(no)}</span> `:"";}
+function numSpan(no,ink){return no?`<span class="no" style="color:${ink}">${esc(no)}</span> `:"";}
 function nameSpan(nm,ink){return `<span class="pn" style="color:${ink}">${esc(nm)}</span>`;}
 function playerSpan(no,nm,ink){return numSpan(no,ink)+nameSpan(nm,ink);}
 function timeClause(kind,t,per){
@@ -313,27 +318,31 @@ function teamNameOf(id){return id===AWAYID?AWAYN:id===HOMEID?HOMEN:(vis(id).code
 function crestHTML(id){const v=vis(id);
   return v.logo?`<span class="crest"><img src="${LOGO+encodeURIComponent(v.logo)}" alt=""></span>`:`<span class="crest"></span>`;}
 function sepHTML(){return `<span class="lsep"><img src="${LEAGUE_LOGO[LEAGUE]||LEAGUE_LOGO.nzihl}" alt=""></span>`;}
-// evergreen matchup line shown until the first goal/penalty lands
-function matchupItem(){
+// game-score line — ALWAYS the first message of the loop (Mat 2026-07-07):
+//   (away logo) Away Name 0 - 0 Home Name (home logo)
+function scoreItem(){
   const va=vis(AWAYID), vh=vis(HOMEID);
-  const a=AWAYN?`<span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span>`:"";
-  const h=HOMEN?`<span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span>`:"";
-  const at=VENUE?` — live from ${esc(VENUE)}`:"";
-  return crestHTML(AWAYID)+`<span class="sent">${a} <span class="lg">vs</span> ${h} — <span class="lg">${LEAGUE.toUpperCase()}</span>${at}</span>`+crestHTML(HOMEID);
+  return crestHTML(AWAYID)
+    +`<span class="sent"><span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span> `
+    +`<span class="sc">${AWAYTOT}</span> <span class="scd">-</span> <span class="sc">${HOMETOT}</span> `
+    +`<span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span></span>`
+    +crestHTML(HOMEID);
 }
 function buildItems(events){
   const sorted=sortEvents(events);
   const counts={}; const out=[];
+  let ta=0, th=0;   // running away/home tally — each goal announcement ends "(a-h)" (Mat 2026-07-07)
+  if(AWAYN||HOMEN) out.push(scoreItem());
   sorted.forEach(e=>{
     if(e.kind==="goal"){
       const k=String(e.teamID); counts[k]=(counts[k]||0);
-      out.push(crestHTML(e.teamID)+`<span class="sent">${goalSentence(e,counts[k])}</span>`);
+      if(String(e.teamID)===String(AWAYID))ta++; else if(String(e.teamID)===String(HOMEID))th++;
+      out.push(crestHTML(e.teamID)+`<span class="sent">${goalSentence(e,counts[k])} <span class="sc">(${ta}-${th})</span></span>`);
       counts[k]++;
     }else{
       out.push(crestHTML(e.teamID)+`<span class="sent">${penSentence(e)}</span>`);
     }
   });
-  if(!out.length) out.push(matchupItem());
   return out;
 }
 
@@ -341,20 +350,22 @@ function buildItems(events){
 const tick=document.getElementById("tick"), track=document.getElementById("track");
 let items=[], dirty=true, unitW=0, offset=0, running=false, visible=false;
 let traveled=0, lastT=0, cycles=0;   // wall-clock-driven: position stays correct even if frames throttle
+let SW=0;                            // scroll-area width (right of the fixed "Recap:" label)
 function placeTick(){
   tick.style.left=TICK.x+"px"; tick.style.top=TICK.y+"px";
   tick.style.width=TICK.w+"px"; tick.style.height=TICK.h+"px";
   tick.style.setProperty("--th",TICK.h+"px");
-  track.style.fontSize=Math.max(14,Math.round(TICK.h*0.37))+"px";
+  tick.style.fontSize=Math.max(14,Math.round(TICK.h*0.37))+"px";   // label + crawl share the size
 }
 let hadContent=false;
 function rebuild(){
   hadContent=items.length>0;
   const unit=`<span class="item">`+items.map(i=>i+sepHTML()).join("")+`</span>`;
   track.innerHTML=unit;
-  unitW=track.firstElementChild.getBoundingClientRect().width/(stageScale||1);
-  if(unitW<1)unitW=TICK.w;
-  const copies=Math.max(2,Math.ceil((TICK.w+unitW)/unitW)+1);
+  SW=document.getElementById("swrap").clientWidth;        // layout px — transform-independent
+  unitW=track.firstElementChild.offsetWidth;
+  if(unitW<1)unitW=SW||TICK.w;
+  const copies=Math.max(2,Math.ceil((SW+unitW)/unitW)+1);
   track.innerHTML=new Array(copies).fill(unit).join("");
   dirty=false;
 }
@@ -370,9 +381,13 @@ function step(now){
   // overlap gets double-counted when rAF + interval interleave (measured 1.22x, 2026-07-07)
   const d=now-lastT; if(d>0){ traveled+=d/1000*SPEED; lastT=now; }
   if(unitW>0){
-    const c=Math.floor(traveled/unitW);
-    if(c!==cycles){ cycles=c; if(dirty){ rebuild(); traveled=0; cycles=0; } }  // splice new events at the seam
-    offset=-(traveled%unitW);
+    if(traveled<SW){ offset=SW-traveled; }   // entry: the score line leads in from the very right edge
+    else{
+      const t2=traveled-SW;
+      const c=Math.floor(t2/unitW);
+      if(c!==cycles){ cycles=c; if(dirty){ rebuild(); traveled=SW; cycles=0; } }  // splice new events at the seam
+      offset=-((traveled-SW)%unitW);
+    }
   }
   track.style.transform="translateX("+offset+"px)";
 }
@@ -386,11 +401,11 @@ function startTicker(){
 function showTicker(){ if(visible)return; visible=true; tick.classList.add("on"); startTicker(); updDiag(); }
 function setItems(list){
   items=list; dirty=true;
-  if(!visible||unitW<1||!hadContent){ rebuild(); offset=0; traveled=0; cycles=0; }   // not on air, or strip was empty: rebuild immediately
+  if(!visible||unitW<1||!hadContent){ rebuild(); traveled=0; cycles=0; }   // not on air, or strip was empty: rebuild + re-enter from the right
   // else: rebuild happens seamlessly at the next loop boundary
 }
 const FONTS=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
-FONTS.then(()=>{ if(items.length){ dirty=true; if(!visible){rebuild();offset=0;} } });
+FONTS.then(()=>{ if(items.length){ dirty=true; if(!visible){rebuild();traveled=0;cycles=0;} } });
 
 /* ====================== LIVE DETECTION ====================== */
 let TARGET=null, lastSig="";
@@ -436,8 +451,17 @@ async function tickPoll(){
   let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   lastEv=liveEvents(P);
+  if(TESTMODE){
+    // test pretends we're heading into the SECOND INTERMISSION: only periods 1+2 exist,
+    // and the score line reflects just those goals (Mat 2026-07-07)
+    lastEv=lastEv.filter(e=>e.per==="1"||e.per==="2");
+    AWAYTOT=lastEv.filter(e=>e.kind==="goal"&&e.teamID===AWAYID).length;
+    HOMETOT=lastEv.filter(e=>e.kind==="goal"&&e.teamID===HOMEID).length;
+  }else{
+    AWAYTOT=P.away.tot||0; HOMETOT=P.home.tot||0;
+  }
   const all=lastEv.concat(extras);
-  const sig=all.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf,e.flag].join("|")).join("~");
+  const sig=AWAYTOT+"-"+HOMETOT+"~"+all.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf,e.flag].join("|")).join("~");
   if(sig!==lastSig){ lastSig=sig; setItems(buildItems(all)); updDiag(all.length); }
 }
 
@@ -446,7 +470,9 @@ async function tickPoll(){
    so the test exercises the actual parser/roster-number/pill path (Mat 2026-07-07).
    The +Goal/+Penalty buttons append SYNTHETIC extra events on top of the real feed to
    exercise mid-crawl splicing, PP/SH phrasing and severity tags on demand. */
-const DEMO_GAME=2519942;   // 2026-07-05 SkyCity Stampede @ Botany Swarm (completed)
+// Test = the LAST Red Devils–Thunder game, trimmed to periods 1+2 as if heading into the
+// second intermission (Mat 2026-07-07). Filter + score-recount happen in tickPoll.
+const DEMO_GAME=2519940;   // Dunedin Thunder 4 @ Canterbury Red Devils 6 (full game; test shows P1+P2 only)
 let lastEv=[], extras=[];
 const TPOOL={goals:[{no:7,name:"Te Rangi Henare",flag:"PPG"},{no:41,name:"Marcus Henderson",flag:"SHG"},{no:12,name:"Wiremu Mikaere",flag:""}],
   pens:[["Slashing","2 Minutes"],["Hooking","4 Minutes"],["Fighting","5 Minutes"]]};
