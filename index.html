@@ -58,8 +58,12 @@
     -webkit-background-clip:text; background-clip:text; color:transparent; }
   .hero .tag{ color:var(--muted); margin-top:7px; font-size:14px; max-width:640px; }
 
-  /* "next game" chips — one per league, filled live from boxscores.json */
-  .next-chips{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; margin-top:16px; }
+  /* "This Weekend" chips — one per live series (any concurrent matchup), filled from boxscores.json */
+  .weekend-wrap{ display:none; margin-top:16px; }
+  .weekend-wrap.show{ display:block; }
+  .weekend-label{ font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--muted); margin:0 0 8px; }
+  .next-chips{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; }
   .next-chip{ display:none; align-items:center; gap:9px; padding:8px 15px;
     border-radius:999px; border:1px solid rgba(247,190,17,.4); background:rgba(247,190,17,.06);
     font-size:12.5px; font-weight:600; transition:box-shadow .2s, border-color .2s; }
@@ -262,9 +266,9 @@
     <div class="eyebrow">2026 Season <span class="sep"></span> <span id="clock"></span></div>
     <h1>NZ Hockey Broadcast Assets</h1>
     <div class="tag">One place for every NZIHL &amp; NZWIHL broadcast asset — standings, rosters, Up Next graphics, loops and brand. Most update automatically.</div>
-    <div class="next-chips">
-      <a id="next-chip" class="next-chip" target="_blank" rel="noopener"></a>
-      <a id="next-chip-w" class="next-chip blue" target="_blank" rel="noopener"></a>
+    <div id="weekend-wrap" class="weekend-wrap">
+      <div class="weekend-label">This Weekend</div>
+      <div id="next-chips" class="next-chips"></div>
     </div>
   </div>
 </header>
@@ -630,24 +634,45 @@ async function loadBoxscores(){
         : `<div class="game card" style="opacity:.55">${inner}</div>`;
     }).join('');
 
-    // "next game" hero chips — first NZIHL game and first NZWIHL game that
-    // haven't finished (3 h grace for in-progress), each in its own pill.
+    // "This Weekend" hero chips — one pill per live SERIES (same two teams,
+    // games <=3 days apart), not just the single soonest game. Two series can
+    // run concurrently (e.g. Swarm@Thunder Fri/Sat + Stampede@RedDevils
+    // Sat/Sun the same weekend) — each gets its own pill showing that
+    // series' next unplayed leg. Uses the full manifest (games, not the
+    // narrower core-window `fresh`) so "this weekend" always resolves to
+    // whichever weekend is soonest, even from the 11-day extended lookahead.
     const now = Date.now();
-    const nextOf = lg => fresh.find(g => {
-      if((g.league||'').toUpperCase() !== lg) return false;
+    const notFinished = g => {
       const t = Date.parse(g.datetime || g.date);
       return t && t > now - 3*3600e3;
-    });
-    const fillChip = (id, lg, g) => {
-      if(!g) return;
-      const chip = document.getElementById(id);
-      const url = urlOf(g);
-      chip.innerHTML = `<span class="dot"></span><b>NEXT ${lg}</b> ${g.away} @ ${g.home} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}${g.venue ? ' · ' + g.venue : ''}`;
-      if(url) chip.href = url; else chip.removeAttribute('href');
-      chip.classList.add('show');
     };
-    fillChip('next-chip', 'NZIHL', nextOf('NZIHL'));
-    fillChip('next-chip-w', 'NZWIHL', nextOf('NZWIHL'));
+    const weekendSeriesFor = lg => {
+      const upcoming = games
+        .filter(g => (g.league||'').toUpperCase() === lg && notFinished(g))
+        .sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
+      if(!upcoming.length) return [];
+      const t0 = Date.parse(upcoming[0].datetime || upcoming[0].date);
+      const weekend = upcoming.filter(g => Math.abs(Date.parse(g.datetime||g.date) - t0) <= 3*86400e3);
+      const bySeries = new Map();
+      weekend.forEach(g => {
+        const key = [g.away, g.home].sort().join('|');
+        if(!bySeries.has(key)) bySeries.set(key, g);  // weekend is already chronological — first hit is the next leg
+      });
+      return [...bySeries.values()];
+    };
+    const chips = [
+      ...weekendSeriesFor('NZIHL').map(g => ({ g, cls:'' })),
+      ...weekendSeriesFor('NZWIHL').map(g => ({ g, cls:'blue' })),
+    ];
+    if(chips.length){
+      document.getElementById('next-chips').innerHTML = chips.map(({g, cls}) => {
+        const url = urlOf(g);
+        const tag = cls === 'blue' ? 'NZWIHL' : 'NZIHL';
+        const attrs = url ? `href="${url}" target="_blank" rel="noopener"` : '';
+        return `<a class="next-chip ${cls} show" ${attrs}><span class="dot"></span><b>${tag}</b> ${g.away} @ ${g.home} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}${g.venue ? ' · ' + g.venue : ''}</a>`;
+      }).join('');
+      document.getElementById('weekend-wrap').classList.add('show');
+    }
   }catch(_){ /* keep static fallback */ }
 }
 loadBoxscores();
