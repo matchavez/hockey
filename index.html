@@ -541,7 +541,7 @@ document.getElementById('banner-nzwihl').innerHTML = NZWIHL.map(bannerCard).join
 // forever when there's nothing yet scheduled to replace them. Direct URLs
 // (summary/?g=..., the GitHub release itself) are unaffected — this only
 // changes what gets featured as current.
-const STALE_CUTOFF_DAYS = 3;
+const STALE_CUTOFF_DAYS = 2;
 const nzTodayISO = () => new Date().toLocaleDateString('en-CA', {timeZone:'Pacific/Auckland'});
 const daysPast = (isoDate, todayISO) =>
   Math.round((new Date(todayISO+'T00:00:00Z') - new Date((isoDate||'').slice(0,10)+'T00:00:00Z')) / 86400000);
