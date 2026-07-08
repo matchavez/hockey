@@ -58,8 +58,9 @@
     -webkit-background-clip:text; background-clip:text; color:transparent; }
   .hero .tag{ color:var(--muted); margin-top:7px; font-size:14px; max-width:640px; }
 
-  /* "next game" chip — filled live from boxscores.json */
-  .next-chip{ display:none; align-items:center; gap:9px; margin-top:16px; padding:8px 15px;
+  /* "next game" chips — one per league, filled live from boxscores.json */
+  .next-chips{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; margin-top:16px; }
+  .next-chip{ display:none; align-items:center; gap:9px; padding:8px 15px;
     border-radius:999px; border:1px solid rgba(247,190,17,.4); background:rgba(247,190,17,.06);
     font-size:12.5px; font-weight:600; transition:box-shadow .2s, border-color .2s; }
   .next-chip.show{ display:inline-flex; }
@@ -68,6 +69,13 @@
   .next-chip .dot{ background:var(--gold); animation-name:pulse-gold; margin:0; }
   @keyframes pulse-gold{ 0%,100%{ box-shadow:0 0 0 0 rgba(247,190,17,.5); }
     50%{ box-shadow:0 0 0 5px rgba(247,190,17,0); } }
+  /* NZWIHL variant — same blue as hockeyrosters' .chip.NZWIHL (var(--accent), #3aa0ff) */
+  .next-chip.blue{ border-color:rgba(58,160,255,.4); background:rgba(58,160,255,.06); }
+  a.next-chip.blue:hover{ border-color:rgba(58,160,255,.7); box-shadow:0 0 18px rgba(58,160,255,.22); }
+  .next-chip.blue b{ color:var(--accent); }
+  .next-chip.blue .dot{ background:var(--accent); animation-name:pulse-blue; }
+  @keyframes pulse-blue{ 0%,100%{ box-shadow:0 0 0 0 rgba(58,160,255,.5); }
+    50%{ box-shadow:0 0 0 5px rgba(58,160,255,0); } }
 
   nav.jump{ position:sticky; top:0; z-index:5; background:rgba(10,11,13,.86);
     backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
@@ -254,7 +262,10 @@
     <div class="eyebrow">2026 Season <span class="sep"></span> <span id="clock"></span></div>
     <h1>NZ Hockey Broadcast Assets</h1>
     <div class="tag">One place for every NZIHL &amp; NZWIHL broadcast asset — standings, rosters, Up Next graphics, loops and brand. Most update automatically.</div>
-    <a id="next-chip" class="next-chip" target="_blank" rel="noopener"></a>
+    <div class="next-chips">
+      <a id="next-chip" class="next-chip" target="_blank" rel="noopener"></a>
+      <a id="next-chip-w" class="next-chip blue" target="_blank" rel="noopener"></a>
+    </div>
   </div>
 </header>
 
@@ -619,19 +630,24 @@ async function loadBoxscores(){
         : `<div class="game card" style="opacity:.55">${inner}</div>`;
     }).join('');
 
-    // "next game" hero chip — first game that hasn't finished (3 h grace for in-progress)
+    // "next game" hero chips — first NZIHL game and first NZWIHL game that
+    // haven't finished (3 h grace for in-progress), each in its own pill.
     const now = Date.now();
-    const nxt = fresh.find(g => {
+    const nextOf = lg => fresh.find(g => {
+      if((g.league||'').toUpperCase() !== lg) return false;
       const t = Date.parse(g.datetime || g.date);
       return t && t > now - 3*3600e3;
     });
-    if(nxt){
-      const chip = document.getElementById('next-chip');
-      const url = urlOf(nxt);
-      chip.innerHTML = `<span class="dot"></span><b>NEXT</b> ${nxt.away} @ ${nxt.home} · ${fmt(nxt)}${nxt.time ? ' · ' + nxt.time : ''}${nxt.venue ? ' · ' + nxt.venue : ''}`;
+    const fillChip = (id, lg, g) => {
+      if(!g) return;
+      const chip = document.getElementById(id);
+      const url = urlOf(g);
+      chip.innerHTML = `<span class="dot"></span><b>NEXT ${lg}</b> ${g.away} @ ${g.home} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}${g.venue ? ' · ' + g.venue : ''}`;
       if(url) chip.href = url; else chip.removeAttribute('href');
       chip.classList.add('show');
-    }
+    };
+    fillChip('next-chip', 'NZIHL', nextOf('NZIHL'));
+    fillChip('next-chip-w', 'NZWIHL', nextOf('NZWIHL'));
   }catch(_){ /* keep static fallback */ }
 }
 loadBoxscores();
