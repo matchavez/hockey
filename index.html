@@ -279,6 +279,7 @@
 <nav class="jump">
   <div class="wrap">
     <a href="#standings">Standings</a>
+    <a href="#teampages">Team Pages</a>
     <a href="#boxscores">Live Game Summary</a>
     <a href="#summaryslugs">Summary Slugs</a>
     <a href="#bannerslugs">Banner Slugs</a>
@@ -306,6 +307,15 @@
         <figcaption><b>NZWIHL</b><span class="acts"><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">1920×1080</button><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
     </div>
+  </section>
+
+  <!-- TEAM PAGES -->
+  <section id="teampages">
+    <div class="sec-head"><span class="sec-txt"><h2>Team Pages <span class="chip blue">New</span></h2><span class="sub">Every asset for one club, in one place — Game Summary, Activity Banner, Ticker, Scorebug, roster, graphics packs and brand</span></span></div>
+    <div class="league-label">NZIHL</div>
+    <div id="teampages-nzihl" class="grid g3"></div>
+    <div class="league-label">NZWIHL</div>
+    <div id="teampages-nzwihl" class="grid g3"></div>
   </section>
 
   <!-- THIS WEEKEND · BOX SCORES -->
@@ -488,6 +498,14 @@ function upCard(t){
     <a class="pill dl" title="Download the team pack (zip)" href="${zip}">Zip</a>
     <a class="pill ext" title="Browse the files on GitHub" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
 }
+// Team Pages directory — one-club aggregate view (team/?team=<slug>)
+function teamPageCard(t){
+  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  return `<a class="team" href="team/?team=${sl}">${idw(t)}<span class="acts"><span class="pill ext">Open</span></span></a>`;
+}
+document.getElementById('teampages-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(teamPageCard).join('');
+document.getElementById('teampages-nzwihl').innerHTML = NZWIHL.map(teamPageCard).join('');
+
 document.getElementById('upnext-nzihl').innerHTML  = NZIHL.map(upCard).join('');
 document.getElementById('upnext-nzwihl').innerHTML = NZWIHL.map(upCard).join('');
 

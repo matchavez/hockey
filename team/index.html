@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Page — NZ Hockey Broadcast Assets</title>
+<meta name="description" content="Every broadcast asset for one club in one place — Game Summary, Activity Banner, Ticker, Scorebug, roster, graphics packs, brand.">
+<link rel="icon" href="data:,">
+<style>
+  @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+  @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable-Italic.woff2') format('woff2');}
+  :root{
+    --bg:#0a0b0d; --panel:#141619; --panel2:#1b1e22; --line:#2a2e34;
+    --txt:#f3f4f6; --muted:#9aa3ad; --gold:#f7be11; --accent:#3aa0ff; --live:#2ecc71;
+    --ink:#f7be11; --dark:#262a31;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:var(--bg); color:var(--txt);
+    font-family:Inter,-apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;
+    font-feature-settings:"ss01" 1,"ss02" 1; line-height:1.5; }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:860px; margin:0 auto; padding:0 16px; }
+
+  header.hero{ padding:28px 0 26px; border-bottom:1px solid var(--line); position:relative; overflow:hidden; }
+  header.hero::before{ content:""; position:absolute; inset:-60% -20%; pointer-events:none;
+    background: radial-gradient(560px 280px at 20% 30%, color-mix(in srgb, var(--ink) 16%, transparent), transparent 62%),
+      radial-gradient(620px 300px at 82% 25%, color-mix(in srgb, var(--dark) 60%, transparent), transparent 62%); }
+  .hero .wrap{ position:relative; }
+  .crumbs{ display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:16px; flex-wrap:wrap; }
+  .crumbs a{ padding:4px 10px; border-radius:999px; border:1px solid var(--line); transition:color .15s,border-color .15s,background .15s; }
+  .crumbs a:hover{ color:var(--txt); border-color:#3a3f47; background:var(--panel); }
+  .crumbs span{ opacity:.5; }
+
+  .idcard{ display:flex; align-items:center; gap:16px; }
+  .idcard img{ width:64px; height:64px; object-fit:contain; filter:drop-shadow(0 2px 8px rgba(0,0,0,.5)); flex:0 0 auto; }
+  .idcard h1{ font-size:clamp(22px,4vw,32px); font-weight:800; margin:0; }
+  .idcard .lg-tag{ display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:800;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink); margin-top:6px; }
+  .swatches{ display:flex; gap:6px; margin-top:10px; }
+  .sw{ width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.15); cursor:pointer;
+    transition:transform .15s; }
+  .sw:hover{ transform:scale(1.12); }
+
+  section{ padding:24px 0 4px; }
+  .sec-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .sec-head h2{ font-size:15px; font-weight:800; margin:0; }
+  .sec-head .sub{ font-size:12px; color:var(--muted); }
+  .chip{ font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;
+    border:1px solid rgba(46,204,113,.35); color:var(--live); background:rgba(46,204,113,.07); }
+  .chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--live); margin:0; animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,.45); } 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
+
+  .grid{ display:grid; gap:10px; grid-template-columns:repeat(2,1fr); }
+  @media(max-width:560px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+  .card h3{ margin:0 0 4px; font-size:14px; font-weight:700; }
+  .card p{ margin:0 0 10px; font-size:12px; color:var(--muted); }
+  .card p:last-of-type{ margin-bottom:0; }
+  .links{ display:flex; flex-wrap:wrap; gap:7px; margin-top:2px; }
+
+  .btn{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:6px 11px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt); cursor:pointer;
+    transition:color .15s ease, border-color .15s ease, background .15s ease, box-shadow .22s ease, transform .15s ease; }
+  .btn:hover{ transform:translateY(-1px); border-color:#3a3f47; }
+  .dl:hover,.cp:hover{ border-color:rgba(247,190,17,.55); color:#fff; box-shadow:0 0 0 1px rgba(247,190,17,.28), 0 0 16px rgba(247,190,17,.20); }
+  .ext:hover{ border-color:rgba(58,160,255,.55); color:#fff; box-shadow:0 0 0 1px rgba(58,160,255,.25), 0 0 16px rgba(58,160,255,.20); }
+  .dl::before{ content:"↓"; } .ext::before{ content:"↗"; } .cp::before{ content:"⧉"; }
+  .dl::before,.ext::before,.cp::before{ margin-right:5px; opacity:.6; font-size:10px; font-weight:700; }
+  .copied{ color:var(--gold) !important; border-color:rgba(247,190,17,.6) !important; }
+  .copied::before{ content:"✓" !important; opacity:1 !important; }
+
+  .roster-item{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .muted-note{ color:var(--muted); font-size:12px; margin:0; }
+
+  /* team picker (no ?team= given) */
+  .team{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--panel); border:1px solid var(--line); border-radius:11px;
+    padding:8px 12px 8px 8px; transition:border-color .15s, background .15s; }
+  .team:hover{ border-color:#3a3f47; background:#17191d; }
+  .team .idw{ display:flex; align-items:center; gap:9px; min-width:0; }
+  .team .lg{ width:28px; height:28px; object-fit:contain; flex:0 0 auto; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .team .nm{ font-size:13.5px; font-weight:600; }
+  .league-label{ font-size:11px; font-weight:800; letter-spacing:.14em; color:var(--muted);
+    text-transform:uppercase; margin:18px 2px 8px; display:flex; align-items:center; gap:8px; }
+  .league-label::before{ content:""; display:inline-block; width:14px; height:2px; background:var(--gold); border-radius:2px; }
+
+  footer{ margin-top:26px; border-top:1px solid var(--line); padding:18px 0 40px; color:var(--muted); font-size:12.5px; }
+  footer a{ color:var(--accent); }
+
+  #toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px);
+    background:#fff; color:#000; font-size:12.5px; font-weight:700; padding:9px 16px;
+    border-radius:20px; opacity:0; pointer-events:none; transition:all .2s ease; z-index:30; }
+  #toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="../">&larr; Portal</a><span>/</span><a href="../#standings" id="crumb-league">Team</a></div>
+    <div id="idcard" class="idcard"></div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<footer>
+  <div class="wrap">
+    Every asset on this page also lives on the <a href="../">full portal</a> — this is just the one-club view.
+    <div style="margin-top:8px">Source repos:
+      <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets">nzihl-broadcast-assets</a> ·
+      <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters">nzihl-broadcast-rosters</a> ·
+      <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">nzwihl-broadcast-rosters</a>
+    </div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+const ASSETS = "https://matchavez.com/nzihl-broadcast-assets";
+const enc = s => encodeURIComponent(s);
+
+// Same club rosters as the main portal. Auckland Mako excluded — stood down, no
+// 2026 games, so it has no Game Summary / Activity Banner / Ticker / Scorebug slug
+// to point a team page at (matches the exclusion already used on the main portal).
+const NZIHL = [
+  {nm:"Pure NZ Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals", logo:"Pure-NZ-Admirals-2000x2000.png", roster:"nzihl-broadcast-rosters"},
+  {nm:"Botany Swarm", up:"Botany Swarm", dvd:"BotanySwarm", logo:"Botany Swarm 2000x2000.png", roster:"nzihl-broadcast-rosters"},
+  {nm:"SkyCity Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede", logo:"Skycity Stampede 2000x2000.png", roster:"nzihl-broadcast-rosters"},
+  {nm:"Dunedin Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder", logo:"Dunedin_Thunder.png", roster:"nzihl-broadcast-rosters"},
+  {nm:"Canterbury Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils", logo:"Red Devils 2000x2000r.png", roster:"nzihl-broadcast-rosters"},
+];
+const NZWIHL = [
+  {nm:"Auckland Steel", up:"Auckland Steel", dvd:"AucklandSteel", logo:"Auckland-Steel-White.png", roster:"nzwihl-broadcast-rosters"},
+  {nm:"Canterbury Inferno", up:"Canterbury Inferno", dvd:"CanterburyInferno", logo:"Inferno-White.png", roster:"nzwihl-broadcast-rosters"},
+  {nm:"Dunedin Thunder Women", up:"Dunedin Thunder Women", dvd:"DunedinThunderWomen", logo:"thunder-women-white.png", roster:"nzwihl-broadcast-rosters"},
+  {nm:"Wakatipu Wild", up:"Wakatipu Wild", dvd:"WakatipuWild", logo:"Wakatipu-wild-white.png", roster:"nzwihl-broadcast-rosters"},
+];
+[NZIHL, NZWIHL].forEach(a => a.sort((x,y) => x.nm.localeCompare(y.nm)));
+NZIHL.forEach(t => t.league = "NZIHL");
+NZWIHL.forEach(t => t.league = "NZWIHL");
+const ALL = [...NZIHL, ...NZWIHL];
+
+// Official ink/half-dark pair per the 2026 Style & Colour Guide (same REG table
+// duplicated in ticker/scorebug/summary/activity-banner — keep in sync).
+const COLORS = {
+  "Pure NZ Admirals":        {ink:"#F7BE11", dark:"#081D48"},
+  "Canterbury Red Devils":   {ink:"#E5242B", dark:"#550000"},
+  "Dunedin Thunder":         {ink:"#1E9E63", dark:"#012C1E"},
+  "SkyCity Stampede":        {ink:"#FAC805", dark:"#162543"},
+  "Botany Swarm":            {ink:"#F7AF28", dark:"#441620"},
+  "Auckland Steel":          {ink:"#9FB6C8", dark:"#18263E"},
+  "Canterbury Inferno":      {ink:"#E0564E", dark:"#550000"},
+  "Dunedin Thunder Women":   {ink:"#1E9E63", dark:"#012C1E"},
+  "Wakatipu Wild":           {ink:"#FAC805", dark:"#162543"},
+};
+
+// The Singular scorebug output is per-BROADCAST, not per-team — only these two
+// clubs share a wired output right now (see scorebug/index.html BUGMAP).
+const SCOREBUG_WIRED = new Set(["canterbury-red-devils", "canterbury-inferno"]);
+
+const slug = nm => nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const logoUrl = t => `${ASSETS}/assets/logos/${enc(t.logo)}`;
+
+const params = new URLSearchParams(location.search);
+const wantSlug = (params.get('team') || '').toLowerCase().trim();
+const team = wantSlug ? ALL.find(t => slug(t.nm) === wantSlug) : null;
+
+const toast = document.getElementById('toast');
+function flash(msg){ toast.textContent = msg; toast.classList.add('on');
+  clearTimeout(flash._t); flash._t = setTimeout(()=>toast.classList.remove('on'),1200); }
+function copiedFx(b){ if(!b._label) b._label = b.textContent; b.textContent = 'Copied'; b.classList.add('copied');
+  clearTimeout(b._t); b._t = setTimeout(()=>{ b.textContent = b._label; b.classList.remove('copied'); },1200); }
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-copy]'); if(!b) return;
+  const txt = b.getAttribute('data-copy');
+  (navigator.clipboard?.writeText(txt) ?? Promise.reject()).then(()=>{ flash('Copied URL'); copiedFx(b); }).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy');}catch(_){} ta.remove(); flash('Copied URL'); copiedFx(b);
+  });
+});
+
+if(!team){
+  // ---- TEAM PICKER — no (or unrecognised) ?team= given ----
+  document.title = "Choose a Team — NZ Hockey Broadcast Assets";
+  document.getElementById('idcard').innerHTML = `
+    <div>
+      <h1 style="font-size:clamp(22px,4vw,32px);font-weight:800;margin:0">Choose your team</h1>
+      <div style="color:var(--muted);font-size:13.5px;margin-top:6px;max-width:520px">
+        Every broadcast link for one club, in one place — pick a team below, or bookmark its
+        <code style="background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px">?team=</code> URL for next time.
+      </div>
+    </div>`;
+  const teamCard = t => `<a class="team" href="?team=${slug(t.nm)}"><span class="idw">
+    <img class="lg" loading="lazy" src="${logoUrl(t)}" alt=""><span class="nm">${t.nm}</span></span></a>`;
+  document.getElementById('main').innerHTML = `
+    <section>
+      <div class="league-label">NZIHL</div>
+      <div class="grid">${NZIHL.map(teamCard).join('')}</div>
+      <div class="league-label">NZWIHL</div>
+      <div class="grid">${NZWIHL.map(teamCard).join('')}</div>
+    </section>`;
+}else{
+  // ---- SINGLE-TEAM VIEW ----
+  const sl = slug(team.nm);
+  const col = COLORS[team.nm] || {ink:"#f7be11", dark:"#262a31"};
+  document.documentElement.style.setProperty('--ink', col.ink);
+  document.documentElement.style.setProperty('--dark', col.dark);
+  document.title = `${team.nm} — NZ Hockey Broadcast Assets`;
+  document.getElementById('crumb-league').textContent = team.league;
+  document.getElementById('crumb-league').href = `../#${team.league === 'NZWIHL' ? 'bannerslugs' : 'standings'}`;
+
+  document.getElementById('idcard').innerHTML = `
+    <img src="${logoUrl(team)}" alt="">
+    <div>
+      <h1>${team.nm}</h1>
+      <div class="lg-tag">${team.league}</div>
+      <div class="swatches">
+        <span class="sw" style="background:${col.ink}" title="Ink ${col.ink} — click to copy" data-copy="${col.ink}"></span>
+        <span class="sw" style="background:${col.dark}" title="Half-dark ${col.dark} — click to copy" data-copy="${col.dark}"></span>
+      </div>
+    </div>`;
+
+  const summaryBlack  = `../summary/?team=${sl}&bg=black`;
+  const summaryOpaque = `../summary/?team=${sl}&bg=opaque`;
+  const bannerPath    = `../activity-banner/?team=${sl}`;
+  const tickerPath    = `../ticker/?team=${sl}`;
+  const scorebugPath  = `../scorebug/?team=${sl}`;
+  const full = p => `https://matchavez.com/hockey/${p.replace(/^\.\.\//,'')}`;
+
+  const overlayCard = (title, sub, chip, openLinks) => `
+    <div class="card">
+      <h3>${title} ${chip||''}</h3>
+      <p>${sub}</p>
+      <div class="links">${openLinks}</div>
+    </div>`;
+
+  const overlaysHtml = [
+    overlayCard("Game Summary", "Live scoring card · 1840×1000-style.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${summaryBlack}">Black</a>
+       <a class="btn ext" target="_blank" rel="noopener" href="${summaryOpaque}">Opaque</a>
+       <a class="btn cp" data-copy="${full(summaryBlack)}">Copy</a>`),
+    overlayCard("Activity Banner", "Transparent goal/penalty banner, no scorebug.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${bannerPath}">Open</a>
+       <a class="btn cp" data-copy="${full(bannerPath)}">Copy</a>`),
+    overlayCard("Ticker Page", "Scorebug + scrolling recap ticker.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${tickerPath}">Open</a>
+       <a class="btn cp" data-copy="${full(tickerPath)}">Copy</a>`),
+    SCOREBUG_WIRED.has(sl)
+      ? overlayCard("Scorebug", "Singular scorebug clip + bottom banner.", '<span class="chip"><span class="dot"></span>Live</span>',
+          `<a class="btn ext" target="_blank" rel="noopener" href="${scorebugPath}">Open</a>
+           <a class="btn cp" data-copy="${full(scorebugPath)}">Copy</a>`)
+      : `<div class="card"><h3>Scorebug</h3><p class="muted-note">Not wired for this club yet — each club needs its own Singular output id. Ask Mat to fill it in before publishing.</p></div>`,
+  ].join('');
+
+  const upZip = `${ASSETS}/up-next/zips/${sl.replace(/-/g,'_')}_upnext.zip`;
+  const upBrowse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/up-next/${enc(team.up)}`;
+  const dvdZip = `${ASSETS}/DVD%20Bounce%20Loops/zips/${sl.replace(/-/g,'_')}_dvd.zip`;
+  const dvdBrowse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${team.dvd}`;
+
+  document.getElementById('main').innerHTML = `
+    <section>
+      <div class="sec-head"><h2>Broadcast Overlays</h2><span class="sub">Static per-club URLs — open or copy as a browser source</span></div>
+      <div class="grid">${overlaysHtml}</div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Game-Day Roster <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Latest fixture PDF for this club</span></div>
+      <div class="card">
+        <div id="roster-slot"><p class="muted-note">Loading latest…</p></div>
+        <div class="links" style="margin-top:10px">
+          <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/hockeyrosters/">Roster Portal</a>
+          <a class="btn ext" target="_blank" rel="noopener" href="https://github.com/matchavez/${team.roster}/releases">All releases</a>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Graphics Packs</h2><span class="sub">Download the team pack, or browse the files</span></div>
+      <div class="grid">
+        <div class="card"><h3>Up Next</h3><p>Hero &amp; lower-third overlays for this matchup slot.</p>
+          <div class="links"><a class="btn dl" href="${upZip}">Zip</a><a class="btn ext" target="_blank" rel="noopener" href="${upBrowse}">Browse</a></div></div>
+        <div class="card"><h3>DVD Bounce Loop</h3><p>Seamless bouncing-logo MP4s, 4 corner variants (1080p50).</p>
+          <div class="links"><a class="btn dl" href="${dvdZip}">Zip</a><a class="btn ext" target="_blank" rel="noopener" href="${dvdBrowse}">Browse</a></div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Brand</h2><span class="sub">Logo &amp; colours</span></div>
+      <div class="grid">
+        <div class="card"><h3>Logo</h3><p>High-res PNG mark.</p>
+          <div class="links"><a class="btn dl" href="${logoUrl(team)}">PNG</a></div></div>
+        <div class="card"><h3>Full brand guide</h3><p>All-team palettes, logo plates, usage rules.</p>
+          <div class="links">
+            <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">Style Guide</a>
+            <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-hex-cheat-sheet.html">Hex Sheet</a>
+          </div></div>
+      </div>
+    </section>`;
+
+  // Live latest roster PDF for this club — matches the release asset (named
+  // <date>_<AWAYCODE>_at_<HOMECODE>.pdf) whose code belongs to this team.
+  // Codes come from boxscores.json (away_code/home_code) rather than a fixed
+  // table, since esportsdesk's short codes don't always match our own (e.g.
+  // Pure NZ Admirals = "WAA", a legacy code, not "ADM").
+  (async function loadRoster(){
+    const el = document.getElementById('roster-slot');
+    const repo = team.roster;
+    try{
+      const [relRes, bsRes] = await Promise.all([
+        fetch(`https://api.github.com/repos/matchavez/${repo}/releases?per_page=40`),
+        fetch(`https://raw.githubusercontent.com/matchavez/${repo}/main/boxscores.json`, {cache:"no-store"}).catch(()=>null),
+      ]);
+      if(!relRes.ok) throw new Error(String(relRes.status));
+      const releases = await relRes.json();
+      let codeMap = {};
+      if(bsRes && bsRes.ok){
+        const bs = await bsRes.json();
+        (bs.games||[]).forEach(g=>{ if(g.away) codeMap[g.away]=g.away_code; if(g.home) codeMap[g.home]=g.home_code; });
+      }
+      const myCode = codeMap[team.nm];
+      const hits = [];
+      releases.forEach(r=>{
+        (r.assets||[]).filter(a=>a.name.toLowerCase().endsWith('.pdf')).forEach(a=>{
+          const m = a.name.match(/^(\d{4}-\d{2}-\d{2})_([A-Za-z]+)_at_([A-Za-z]+)\.pdf$/i);
+          if(!m) return;
+          const [, date, away, home] = m;
+          const isMatch = myCode ? (away.toUpperCase()===myCode.toUpperCase() || home.toUpperCase()===myCode.toUpperCase()) : false;
+          if(isMatch) hits.push({date, name:a.name, url:a.browser_download_url});
+        });
+      });
+      if(!hits.length){ el.innerHTML = `<p class="muted-note">No roster found yet for this club this season.</p>`; return; }
+      const uniq = [...new Map(hits.map(h=>[h.name,h])).values()].sort((a,b)=>a.date.localeCompare(b.date));
+      const todayISO = new Date().toLocaleDateString('en-CA', {timeZone:'Pacific/Auckland'});
+      const pick = uniq.find(h=>h.date >= todayISO) || uniq[uniq.length-1];
+      const label = pick.name.replace(/\.pdf$/i,'').replace(/_/g,' ');
+      el.innerHTML = `<div class="roster-item"><span class="f">${label}</span><a class="btn dl" href="${pick.url}">PDF</a></div>`;
+    }catch(e){
+      el.innerHTML = `<p class="muted-note">Couldn't load live — <a style="color:var(--accent)" target="_blank" rel="noopener" href="https://github.com/matchavez/${repo}/releases">browse releases →</a></p>`;
+    }
+  })();
+}
+</script>
+</body>
+</html>

@@ -16,6 +16,7 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | Path | Purpose | Key URL params |
 |---|---|---|
 | `index.html` | Portal: links, team-slug lists, standings embeds, beta links in footer | — |
+| `team/` | **Team Page**: one-club aggregate view (all overlay links, live roster PDF, graphics packs, brand) — no ?team= shows a team picker | `?team=` |
 | `ticker/` | **Ticker Page**: scorebug clip + top-right verbose scrolling game ticker (pregame / live / FINAL aware) | `?team=` `?g=` `?test=1` `?ad=` `?tk=` `?speed=` `?bs=` `?bug=` |
 | `scorebug/` | Singular scorebug clip + goal/penalty banner (bottom of frame) | `?team=` `?g=` `?test=1` `?bs=` `?bug=` |
 | `activity-banner/` | Transparent 1920×1080, goal/penalty banner ONLY (no scorebug), flush bottom | `?team=` `?g=` `?test=1` |
@@ -225,9 +226,20 @@ Polling: box score 12s, leaders/FINAL-check every 5th poll, auto-stop 3h15m (`RU
 
 ## Portal (`index.html`)
 
-Sections: standings graphics, roster links, Activity Banner team slugs, section thumbnails,
-footer beta links (scorebug ×2, activity banner, **Ticker Page**, 49ing cockpit, Singular login).
-When adding a page, add its footer link.
+Sections: standings graphics, roster links, Activity Banner team slugs, **Team Pages directory**,
+section thumbnails, footer beta links (scorebug ×2, activity banner, **Ticker Page**, 49ing
+cockpit, Singular login). When adding a page, add its footer link.
+
+## team/ — one-club aggregate view
+
+`team/?team=<slug>` pulls together everything for one club: Game Summary (Black/Opaque),
+Activity Banner, Ticker, Scorebug (only where `BUGMAP`-wired — currently Red Devils + Inferno
+share the Christchurch output; other clubs show a "not wired" note instead of a dead link),
+live-fetched latest roster PDF, Up Next + DVD Loop packs, logo, and ink/dark colour swatches
+(a local `COLORS` map mirroring `REG` — keep in sync with the table above). No `?team=` (or an
+unrecognised one) renders a team picker grid instead. Roster matching resolves the club's
+esportsdesk short code from `boxscores.json` (`away_code`/`home_code`) rather than a fixed table,
+since those codes don't always match our own naming (e.g. Pure NZ Admirals = `WAA`, not `ADM`).
 
 ---
 
