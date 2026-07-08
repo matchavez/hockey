@@ -191,6 +191,9 @@
     text-transform:uppercase; margin:8px 2px 8px; display:flex; align-items:center; gap:8px; }
   .league-label::before{ content:""; display:inline-block; width:14px; height:2px;
     background:var(--gold); border-radius:2px; }
+  /* NZWIHL variant — same blue used for the women's league everywhere else (var(--accent), #3aa0ff) */
+  .league-label.blue{ color:var(--accent); }
+  .league-label.blue::before{ background:var(--accent); }
 
   #rosters .roster-col{ background:var(--panel); border:1px solid var(--line);
     border-radius:14px; padding:14px; }
@@ -337,7 +340,7 @@
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Game Summary Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Static per-team Game Summary URLs · open or copy as a source</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="slugs-nzihl" class="grid g3"></div>
-    <div class="league-label">NZWIHL</div>
+    <div class="league-label blue">NZWIHL</div>
     <div id="slugs-nzwihl" class="grid g3"></div>
   </section>
 
@@ -346,7 +349,7 @@
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source - (<a target="_blank" rel="noopener" href="activity-banner/?test=1">test</a>)</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="banner-nzihl" class="grid g3"></div>
-    <div class="league-label">NZWIHL</div>
+    <div class="league-label blue">NZWIHL</div>
     <div id="banner-nzwihl" class="grid g3"></div>
   </section>
 
@@ -360,7 +363,7 @@
         <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters/releases">All NZIHL rosters</a></div>
       </div>
       <div class="roster-col">
-        <div class="league-label">NZWIHL</div>
+        <div class="league-label blue">NZWIHL</div>
         <div id="ros-nzwihl"><p class="muted-note">Loading latest…</p></div>
         <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters/releases">All NZWIHL rosters</a></div>
       </div>
@@ -391,7 +394,7 @@
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/up_next.png" alt=""><span class="sec-txt"><h2>Up Next Graphics</h2><span class="sub">Per-matchup hero / lower-third overlays · download the team pack</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="upnext-nzihl" class="grid g3"></div>
-    <div class="league-label">NZWIHL</div>
+    <div class="league-label blue">NZWIHL</div>
     <div id="upnext-nzwihl" class="grid g3"></div>
   </section>
 
@@ -400,7 +403,7 @@
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/dvd_loops.gif" alt=""><span class="sec-txt"><h2>DVD Bounce Loops</h2><span class="sub">Seamless bouncing-logo MP4s · 4 corner variants per team (1080p50)</span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="loops-nzihl" class="grid g3"></div>
-    <div class="league-label">NZWIHL</div>
+    <div class="league-label blue">NZWIHL</div>
     <div id="loops-nzwihl" class="grid g3"></div>
   </section>
 
