@@ -362,8 +362,15 @@ function fitLine(el, base, min){
 }
 function fitPregame(){ fitLine(preLine1,30,16); fitLine(preLine2,16,11); }
 function fmtPregameDate(gm){
+  // Parse the full offset-bearing instant (gm.datetime, e.g. "...+12:00"/"...+13:00")
+  // rather than the bare date, then format explicitly in Pacific/Auckland — so the
+  // displayed weekday/day/month is always NZ's, even if the machine showing this
+  // page has its system clock set to a different timezone. (The kickoff cutoff in
+  // showConfidenceAlert() was already timezone-safe — it compares absolute epoch
+  // instants — this only fixes the human-readable date text.)
   let dpart=gm.date||"";
-  try{ dpart=new Date(gm.date+"T00:00:00").toLocaleDateString("en-NZ",{weekday:"short",day:"numeric",month:"short"}); }catch(e){}
+  try{ dpart=new Date(gm.datetime||(gm.date+"T00:00:00")).toLocaleDateString("en-NZ",
+    {weekday:"short",day:"numeric",month:"short",timeZone:"Pacific/Auckland"}); }catch(e){}
   return (dpart+(gm.time?(" · "+gm.time):"")).trim();
 }
 function showConfidenceAlert(gm){
