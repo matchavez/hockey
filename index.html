@@ -82,6 +82,18 @@
   @keyframes pulse-blue{ 0%,100%{ box-shadow:0 0 0 0 rgba(58,160,255,.5); }
     50%{ box-shadow:0 0 0 5px rgba(58,160,255,0); } }
 
+  .team-strip{ position:relative; z-index:6; background:rgba(10,11,13,.94); border-bottom:1px solid var(--line); }
+  .team-strip .wrap{ display:flex; align-items:center; gap:8px; padding:9px 16px; overflow-x:auto;
+    scrollbar-width:none; -ms-overflow-style:none; }
+  .team-strip .wrap::-webkit-scrollbar{ display:none; }
+  .team-strip a{ flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    width:38px; height:38px; border-radius:10px; border:1px solid transparent;
+    transition:transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .2s ease; }
+  .team-strip a:hover{ transform:translateY(-2px) scale(1.08); border-color:rgba(247,190,17,.4);
+    background:var(--panel); box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  .team-strip img{ width:28px; height:28px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .team-strip .div{ width:1px; height:20px; background:var(--line); flex:0 0 auto; margin:0 2px; }
+
   nav.jump{ position:sticky; top:0; z-index:5; background:rgba(10,11,13,.86);
     backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
   nav.jump .wrap{ display:flex; gap:6px; overflow-x:auto; padding:9px 16px;
@@ -239,6 +251,10 @@
 
 <div id="pbar"></div>
 
+<nav class="team-strip" aria-label="Jump to a team's page">
+  <div class="wrap" id="team-strip-row"></div>
+</nav>
+
 <div class="rink-bg" aria-hidden="true">
   <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
     <path d="M540.0,784.6 L1349.0,591.3 L1363.3,586.9 L1375.7,580.9 L1386.2,573.4 L1394.7,564.6 L1400.9,554.6 L1405.0,543.6 L1406.8,531.7 L1406.4,519.0 L1403.8,505.8 L1399.1,492.3 L1392.4,478.6 L1383.8,464.8 L1373.5,451.2 L1361.5,437.9 L1249.3,322.4 L1237.0,310.6 L1223.5,299.4 L1208.8,288.8 L1193.2,278.9 L1176.9,269.9 L1160.0,261.9 L1142.7,254.9 L1125.3,248.9 L1107.9,244.2 L1090.7,240.6 L1073.9,238.3 L1057.6,237.2 L1042.1,237.5 L1027.5,239.0 L289.0,353.8 L271.0,357.4 L253.9,362.5 L238.1,369.2 L223.6,377.2 L210.7,386.7 L199.5,397.4 L190.2,409.2 L183.0,422.1 L177.9,436.0 L175.1,450.5 L174.7,465.7 L176.6,481.2 L181.0,497.0 L187.8,512.7 L265.9,665.4 L276.0,682.7 L288.5,699.4 L303.3,715.4 L320.1,730.4 L338.8,744.1 L359.1,756.4 L380.6,767.0 L403.2,775.7 L426.4,782.5 L449.9,787.3 L473.3,789.8 L496.4,790.3 L518.7,788.5 L540.0,784.6 Z" fill="none" stroke="rgba(243,244,246,.09)" stroke-width="4"/>
@@ -285,7 +301,6 @@
 <nav class="jump">
   <div class="wrap">
     <a href="#standings">Standings</a>
-    <a href="#teampages">Teams</a>
     <a href="#boxscores">Live Summary</a>
     <a href="#summaryslugs">Summary URLs</a>
     <a href="#bannerslugs">Banner URLs</a>
@@ -312,15 +327,6 @@
         <figcaption><b>NZWIHL</b><span class="acts"><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">1920×1080</button><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
     </div>
-  </section>
-
-  <!-- TEAM PAGES -->
-  <section id="teampages">
-    <div class="sec-head"><span class="sec-txt"><h2>Team Pages <span class="chip blue">New</span></h2><span class="sub">Every asset for one club, in one place — Game Summary, Activity Banner, Ticker, Scorebug, roster, graphics packs and brand</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="teampages-nzihl" class="grid g3"></div>
-    <div class="league-label">NZWIHL</div>
-    <div id="teampages-nzwihl" class="grid g3"></div>
   </section>
 
   <!-- THIS WEEKEND · BOX SCORES -->
@@ -503,13 +509,17 @@ function upCard(t){
     <a class="pill dl" title="Download the team pack (zip)" href="${zip}">Zip</a>
     <a class="pill ext" title="Browse the files on GitHub" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
 }
-// Team Pages directory — one-club aggregate view (team/?team=<slug>)
-function teamPageCard(t){
+// Team strip — wordless logo-only links to each club's team/?team=<slug> page,
+// pinned across the top of the page above the jump nav. Mako excluded (stood
+// down, no 2026 games, not wired to any of the per-team pages it would link to).
+function stripPill(t){
   const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  return `<a class="team" href="team/?team=${sl}">${idw(t)}<span class="acts"><span class="pill ext">Open</span></span></a>`;
+  return `<a href="team/?team=${sl}" title="${t.nm}" aria-label="${t.nm}"><img loading="lazy" src="${logoUrl(t)}" alt="${t.nm}"></a>`;
 }
-document.getElementById('teampages-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(teamPageCard).join('');
-document.getElementById('teampages-nzwihl').innerHTML = NZWIHL.map(teamPageCard).join('');
+document.getElementById('team-strip-row').innerHTML =
+  NZIHL.filter(t=>t.nm!=="Auckland Mako").map(stripPill).join('') +
+  '<span class="div"></span>' +
+  NZWIHL.map(stripPill).join('');
 
 document.getElementById('upnext-nzihl').innerHTML  = NZIHL.map(upCard).join('');
 document.getElementById('upnext-nzwihl').innerHTML = NZWIHL.map(upCard).join('');
