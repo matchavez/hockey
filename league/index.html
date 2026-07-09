@@ -54,7 +54,10 @@
     letter-spacing:.14em; text-transform:uppercase; color:var(--p2); margin-top:7px; }
 
   section{ padding:24px 0 4px; }
-  .sec-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .sec-head{ display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+  .sec-thumb{ width:88px; height:50px; object-fit:cover; border-radius:9px;
+    border:1px solid var(--line); background:#000; flex:0 0 auto; }
+  .sec-head .sec-txt{ min-width:0; }
   .sec-head h2{ font-size:15px; font-weight:800; margin:0; }
   .sec-head .sub{ font-size:12px; color:var(--muted); }
   .chip{ font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
@@ -240,7 +243,7 @@ if(!league){
 
   document.getElementById('main').innerHTML = `
     <section>
-      <div class="sec-head"><h2>Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · 1920×1080 PNG</span></div>
+      <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/standings.png" alt=""><span class="sec-txt"><h2>Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · 1920×1080 PNG</span></span></div>
       <div class="card" style="padding:10px">
         <a target="_blank" rel="noopener" href="${standPng}"><img src="${standPng}?v=${Date.now()}" alt="${league} standings" style="display:block;width:100%;border-radius:10px;background:#000"></a>
         <div class="links" style="margin-top:10px">
@@ -251,17 +254,17 @@ if(!league){
     </section>
 
     <section>
-      <div class="sec-head"><h2>This Weekend <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Resolved from the roster pipeline</span></div>
+      <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>This Weekend <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Resolved from the roster pipeline</span></span></div>
       <div id="games-grid" class="grid"><p class="muted-note">Loading fixtures…</p></div>
     </section>
 
     <section>
-      <div class="sec-head"><h2>Clubs</h2><span class="sub">Every ${league} team page, in order</span></div>
+      <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/logos.png" alt=""><span class="sec-txt"><h2>Clubs</h2><span class="sub">Every ${league} team page, in order</span></span></div>
       <div class="grid3">${clubs.map(teamCard).join('')}</div>
     </section>
 
     <section>
-      <div class="sec-head"><h2>Rosters</h2><span class="sub">Game-day fixture PDFs for ${league}</span></div>
+      <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/rosters.png" alt=""><span class="sec-txt"><h2>Rosters</h2><span class="sub">Game-day fixture PDFs for ${league}</span></span></div>
       <div class="card">
         <p>Talent-facing roster downloads for every ${league} fixture.</p>
         <div class="links">
@@ -272,7 +275,7 @@ if(!league){
     </section>
 
     <section>
-      <div class="sec-head"><h2>Brand</h2><span class="sub">League mark &amp; full colour guide</span></div>
+      <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/brand.png" alt=""><span class="sec-txt"><h2>Brand</h2><span class="sub">League mark &amp; full colour guide</span></span></div>
       <div class="grid">
         <div class="card"><h3>League Mark</h3><p>White ${league} logo, high-res PNG.</p>
           <div class="links"><a class="btn dl" href="${leagueLogoUrl(league)}">PNG</a></div></div>
