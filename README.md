@@ -16,7 +16,8 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | Path | Purpose | Key URL params |
 |---|---|---|
 | `index.html` | Portal: links, team-slug lists, standings embeds, beta links in footer | — |
-| `team/` | **Team Page**: one-club aggregate view (all overlay links, live roster PDF, graphics packs, brand) — no ?team= shows a team picker | `?team=` |
+| `team/` | **Team Page**: one-club aggregate view (all overlay links, live roster PDF, graphics packs, full brand palette, this club's league standings) — no ?team= shows a team picker | `?team=` |
+| `league/` | **League Page**: league-only aggregate view (standings, this weekend's fixtures, clubs directory, rosters, brand) — no ?league= shows a league picker | `?league=` |
 | `ticker/` | **Ticker Page**: scorebug clip + top-right verbose scrolling game ticker (pregame / live / FINAL aware) | `?team=` `?g=` `?test=1` `?ad=` `?tk=` `?speed=` `?bs=` `?bug=` |
 | `scorebug/` | Singular scorebug clip + goal/penalty banner (bottom of frame) | `?team=` `?g=` `?test=1` `?bs=` `?bug=` |
 | `activity-banner/` | Transparent 1920×1080, goal/penalty banner ONLY (no scorebug), flush bottom | `?team=` `?g=` `?test=1` |
@@ -232,14 +233,31 @@ cockpit, Singular login). When adding a page, add its footer link.
 
 ## team/ — one-club aggregate view
 
-`team/?team=<slug>` pulls together everything for one club: Game Summary (Black/Opaque),
-Activity Banner, Ticker, Scorebug (only where `BUGMAP`-wired — currently Red Devils + Inferno
-share the Christchurch output; other clubs show a "not wired" note instead of a dead link),
-live-fetched latest roster PDF, Up Next + DVD Loop packs, logo, and ink/dark colour swatches
-(a local `COLORS` map mirroring `REG` — keep in sync with the table above). No `?team=` (or an
+`team/?team=<slug>` pulls together everything for one club: this club's league standings (both
+PNG sizes), Game Summary (Black/Opaque), Activity Banner, Ticker, Scorebug (only where
+`BUGMAP`-wired — currently Red Devils + Inferno share the Christchurch output; other clubs show
+a "not wired" note instead of a dead link), live-fetched latest roster PDF, Up Next + DVD Loop
+packs, logo, and the club's **full colour palette with hex values** (a local `PALETTES` map —
+every chip from the 2026 Style & Colour Guide hex cheat sheet's `DATA` array, not just a 2-colour
+ink/dark pair; keep both in sync). Branding is intentionally loud: the logo renders 2x on a
+gradient plate (`--p1`/`--p2`/`--p3` CSS vars set from the club's palette), and a full-page fixed
+`.brand-wash` tints every section as you scroll, not just the hero. No `?team=` (or an
 unrecognised one) renders a team picker grid instead. Roster matching resolves the club's
 esportsdesk short code from `boxscores.json` (`away_code`/`home_code`) rather than a fixed table,
 since those codes don't always match our own naming (e.g. Pure NZ Admirals = `WAA`, not `ADM`).
+All 10 clubs are covered, including Auckland Mako (stood down, no 2026 games) — its page still
+renders cleanly, just mostly "no game"/"not wired"/"no roster yet" states.
+
+## league/ — one-league aggregate view
+
+`league/?league=nzihl` or `?league=nzwihl` (case-insensitive) is the league-only counterpart to
+`team/`: that league's standings, this weekend's fixtures (filtered from the same
+`boxscores.json` manifest used elsewhere, `in_core_window`-aware), a clubs directory linking out
+to each member's `team/` page, roster links, and the league mark + brand guide links. Same
+loud-branding treatment as `team/` but themed by a fixed `THEMES` map (gold = NZIHL, blue =
+NZWIHL — this site's own accent convention, e.g. `.chip.blue`/`.league-label.blue` elsewhere;
+NOT an official club-brand colour, the Style Guide only defines a generic black/white pair for
+"League Marks"). No `?league=` (or an unrecognised one) renders a 2-card league picker instead.
 
 ---
 
