@@ -49,20 +49,15 @@ header#hdr{height:333px;flex:0 0 auto;display:grid;grid-template-columns:auto 1f
 .photo img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;}
 .photo .ini{font-weight:800;color:#a9b1bf;}
 
-.ptext{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:7px;}
+.ptext{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:14px;}
 .prow.right .ptext{align-items:flex-end;text-align:right;}
-.pname{font-weight:800;font-size:32px;color:#f5f6fa;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-.psub{font-size:32px;font-weight:700;line-height:1.05;color:#e2e5ec;display:flex;gap:12px;align-items:baseline;}
-.psub .jnum{font-weight:800;}
-.pstats{display:flex;gap:20px;margin-top:0;}
-.pstat{text-align:center;min-width:50px;}
-.pstat .num{font-weight:800;font-size:38px;line-height:1.05;color:#ebedf2;display:block;}
-.pstat.pts .num{font-size:46px;}
-.pstat .lbl{font-size:14px;line-height:1.1;font-weight:700;color:var(--dim);letter-spacing:.03em;}
-.pdescr{font-size:19px;font-weight:600;line-height:1.15;color:#c9cdd6;display:flex;align-items:center;gap:10px;margin-top:0;max-width:100%;}
-.prow.right .pdescr{flex-direction:row-reverse;}
-.pdescr .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
-.pdescr span.txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Three equally-sized lines (Mat, 2026-07-09): #nn Pos Name / G · A · Pts · +/- / (dot) stat (dot).
+   Uniform size for now — a deliberate simplification pass, expect this to get
+   re-differentiated (weights/sizes) once he's seen it live. */
+.pline{font-weight:700;font-size:40px;line-height:1.15;color:#f5f6fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.pline.descr{display:flex;align-items:center;gap:12px;color:#c9cdd6;}
+.pline.descr .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+.pline.descr .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 #msg{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;text-align:center;
   color:var(--sub);font-size:28px;font-weight:600;padding:60px;line-height:1.5;background:var(--bg);}
@@ -319,24 +314,23 @@ function rowEl(p, team, side){
 
   const ptext = document.createElement("div");
   ptext.className = "ptext";
-  const nameEl = document.createElement("div");
-  nameEl.className = "pname"; nameEl.textContent = p.name;
-  const subEl = document.createElement("div");
-  subEl.className = "psub";
-  subEl.innerHTML = `<span class="jnum" style="color:${ink}">#${p.jersey}</span><span>${p.pos||""}</span>`;
-  const statsEl = document.createElement("div");
-  statsEl.className = "pstats";
-  [["G",p.g,false],["A",p.a,false],["+/-",fmtPM(p.pm),false],["PTS",p.pts,true]].forEach(([lbl,val,em])=>{
-    const s = document.createElement("div");
-    s.className = "pstat" + (em?" pts":"");
-    s.innerHTML = `<span class="num" style="${em?`color:${ink}`:""}">${val}</span><span class="lbl">${lbl}</span>`;
-    statsEl.appendChild(s);
-  });
-  const descrEl = document.createElement("div");
-  descrEl.className = "pdescr";
-  descrEl.innerHTML = `<span class="dot" style="background:${ink}"></span><span class="txt">${p.descr||""}</span>`;
 
-  ptext.appendChild(nameEl); ptext.appendChild(subEl); ptext.appendChild(statsEl); ptext.appendChild(descrEl);
+  // Line 1: "#nn Pos Firstname Lastname"
+  const line1 = document.createElement("div");
+  line1.className = "pline";
+  line1.textContent = `#${p.jersey} ${p.pos||""} ${p.name}`.replace(/\s+/g," ").trim();
+
+  // Line 2: "G / A / Pts / +/-"
+  const line2 = document.createElement("div");
+  line2.className = "pline";
+  line2.textContent = `${p.g} / ${p.a} / ${p.pts} / ${fmtPM(p.pm)}`;
+
+  // Line 3: "(dot) interesting stat (dot)"
+  const line3 = document.createElement("div");
+  line3.className = "pline descr";
+  line3.innerHTML = `<span class="dot" style="background:${ink}"></span><span class="txt">${p.descr||""}</span><span class="dot" style="background:${ink}"></span>`;
+
+  ptext.appendChild(line1); ptext.appendChild(line2); ptext.appendChild(line3);
   row.appendChild(ptext);
   return row;
 }
