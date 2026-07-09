@@ -59,6 +59,7 @@ header#hdr{height:333px;flex:0 0 auto;display:grid;grid-template-columns:auto 1f
    font-size until it actually fits its row, rather than ellipsizing. */
 .pline{font-weight:700;font-size:40px;line-height:1.15;color:#f5f6fa;white-space:nowrap;}
 .pline.descr{font-style:italic;font-size:32px;color:#c9cdd6;}
+.pline .jnum{font-size:.75em;font-weight:800;} /* jersey number — back to a distinct (smaller, heavier) treatment vs the position letter */
 .pline .unit{font-weight:300;font-size:.6em;} /* the G / A / Pts unit letters on the stat line */
 .pline .pm{font-weight:300;} /* the +/- value */
 
@@ -318,7 +319,7 @@ function rowEl(p, team, side){
   // Line 1: jersey (no "#") · position — both in the team colour, same size · full name
   const line1 = document.createElement("div");
   line1.className = "pline";
-  line1.innerHTML = `<span style="color:${ink}">${p.jersey}</span> <span style="color:${ink}">${p.pos||""}</span> ${p.name}`;
+  line1.innerHTML = `<span class="jnum" style="color:${ink}">${p.jersey}</span> <span style="color:${ink}">${p.pos||""}</span> ${p.name}`;
 
   // Line 2: "20 G  11 A  31 Pts  +13" — unit letters lighter/smaller, +/- value lighter too
   const line2 = document.createElement("div");

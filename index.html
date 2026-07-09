@@ -364,6 +364,35 @@
     </div>
   </section>
 
+  <!-- LIVE TEAM SCORING LEADERS (mirrors Live Game Summary above — same
+       matchups/games, same auto-resolve-from-the-roster-pipeline behaviour,
+       just pointed at scoringleaders/?g= instead of summary/?g=) -->
+  <section id="leaders-live">
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Live Team Scoring Leaders <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Same matchups as Game Summary · each team's top-3 point scorers</span></span></div>
+    <div id="leaders-grid" class="grid g2">
+      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519937">
+        <div class="day">Sat 27 Jun · 4:45 PM</div>
+        <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
+        <div class="meta"><b>Paradice Avondale</b> · Scoring leaders →</div>
+      </a>
+      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519939">
+        <div class="day">Sat 27 Jun · 5:10 PM</div>
+        <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
+        <div class="meta"><b>Alpine Ice Centre</b> · Scoring leaders →</div>
+      </a>
+      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519940">
+        <div class="day">Sun 28 Jun · 5:10 PM</div>
+        <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
+        <div class="meta"><b>Alpine Ice Centre</b> · Scoring leaders →</div>
+      </a>
+      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519938">
+        <div class="day">Sun 28 Jun · 6:00 PM</div>
+        <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
+        <div class="meta"><b>Paradice Avondale</b> · Scoring leaders →</div>
+      </a>
+    </div>
+  </section>
+
   <!-- GAME SUMMARY TEAM SLUGS -->
   <section id="summaryslugs">
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Game Summary Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Static per-team Game Summary URLs · open or copy as a source</span></span></div>
@@ -669,6 +698,14 @@ const urlOf = g => {
   const gid = gidOf(g);
   return gid ? 'summary/?g=' + gid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '') : null;
 };
+// Same matchup/gameid resolution as urlOf(), just pointed at Team Scoring
+// Leaders instead of Game Summary — the two sections always show the same
+// games, so they share every bit of resolution logic (gidOf, KNOWN_GIDS,
+// STALE_CUTOFF_DAYS, in_core_window filtering) and only the base path differs.
+const urlOfLeaders = g => {
+  const gid = gidOf(g);
+  return gid ? 'scoringleaders/?g=' + gid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '') : null;
+};
 const mlg = name => {
   const u = logoOf(name);
   return u ? `<img class="mlg" loading="lazy" src="${u}" alt="">` : '';
@@ -693,9 +730,10 @@ async function loadBoxscores(){
     const todayISO = nzTodayISO();
     const fresh = games.filter(g => g.in_core_window !== false && daysPast(g.date || g.datetime, todayISO) <= STALE_CUTOFF_DAYS);
     if(!fresh.length){
-      document.getElementById('boxscore-grid').innerHTML =
-        `<div class="game card" style="opacity:.55"><div class="day">No games this weekend</div>
+      const noGames = `<div class="game card" style="opacity:.55"><div class="day">No games this weekend</div>
         <div class="match">Check back closer to the next fixture</div></div>`;
+      document.getElementById('boxscore-grid').innerHTML = noGames;
+      document.getElementById('leaders-grid').innerHTML = noGames;
       return;
     }
     fresh.sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
@@ -711,6 +749,18 @@ async function loadBoxscores(){
         <div class="match">${mlg(g.away)}${g.away} <span>@</span> ${mlg(g.home)}${g.home}</div>
         <div class="meta"><b>${g.venue||''}</b>${gid ? ' · Game summary →' : ' · game summary TBC'}</div>`;
       const url = urlOf(g);
+      return url
+        ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
+        : `<div class="game card" style="opacity:.55">${inner}</div>`;
+    }).join('');
+
+    document.getElementById('leaders-grid').innerHTML = fresh.map(g => {
+      const gid = gidOf(g);
+      const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
+      const inner = `<div class="day">${when}</div>
+        <div class="match">${mlg(g.away)}${g.away} <span>@</span> ${mlg(g.home)}${g.home}</div>
+        <div class="meta"><b>${g.venue||''}</b>${gid ? ' · Scoring leaders →' : ' · scoring leaders TBC'}</div>`;
+      const url = urlOfLeaders(g);
       return url
         ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
         : `<div class="game card" style="opacity:.55">${inner}</div>`;
