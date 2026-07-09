@@ -125,6 +125,13 @@ const MANIFESTS=[
   {league:"nzihl",  url:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",  clientid:7131, leagueid:35499},
   {league:"nzwihl", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json", clientid:7132, leagueid:35501},
 ];
+// Season data warehouse (matchavez/nzihl-season-data) -- every completed box
+// score, pre-scraped nightly, so "last meeting" + head-to-head no longer need
+// a live 25-fetch sequential-gameid probe during a broadcast (2026-07-09).
+const SEASON_DATA_URL={
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzihl.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzwihl.json",
+};
 // team visuals keyed by nzihl teamID. ink = the team's READABLE accent on dark (per style guide
 // legibility tints); jersey numbers render in dim(ink) — a ~50% brightness version (Mat 2026-07-07).
 const REG={
@@ -428,7 +435,7 @@ function penSentence(e){
 }
 /* ---------- GAME-PHASE AWARENESS (2026-07-07): pregame preview / live recap / FINAL ----------
    Accuracy rule (Mat): every line is scraped or calculated — anything unresolved is OMITTED. */
-let GM=null, ISFINAL=false, FINTYPE="", STAND=null, LASTMEET=null, pregameKicked=false;
+let GM=null, ISFINAL=false, FINTYPE="", STAND=null, LASTMEET=null, H2H=null, pregameKicked=false;
 async function fetchStandings(){
   if(!TARGET)return;
   try{
@@ -443,9 +450,35 @@ async function fetchStandings(){
   }catch(e){}
 }
 const standOf=name=>{const q=normName(name);return (q&&STAND)?STAND.find(r=>r.k.includes(q)):null;};
-// most recent completed meeting between tonight's clubs — walk sequential gameids downward;
-// completed games have goals, shells don't (a real final can't be 0-0: OT/SO decides)
-async function findLastMeeting(){
+// Last meeting + head-to-head, primary path: the pre-scraped season data
+// warehouse (matchavez/nzihl-season-data) -- one instant fetch instead of a
+// 25-fetch live probe. Returns true if it found something usable.
+async function findLastMeetingFromWarehouse(){
+  if(!AWAYID||!HOMEID||!LEAGUE)return false;
+  const url=SEASON_DATA_URL[LEAGUE]; if(!url)return false;
+  let data; try{ data=await getJSON(url); }catch(e){ return false; }
+  const h2h=data&&data.derived&&data.derived.head_to_head; if(!h2h)return false;
+  const key=[String(AWAYID),String(HOMEID)].sort().join("|");
+  const rec=h2h[key]; if(!rec||!rec.last_meeting)return false;
+  const lm=rec.last_meeting;
+  const wID=lm.winner_teamID;
+  const wN=String(wID)===String(AWAYID)?AWAYN:(String(wID)===String(HOMEID)?HOMEN:null);
+  if(wN==null)return false;   // winner isn't one of tonight's two clubs -- don't guess, omit
+  LASTMEET={wID, wN, ws:Math.max(lm.away_total,lm.home_total), ls:Math.min(lm.away_total,lm.home_total),
+    ot:lm.finalType==="OT", so:lm.finalType==="SO"};
+  const aWins=String(rec.teamA)===String(AWAYID)?rec.teamA_wins:rec.teamB_wins;
+  const hWins=String(rec.teamA)===String(HOMEID)?rec.teamA_wins:rec.teamB_wins;
+  H2H=(typeof aWins==="number"&&typeof hWins==="number")?{aWins,hWins}:null;
+  return true;
+}
+// Fallback ONLY: most recent completed meeting between tonight's clubs — walk
+// sequential gameids downward live; completed games have goals, shells don't
+// (a real final can't be 0-0: OT/SO decides). Used if the warehouse fetch
+// fails for any reason (network, not committed yet, etc). Doesn't populate
+// H2H (a season-series tally isn't worth a 25-fetch live crawl) -- the H2H
+// pregame line simply won't render when we fall back to this path, per the
+// "anything unresolved is omitted" rule.
+async function findLastMeetingLive(){
   if(!AWAYID||!HOMEID||!TARGET)return;
   const pair=[String(AWAYID),String(HOMEID)].sort().join("|");
   for(let g=+TARGET.gid-1; g>+TARGET.gid-26; g--){
@@ -456,8 +489,14 @@ async function findLastMeeting(){
     LASTMEET={wID:aw?P.away.teamID:P.home.teamID, wN:aw?P.away.name:P.home.name,
       ws:Math.max(P.away.tot,P.home.tot), ls:Math.min(P.away.tot,P.home.tot),
       ot:P.goals.some(x=>x.p==="OT"), so:P.goals.some(x=>x.p==="SO")};
-    lastSig=""; return;
+    return;
   }
+}
+async function findLastMeeting(){
+  if(!AWAYID||!HOMEID)return;
+  const ok=await findLastMeetingFromWarehouse();
+  if(!ok) await findLastMeetingLive();
+  lastSig="";
 }
 // FINAL comes ONLY from the schedule page's own status text — never inferred from scores
 async function fetchFinal(){
@@ -499,6 +538,20 @@ function pregameItems(){
     const wv=vis(LASTMEET.wID);
     const tail=LASTMEET.so?" in a shootout":LASTMEET.ot?" in overtime":"";
     out.push(crestHTML(LASTMEET.wID)+`<span class="sent"><span class="tm" style="color:${wv.ink}">${esc(LASTMEET.wN)}</span> took the last meeting between these clubs <span class="sc">${LASTMEET.ws}-${LASTMEET.ls}</span>${tail}</span>`);
+  }
+  // Season head-to-head record (warehouse-only -- see findLastMeetingFromWarehouse;
+  // omitted entirely if we fell back to the live probe, or if the two clubs
+  // haven't met this season). Mat 2026-07-09: "Dunedin Thunder lead the season
+  // series 3-1" style line.
+  if(H2H&&(H2H.aWins+H2H.hWins>0)){
+    if(H2H.aWins===H2H.hWins){
+      out.push(crestHTML(AWAYID)+`<span class="sent">${A} and ${H} are tied <span class="sc">${H2H.aWins}-${H2H.hWins}</span> this season</span>`+crestHTML(HOMEID));
+    }else{
+      const leadAway=H2H.aWins>H2H.hWins;
+      const leadID=leadAway?AWAYID:HOMEID, leadT=leadAway?A:H;
+      const lw=leadAway?H2H.aWins:H2H.hWins, tw=leadAway?H2H.hWins:H2H.aWins;
+      out.push(crestHTML(leadID)+`<span class="sent">${leadT} lead the season series <span class="sc">${lw}-${tw}</span></span>`);
+    }
   }
   return out;
 }
