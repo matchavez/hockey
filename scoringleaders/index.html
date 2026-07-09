@@ -222,12 +222,9 @@ function buildCandidates(p, games, teamTotalPts, rankFn, leagueShort){
     cands.push({type:"pointrate", text:`Points in ${pointGames} of ${games.length} games this season`});
   }
 
-  if(p.pts >= 3){
-    const goalPct = p.g / p.pts;
-    if(goalPct >= .65) cands.push({type:"goalheavy", text:`${p.g} of ${p.pts} points have come via goals`});
-    else if(goalPct <= .3) cands.push({type:"playmaker", text:`${p.a} assists — a pass-first playmaker`});
-  }
-
+  // NOTE (Mat, 2026-07-09): dropped "X of Y points have come via goals" /
+  // "N assists — a pass-first playmaker" — both just restate the G/A/Pts
+  // numbers already sitting on line 2, not an actual "interesting stat."
   if(teamTotalPts > 0) cands.push({type:"teamshare", text:`${Math.round(p.pts/teamTotalPts*100)}% of the team's total scoring`});
   if(p.gp > 0) cands.push({type:"ppg", text:`${(p.pts/p.gp).toFixed(1)} points per game this season`});
 
