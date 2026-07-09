@@ -83,9 +83,12 @@
     50%{ box-shadow:0 0 0 5px rgba(58,160,255,0); } }
 
   .team-strip{ position:relative; z-index:6; background:rgba(10,11,13,.94); border-bottom:1px solid var(--line); }
-  .team-strip .wrap{ display:flex; align-items:center; gap:8px; padding:9px 16px; overflow-x:auto;
+  .team-strip .wrap{ display:flex; align-items:center; gap:12px; padding:9px 16px; }
+  .team-strip .strip-title{ flex:0 0 auto; font-size:11px; font-weight:800; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  .team-strip .strip-logos{ display:flex; align-items:center; gap:8px; overflow-x:auto; min-width:0;
     scrollbar-width:none; -ms-overflow-style:none; }
-  .team-strip .wrap::-webkit-scrollbar{ display:none; }
+  .team-strip .strip-logos::-webkit-scrollbar{ display:none; }
   .team-strip a{ flex:0 0 auto; display:flex; align-items:center; justify-content:center;
     width:38px; height:38px; border-radius:10px; border:1px solid transparent;
     transition:transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .2s ease; }
@@ -252,7 +255,11 @@
 <div id="pbar"></div>
 
 <nav class="team-strip" aria-label="Jump to a team's page">
-  <div class="wrap" id="team-strip-row"></div>
+  <div class="wrap">
+    <span class="strip-title">Team Pages</span>
+    <span class="div"></span>
+    <div class="strip-logos" id="team-strip-row"></div>
+  </div>
 </nav>
 
 <div class="rink-bg" aria-hidden="true">
@@ -510,14 +517,15 @@ function upCard(t){
     <a class="pill ext" title="Browse the files on GitHub" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
 }
 // Team strip — wordless logo-only links to each club's team/?team=<slug> page,
-// pinned across the top of the page above the jump nav. Mako excluded (stood
-// down, no 2026 games, not wired to any of the per-team pages it would link to).
+// titled "Team Pages", pinned across the top above the jump nav. All 10 clubs
+// (incl. Auckland Mako, though it has no 2026 games — its team page itself
+// degrades gracefully: live overlays show "no game", Scorebug shows "not wired").
 function stripPill(t){
   const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   return `<a href="team/?team=${sl}" title="${t.nm}" aria-label="${t.nm}"><img loading="lazy" src="${logoUrl(t)}" alt="${t.nm}"></a>`;
 }
 document.getElementById('team-strip-row').innerHTML =
-  NZIHL.filter(t=>t.nm!=="Auckland Mako").map(stripPill).join('') +
+  NZIHL.map(stripPill).join('') +
   '<span class="div"></span>' +
   NZWIHL.map(stripPill).join('');
 

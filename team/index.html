@@ -124,15 +124,18 @@
 const ASSETS = "https://matchavez.com/nzihl-broadcast-assets";
 const enc = s => encodeURIComponent(s);
 
-// Same club rosters as the main portal. Auckland Mako excluded — stood down, no
-// 2026 games, so it has no Game Summary / Activity Banner / Ticker / Scorebug slug
-// to point a team page at (matches the exclusion already used on the main portal).
+// Same club rosters as the main portal, all 10 clubs incl. Auckland Mako. Mako
+// is stood down (no 2026 games) so its live overlays (Game Summary/Activity
+// Banner/Ticker) will just resolve to "no game" and its Scorebug card shows
+// "not wired" (SCOREBUG_WIRED below) — the page still renders cleanly, it's
+// just mostly empty, which is an accurate reflection of the club's status.
 const NZIHL = [
   {nm:"Pure NZ Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals", logo:"Pure-NZ-Admirals-2000x2000.png", roster:"nzihl-broadcast-rosters"},
   {nm:"Botany Swarm", up:"Botany Swarm", dvd:"BotanySwarm", logo:"Botany Swarm 2000x2000.png", roster:"nzihl-broadcast-rosters"},
   {nm:"SkyCity Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede", logo:"Skycity Stampede 2000x2000.png", roster:"nzihl-broadcast-rosters"},
   {nm:"Dunedin Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder", logo:"Dunedin_Thunder.png", roster:"nzihl-broadcast-rosters"},
   {nm:"Canterbury Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils", logo:"Red Devils 2000x2000r.png", roster:"nzihl-broadcast-rosters"},
+  {nm:"Auckland Mako", up:"Auckland Mako", dvd:"AucklandMako", logo:"Auckland Mako 2000x2000.png", roster:"nzihl-broadcast-rosters"},
 ];
 const NZWIHL = [
   {nm:"Auckland Steel", up:"Auckland Steel", dvd:"AucklandSteel", logo:"Auckland-Steel-White.png", roster:"nzwihl-broadcast-rosters"},
@@ -157,6 +160,9 @@ const COLORS = {
   "Canterbury Inferno":      {ink:"#E0564E", dark:"#550000"},
   "Dunedin Thunder Women":   {ink:"#1E9E63", dark:"#012C1E"},
   "Wakatipu Wild":           {ink:"#FAC805", dark:"#162543"},
+  // Mako has no official Scorebug half-dark (never wired to a broadcast) — using
+  // its Style & Colour Guide secondary "Mako Ink" tone as the closest stand-in.
+  "Auckland Mako":           {ink:"#62656A", dark:"#202222"},
 };
 
 // The Singular scorebug output is per-BROADCAST, not per-team — only these two
