@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Team Page — NZ Hockey Broadcast Assets</title>
 <meta name="description" content="Every broadcast asset for one club in one place — Game Summary, Activity Banner, Ticker, Scorebug, roster, graphics packs, brand.">
-<link rel="icon" href="data:,">
+<link rel="icon" id="favicon" href="data:,">
 <style>
   @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
   @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable-Italic.woff2') format('woff2');}
@@ -259,6 +259,7 @@ if(!team){
   const tx = pal.reduce((best, cur) => luminance(cur[0]) > luminance(best[0]) ? cur : best)[0];
   document.documentElement.style.setProperty('--tx', tx);
   document.title = `${team.nm} — NZ Hockey Broadcast Assets`;
+  document.getElementById('favicon').href = logoUrl(team);
   document.getElementById('crumb-league').textContent = team.league;
   document.getElementById('crumb-league').href = `../league/?league=${leagueSlug}`;
 

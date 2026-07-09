@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>League Page — NZ Hockey Broadcast Assets</title>
 <meta name="description" content="League-only broadcast assets — standings, upcoming games, clubs, rosters and brand — for NZIHL or NZWIHL.">
-<link rel="icon" href="data:,">
+<link rel="icon" id="favicon" href="data:,">
 <style>
   @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
   @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable-Italic.woff2') format('woff2');}
@@ -223,6 +223,7 @@ if(!league){
   document.documentElement.style.setProperty('--p2', th.p2);
   document.documentElement.style.setProperty('--p3', th.p3);
   document.title = `${league} — NZ Hockey Broadcast Assets`;
+  document.getElementById('favicon').href = `${ASSETS}/assets/league/${league}-icon.png`;
   document.getElementById('crumb-league').textContent = league;
 
   document.getElementById('idcard').innerHTML = `
