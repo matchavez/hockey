@@ -22,6 +22,8 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | `scorebug/` | Singular scorebug clip + goal/penalty banner (bottom of frame) | `?team=` `?g=` `?test=1` `?bs=` `?bug=` |
 | `activity-banner/` | Transparent 1920×1080, goal/penalty banner ONLY (no scorebug), flush bottom | `?team=` `?g=` `?test=1` |
 | `summary/` | Live Game Summary graphic (1840×1000-style card) | `?team=` `?g=` `?w=1` `?bg=opaque` |
+| `scoringleaders/` | **Team Scoring Leaders**: each side's top-3 point scorers, live stats + a season-form descriptor line (1840×1000-style card, same visual family as `summary/`) | `?team=` `?g=` `?w=1` `?bg=opaque` |
+| `scoringleaders/ab-test.html` | **Design-experiment page, NOT part of the deployed rotation** — not linked from the portal or anywhere else, direct-URL only. Stacks multiple full-size variants of the Team Scoring Leaders pill construction (mirrored vs symmetric vs centred-text, labelled A/B/C) on one page so Mat can compare before a decision lands in `scoringleaders/index.html`. Same convention as the old `summary/translucent-test.html`. Safe to delete once a variant is picked and promoted — ask before deleting. | `?team=` `?g=` `?w=1` |
 | `box/` | Auto-refreshing box-score iframe card with team logos | `?g=` `?w=1` `?s=<secs>` (refresh, default 35, min 8) |
 | `preflight/` | **Broadcast Pre-Flight** (producer tool, not an overlay): worker round-trip, manifest freshness (GitHub commits API), leaders/standings/schedule reach, per-club game resolution + BUGMAP status + box-score probe + FINAL status, copy-ready overlay URLs with per-club `?bs=`/`?tk=` tuning persisted in localStorage | — |
 | `assets/fonts/` | InterVariable (+Italic) woff2 — the 2026 house font | — |
@@ -30,7 +32,7 @@ Common params across live pages: `?team=<slug>` picks the club's live/next game 
 manifests; `?g=<gameid>` forces a game (`?w=1` or `?l=nzwihl` selects the women's league IDs);
 `?worker=` overrides the proxy.
 
-**Team slugs** (used by ticker / scorebug / activity-banner / summary): `canterbury-red-devils`
+**Team slugs** (used by ticker / scorebug / activity-banner / summary / scoringleaders): `canterbury-red-devils`
 (default), `botany-swarm`, `skycity-stampede`, `dunedin-thunder`, `pure-nz-admirals`,
 `auckland-steel`, `canterbury-inferno`, `dunedin-thunder-women`, `wakatipu-wild`.
 Slug rule: lowercase, `&`→`and`, non-alphanumerics→`-`. Auckland Mako is NOT wired (stood down,
@@ -123,6 +125,25 @@ no 2026 games).
   real pages: `standings.cfm`, `schedules.cfm`, `hockey_special_teams.cfm`, `rosters_profile.cfm`,
   `suspension_report.cfm`.
 
+**Player stats (skater totals)** `stats_1team.cfm?clientid=&leagueid=&teamid=&printPage=1`:
+  used LIVE by `scoringleaders/` (via the Worker) AND offline by the roster-PDF pipeline
+  (`nzihl-broadcast-rosters`/`nzwihl-broadcast-rosters`'s `scraper.py`) — keep both parsers in
+  sync if this table's column layout ever drifts again.
+- A `PLAYER STATISTICS ... TEAM TOTALS` block contains one table, one row per skater. **Column
+  lookup is HEADER-LABEL-DRIVEN, not fixed-offset** — this table has shipped more than one column
+  order historically (see [[nzihl-roster-scraper-robustness]] equivalent fixes in the roster
+  repo). Read the header row's `<th>` text, build a `{LABEL: index}` map, then look up
+  `#`/`POSITION`/`GP`/`G`/`A`/`+/-` by label with sane fallback indices for the common layout.
+- Player name comes from the row's `<a href="...playerID=...">` **`title` attribute**, not the
+  link text (the link text is often just initials/abbreviated). Title-case it — source names
+  arrive ALL-CAPS or all-lowercase at random, same as everywhere else on this site.
+- **`+/-` prints `"E"` for even** (zero), otherwise a signed integer (`"13"`, `"-7"`) — normalise
+  `"E"` → `0` before use. Treat this column as OPTIONAL when computing a "need this many
+  columns" floor for row validity — some historical layouts omit it entirely, and a parser that
+  hard-requires it will silently drop every row on those pages.
+- A quote-aware tag stripper is required here too (see the box-score span-fusion/tooltip gotchas
+  below) — a naive `<[^>]+>` regex breaks on any cell whose tooltip `title` embeds a `<br />`.
+
 **Standings** `standings.cfm?clientid=&leagueid=&printPage=1`:
 - One table; rank = row order. Cols: `Team | GP | W | L | OTW | OTL | PTS | P% | GF | GA | DIFF |
   GF/G | GA/G | PIM | STR | L10`. Team cell fuses name+code.
@@ -136,12 +157,31 @@ no 2026 games).
 - For historical games: **gameids are sequential** — walk downward from a known id and parse each
   box score (grouped by matchup, so a recent meeting is usually within ~25 ids).
 
-**Rosters** (for the roster PDF pipeline, different repos): use
-`stats_1team.cfm?...&printPage=1`; nzihl.com team pages are JS-rendered and empty to fetchers.
+**Rosters** (for the roster PDF pipeline, different repos): also built on `stats_1team.cfm`
+(contract above); nzihl.com team pages are JS-rendered and empty to fetchers.
 
-**GitHub Pages gotcha:** the Fastly edge can serve stale files for minutes after a push (per-PoP).
-Verify with `curl "https://matchavez.com/hockey/<path>?v=$RANDOM" | grep <new-marker>`; an empty
-commit forces a fresh build if stuck. The `/pages/builds/latest` API can also lag ~15s.
+**GitHub Pages gotcha (two DIFFERENT failure modes, don't conflate them):**
+1. **Stale edge cache** (common, benign): the Fastly edge can serve a PREVIOUS build for minutes
+   after a push, even once the build itself succeeded. Verify with
+   `curl "https://matchavez.com/hockey/<path>?v=$RANDOM" | grep <new-marker>`; `POST
+   /repos/matchavez/hockey/pages/builds` (authed) queues a fresh build, which usually clears this
+   in ~25s. The `/pages/builds/latest` status API can also just lag ~15s behind reality — a
+   `"building"` status doesn't always mean the site hasn't already updated.
+2. **Genuine build failure loop** (rarer, worth recognising): `/pages/builds/latest` reports
+   `"errored"` / `"Page build failed."` repeatedly for one SPECIFIC commit (not just a slow
+   `"building"`), and — unlike case 1 — a direct `curl` of the live file confirms the ORIGIN
+   itself is still serving the old content, not just an edge cache. Seen 2026-07-09 on a
+   completely valid commit (clean HTML/JS, valid UTF-8, no stray Jekyll/Liquid `{% %}`/`{{ }}`
+   tokens) that failed to build ~5 times over ~9 minutes before clearing on a further blank
+   `POST /pages/builds` retry with zero code changes. **If you hit this: don't assume the file is
+   broken just because the build keeps erroring — validate the file thoroughly first (UTF-8,
+   JSON/JS syntax, no accidental Liquid-tag-looking sequences), then just keep retrying the force
+   -build.** The API gives no more detail than `"Page build failed."` — there's no deeper error
+   message available without the (non-API) Pages settings UI.
+Either way: confirming via the **GitHub Contents API** (`api.github.com/repos/.../contents/...`)
+only proves the git PUSH landed — it says nothing about whether Pages has actually built and
+served it. Always follow up with a direct `curl` of the live URL (or a Chrome reload) before
+declaring a deploy done.
 
 ---
 
@@ -240,28 +280,88 @@ Polling: box score 12s, leaders/FINAL-check every 5th poll, auto-stop 3h15m (`RU
 - `box/` — dual-iframe cross-faded auto-refresher around the raw printPage box score (`?s=`
   cadence, default 35s), team logos overlaid, NZWIHL via `?w=1`.
 
+## scoringleaders/ — Team Scoring Leaders
+
+Same visual family/stage size as `summary/` (1840×1000-style card, `?bg=opaque` supported), same
+team/game resolution (`resolve()`, `LAST_GAME` fallback table — **kept independently from
+`summary.html`'s own `LAST_GAME`; update both by hand when the round changes, they can drift**),
+but a different data source and a much slower poll (5 min, not Game Summary's 15s — season
+totals don't move mid-game; same 3h15m auto-stop cap as every other live page).
+
+- **Selection:** live-fetch `stats_1team.cfm` for both teams (contract above) via the shared
+  Worker, take each side's **top 3 by points** (points desc → goals desc → jersey asc — identical
+  rule to the roster PDF's skater ranking).
+- **Layout — 3 lines per player, deliberately equal font-size** (a locked-in simplification, not
+  an oversight — re-differentiating any line's size should be an explicit ask, not a "fix"):
+  1. Jersey (`.jnum`, `.75em`/weight 800, team ink colour, no `#` prefix) · position letter (same
+     ink colour, base size) · full name.
+  2. `20 G  11 A  31 Pts  +13` — no `/` separators, no parens around Pts (both were explicitly
+     removed on request). Unit letters (`.unit`) are `.6em`/weight 300; the `+/-` value (`.pm`) is
+     weight 300 at full size (lighter, not smaller).
+  3. Italic descriptor line, ~80% of the other two lines' size, no leading/trailing dots.
+- **No text ever truncates** — `fitPlayerText()` runs after every render, shrinking each line's
+  OWN inline `font-size` (not the whole pill) until its `scrollWidth` fits its `.ptext`
+  container's real `clientWidth`, down to a 10px floor. This is a hard product rule from Mat, not
+  a nice-to-have — don't reintroduce `text-overflow:ellipsis` as a "simpler" alternative.
+- **Descriptor variety system** (`buildCandidates()` + `assignDescriptors()`): the goal is that
+  none of the 6 on-screen players (3 per side) shows a repeated stat TYPE, with one deliberate
+  exception — "Point streak" is reserved for the 1–2 players with the longest active streak
+  (≥3 games) across the WHOLE 6-player pool, everyone else gets a distinct type. Current type
+  roster: `bestgame` (season-high single-game points), `last3` (points in the last 2–3 games),
+  `multipoint` (count of 2+-point games), `rank` (top-10 league-wide, summed client-side from the
+  warehouse), `pointrate` ("points in X of Y games"), `teamshare` (% of the team's season total),
+  `ppg` (points per game), `season` (the unconditional fallback — always available). Greedy
+  assignment is most-constrained-player-first so nobody gets boxed out. **Explicitly removed:**
+  a goal/assist-split framing ("N of M points have come via goals" / "a pass-first playmaker") —
+  Mat's verdict: it just restates the G/A/Pts numbers already on line 2, not a real insight. Don't
+  reintroduce that category without an explicit ask.
+- Sources the season-form descriptor data from the **season data warehouse** (see Shared
+  infrastructure above) — same repo the ticker's pregame preview uses, just a different slice
+  (`derived.player_game_logs`) than the ticker's `derived.head_to_head`.
+- **Not yet integrated:** `preflight/` (the producer pre-flight tool) doesn't check
+  `scoringleaders/`'s resolution/reachability at all — only Game Summary/Ticker/etc. are covered
+  there. Worth adding if this page starts getting relied on live.
+- `ab-test.html` in this same folder is a throwaway design-comparison page (see Page inventory) —
+  not linked anywhere, safe to delete once a pill-construction decision lands here.
+
 ## Portal (`index.html`)
 
-Sections: standings graphics, roster links, Activity Banner team slugs, **Team Pages directory**,
-section thumbnails, footer beta links (scorebug ×2, activity banner, **Ticker Page**, 49ing
-cockpit, Singular login). When adding a page, add its footer link.
+Single-page portal, jump-nav + section anchors (keep both lists in sync when adding a section —
+missing a jump-nav entry for a real section is an easy oversight, caught and fixed 2026-07-09).
+Actual sections, in page order: `#standings` (Live Standings, both PNG sizes ×2 leagues),
+`#boxscores` (**Live Game Summary** — auto-resolving matchup-card grid fed by both leagues'
+`boxscores.json`, links to `summary/?g=`), `#leaders-live` (**Live Team Scoring Leaders** — a
+genuine sibling of `#boxscores`, not a copy: both are rendered from the SAME fetched `fresh`
+games array inside `loadBoxscores()`, just via a second `urlOfLeaders(g)` helper pointing at
+`scoringleaders/?g=` instead of `summary/?g=`; the "This Weekend" hero chips at the top of the
+page intentionally still only link to Game Summary, not Scoring Leaders — that wasn't asked for
+and wasn't assumed), `#summaryslugs` (Game Summary Team Slugs, evergreen per-team URLs,
+Black/Opaque/Copy pills via `summaryCard()`), `#leadersslugs` (Team Scoring Leaders Team Slugs,
+same pattern via `leadersCard()`), `#bannerslugs` (Activity Banner Team Slugs), `#rosters`
+(Game-Day Rosters, live-fetched latest release PDFs), `#brand`, `#upnext`, `#loops`, `#logos`.
+Above `<main>`: a wordless **Team Pages logo strip** (all 10 clubs incl. Mako) linking to
+`team/?team=<slug>`. Footer: source-repo links, **beta-only** links for pages that don't have
+their own portal section yet (`scorebug/?test=1` ×2 clubs, `activity-banner/?test=1`,
+`ticker/?test=1`, `preflight/`, 49ing Cockpit, Singular login) — when a page graduates to having
+its own portal section (as `summary/` and `scoringleaders/` both have), it comes OUT of the
+footer beta list, it doesn't get both.
 
 ## team/ — one-club aggregate view
 
 `team/?team=<slug>` pulls together everything for one club: this club's league standings (both
-PNG sizes), Game Summary (Black/Opaque), Activity Banner, Ticker, Scorebug (only where
-`BUGMAP`-wired — currently Red Devils + Inferno share the Christchurch output; other clubs show
-a "not wired" note instead of a dead link), live-fetched latest roster PDF, Up Next + DVD Loop
-packs, logo, and the club's **full colour palette with hex values** (a local `PALETTES` map —
-every chip from the 2026 Style & Colour Guide hex cheat sheet's `DATA` array, not just a 2-colour
-ink/dark pair; keep both in sync). Branding is intentionally loud: the logo renders 2x on a
-gradient plate (`--p1`/`--p2`/`--p3` CSS vars set from the club's palette), and a full-page fixed
-`.brand-wash` tints every section as you scroll, not just the hero. No `?team=` (or an
-unrecognised one) renders a team picker grid instead. Roster matching resolves the club's
-esportsdesk short code from `boxscores.json` (`away_code`/`home_code`) rather than a fixed table,
-since those codes don't always match our own naming (e.g. Pure NZ Admirals = `WAA`, not `ADM`).
-All 10 clubs are covered, including Auckland Mako (stood down, no 2026 games) — its page still
-renders cleanly, just mostly "no game"/"not wired"/"no roster yet" states.
+PNG sizes), Game Summary (Black/Opaque), **Team Scoring Leaders**, Activity Banner, Ticker,
+Scorebug (only where `BUGMAP`-wired — currently Red Devils + Inferno share the Christchurch
+output; other clubs show a "not wired" note instead of a dead link), live-fetched latest roster
+PDF, Up Next + DVD Loop packs, logo, and the club's **full colour palette with hex values** (a
+local `PALETTES` map — every chip from the 2026 Style & Colour Guide hex cheat sheet's `DATA`
+array, not just a 2-colour ink/dark pair; keep both in sync). Branding is intentionally loud: the
+logo renders 2x on a gradient plate (`--p1`/`--p2`/`--p3` CSS vars set from the club's palette),
+and a full-page fixed `.brand-wash` tints every section as you scroll, not just the hero. No
+`?team=` (or an unrecognised one) renders a team picker grid instead. Roster matching resolves
+the club's esportsdesk short code from `boxscores.json` (`away_code`/`home_code`) rather than a
+fixed table, since those codes don't always match our own naming (e.g. Pure NZ Admirals = `WAA`,
+not `ADM`). All 10 clubs are covered, including Auckland Mako (stood down, no 2026 games) — its
+page still renders cleanly, just mostly "no game"/"not wired"/"no roster yet" states.
 
 ## league/ — one-league aggregate view
 
@@ -289,3 +389,10 @@ NOT an official club-brand colour, the Style Guide only defines a generic black/
    verify against `matchavez/nzihl-season-data`'s committed `derived.head_to_head` directly if in
    doubt). Chrome-MCP console output REDACTS URL-like strings — re-encode (`?`→" Q ") when dumping
    links.
+5. **For anything about precise layout/alignment/sizing, don't trust a screenshot alone** —
+   scaled-down screenshots make small offsets (20–30px) hard to judge by eye and can look
+   "left-aligned" when they're actually centred. Use the Chrome extension's JS-execution tool to
+   read `getBoundingClientRect()` / `getComputedStyle()` straight off the live DOM (e.g. confirm a
+   text block's left/right margins are actually equal, or that a row's real `className`/
+   `flexDirection` is what the code intended) — caught a false alarm this way on 2026-07-09
+   verifying `scoringleaders/ab-test.html`'s centred-text variant.
