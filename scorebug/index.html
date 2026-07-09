@@ -65,6 +65,26 @@
   .btxt .dur{font-weight:900;font-variant-numeric:tabular-nums;}
   .btxt .sep{opacity:.55;font-weight:700;padding:0 .15em;}
 
+  /* Pregame "confidence alert": fires once on load (pre-game only) for 7s, showing
+     AWAY VS HOME + date/venue, so a producer glancing at the frame before puck drop can
+     confirm the right game resolved. Solid black (not a team colour) since it's neutral —
+     ported from activity-banner/index.html for parity. */
+  #pre{position:absolute;left:0;bottom:0;width:1920px;height:78px;z-index:6;
+    display:flex;align-items:center;
+    background:#000000;
+    box-shadow:0 -8px 24px rgba(0,0,0,.42);
+    clip-path:inset(0 100% 0 0);opacity:0;display:none;
+    will-change:clip-path,opacity;}
+  #pre.show{display:flex;clip-path:inset(0 0 0 0);opacity:1;
+    transition:clip-path .25s cubic-bezier(.4,0,.2,1),opacity .16s ease;}
+  #pre.hide{display:flex;clip-path:inset(0 0 0 100%);opacity:1;
+    transition:clip-path .25s cubic-bezier(.4,0,.2,1);}
+  .ptxt{flex:1 1 auto;min-width:0;text-align:center;color:#fff;padding:0 16px;}
+  .pline1{font-weight:900;letter-spacing:.01em;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-shadow:0 2px 8px rgba(0,0,0,.45);}
+  .pline2{font-weight:600;opacity:.85;line-height:1.2;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-shadow:0 2px 8px rgba(0,0,0,.4);}
+
   /* --- test controls (only with ?test=1) --- */
   /* pinned to the TOP now (was bottom:22px) so the dev panel doesn't sit on top of the
      banner, which now lives at the bottom of the frame (2026-07-06). */
@@ -95,6 +115,15 @@
     <div class="bend" id="bendL"><img id="blogoL" alt=""></div>
     <div class="btxt" id="btxt"></div>
     <div class="bend" id="bendR"><img id="blogoR" alt=""></div>
+  </div>
+
+  <div id="pre">
+    <div class="bend"><img id="preLogoL" alt=""></div>
+    <div class="ptxt" id="ptxt">
+      <div class="pline1" id="preLine1"></div>
+      <div class="pline2" id="preLine2"></div>
+    </div>
+    <div class="bend"><img id="preLogoR" alt=""></div>
   </div>
 
   <div id="test">
@@ -347,16 +376,77 @@ const sigGoal=g=>`G|${g.teamID}|${g.p}|${g.t}|${g.no}|${surnameUC(g.who)}`;
 const sigPen =p=>`P|${p.teamID}|${p.p}|${p.t}|${p.no}|${surnameUC(p.who)}|${p.inf}`;
 const seen=new Set(); let baselined=false;
 let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="";
+let PREGAME=null;
 
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
 function boxURL(m,gid){return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
+const SLUG_VIS = {
+ "pure-nz-admirals": REG["674110"], "canterbury-red-devils": REG["675633"],
+ "dunedin-thunder": REG["675634"], "skycity-stampede": REG["675635"],
+ "botany-swarm": REG["674109"], "auckland-steel": REG["675636"],
+ "canterbury-inferno": REG["675637"], "dunedin-thunder-women": REG["675638"],
+ "wakatipu-wild": REG["675639"],
+};
+const visByName=n=>SLUG_VIS[slug(n)]||DEFV;
+
+const ASSET_TIMEOUT_MS = 1500;
+function loadImage(src, timeoutMs){
+  return new Promise(res=>{
+    if(!src){ res(null); return; }
+    let done=false; const img=new Image();
+    const finish=ok=>{ if(done) return; done=true; res(ok?img:null); };
+    img.onload=()=>finish(true); img.onerror=()=>finish(false);
+    img.src=src;
+    setTimeout(()=>finish(false), timeoutMs||ASSET_TIMEOUT_MS);
+  });
+}
+function fitLine(el, base, min){
+  let fs=base; el.style.fontSize=fs+"px";
+  let guard=80;
+  while(el.scrollWidth>el.clientWidth && fs>min && guard-->0){ fs-=1; el.style.fontSize=fs+"px"; }
+}
+function fitPregame(){ fitLine(preLine1,30,16); fitLine(preLine2,16,11); }
+function fmtPregameDate(gm){
+  let dpart=gm.date||"";
+  try{ dpart=new Date(gm.datetime||(gm.date+"T00:00:00")).toLocaleDateString("en-NZ",
+    {weekday:"short",day:"numeric",month:"short",timeZone:"Pacific/Auckland"}); }catch(e){}
+  return (dpart+(gm.time?(" · "+gm.time):"")).trim();
+}
+function showConfidenceAlert(gm){
+  if(!gm||!gm.away||!gm.home) return;
+  const startMs = new Date(gm.datetime||gm.date).getTime();
+  if(!startMs || Date.now()>=startMs) return;   // already started (or unknown start) — never show
+  const av=visByName(gm.away), hv=visByName(gm.home);
+  const aSrc = av.logo?LOGO+encodeURIComponent(av.logo):null;
+  const hSrc = hv.logo?LOGO+encodeURIComponent(hv.logo):null;
+  Promise.all([loadImage(aSrc), loadImage(hSrc)]).then(([aImg,hImg])=>{
+    if(Date.now()>=startMs) return;   // re-check post-load: the wait must never push us past kickoff
+    preLogoL.style.visibility = aImg ? "" : "hidden"; if(aImg) preLogoL.src=aImg.src;
+    preLogoR.style.visibility = hImg ? "" : "hidden"; if(hImg) preLogoR.src=hImg.src;
+    preLine1.textContent = `${gm.away.toUpperCase()} VS ${gm.home.toUpperCase()}`;
+    preLine2.textContent = `${fmtPregameDate(gm)} - ${gm.venue||""}`;
+    pre.style.display="flex"; void pre.offsetWidth;
+    fitPregame();
+    pre.classList.add("show");
+    setTimeout(()=>{
+      pre.classList.remove("show"); pre.classList.add("hide");
+      setTimeout(()=>{ pre.classList.remove("hide"); pre.style.display="none"; }, 300);
+    }, 7000);
+  });
+}
+
 async function resolveTarget(){
   const team=Q.get("team"), g=Q.get("g")||Q.get("gameid");
   const lp=(Q.get("l")||Q.get("league")||"").toLowerCase();
-  if(g){const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");return {m,gid:g};}
+  if(g){
+    const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");
+    try{ const data=await getJSON(m.url); const gm=(data.games||[]).find(x=>String(x.gameid)===String(g));
+      if(gm) PREGAME={away:gm.away,home:gm.home,venue:gm.venue,date:gm.date,time:gm.time,datetime:gm.datetime}; }catch(e){}
+    return {m,gid:g};
+  }
   // Reuse the ROSTER selector: same boxscores.json (current round) the portal's rosters +
   // box-score links are built from. Pick THIS team's live/next game. Static per-team URL:
   //   scorebug/?team=canterbury-red-devils  (or dunedin-thunder, botany-swarm, pure-nz-admirals,
@@ -370,11 +460,12 @@ async function resolveTarget(){
       const gid = gm.gameid || KNOWN_GIDS[[gm.away,gm.home,gm.date].join("|")] || null;
       if(!gid) return;
       if(slug(gm.away)!==slugTeam && slug(gm.home)!==slugTeam) return;
-      cands.push({m, gid, dt:new Date(gm.datetime||gm.date).getTime()||0}); });}
+      cands.push({m, gid, dt:new Date(gm.datetime||gm.date).getTime()||0, gm}); });}
   if(!cands.length) return null;
   const now=Date.now(), LIVE=5*3600*1000;                    // a game up to 5h old still counts as "current"
   const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);  // soonest live/upcoming first
   const pick=live[0] || cands.sort((a,b)=>b.dt-a.dt)[0];      // else the most recent
+  PREGAME = {away:pick.gm.away, home:pick.gm.home, venue:pick.gm.venue, date:pick.gm.date, time:pick.gm.time, datetime:pick.gm.datetime};
   return {m:pick.m, gid:pick.gid};
 }
 
@@ -447,6 +538,7 @@ async function start(){
     buildTestButtons();
     document.getElementById("tAll").onclick=playAll; }
   TARGET=await resolveTarget();
+  showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started
   const diag=document.getElementById("diag");
   if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+(TARGET?("game "+TARGET.gid):"no-game")
     + (bugFallback?"  ·  ⚠ DEFAULT scorebug — set "+teamSlug+"'s Singular id before publish":""); }
