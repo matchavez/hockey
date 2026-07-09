@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Scoring Leaders — A/B: Player Pill Symmetry</title>
+<title>Scoring Leaders — A/B/C: Player Pill Symmetry</title>
 <style>
 @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
 @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable-Italic.woff2') format('woff2');}
@@ -45,6 +45,7 @@ html,body{background:#000;font-family:Inter,-apple-system,Segoe UI,sans-serif;fo
 
 .ptext{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:14px;}
 .prow.right .ptext{align-items:flex-end;text-align:right;}
+.ptext.ctext{align-items:center;text-align:center;} /* C — 3 lines centred within the pill's text column */
 .pline{font-weight:700;font-size:40px;line-height:1.15;color:#f5f6fa;white-space:nowrap;}
 .pline.descr{font-style:italic;font-size:32px;color:#c9cdd6;}
 .pline .jnum{font-size:.75em;font-weight:800;}
@@ -100,19 +101,44 @@ html,body{background:#000;font-family:Inter,-apple-system,Segoe UI,sans-serif;fo
     <div class="msg" id="msg-B" style="display:none"></div>
   </div></div>
 
+  <div class="ab-label"><span class="tag">C</span> Test — both sides identical (bar · photo), text centred</div>
+  <div class="stagewrap"><div class="stage" id="stage-C">
+    <div class="wash" id="wash-C"></div>
+    <span class="livedot"></span>
+    <header class="hdr">
+      <img class="hdr-logo" id="logoA-C" alt="">
+      <div class="hdr-mid">
+        <div class="kicker" id="kicker-C"></div>
+        <div class="title">TEAM SCORING LEADERS</div>
+        <div class="sub-line" id="sub-C"></div>
+      </div>
+      <img class="hdr-logo" id="logoB-C" alt="">
+    </header>
+    <div class="hline"></div>
+    <div class="grid">
+      <div class="col left" id="colA-C"></div>
+      <div class="col right" id="colB-C"></div>
+    </div>
+    <div class="msg" id="msg-C" style="display:none"></div>
+  </div></div>
+
 </div>
 
 <script>
-// A/B COMPARISON TOOL — not part of the deployed rotation, just a side-by-side
-// preview so Mat can eyeball two constructions before picking one.
+// A/B/C COMPARISON TOOL — not part of the deployed rotation, just a
+// side-by-side preview so Mat can eyeball constructions before picking one.
 //   A = scoringleaders/index.html exactly as shipped: right column mirrors
 //       (row-reverse — bar/photo/text run right-to-left, text right-aligned).
 //   B = same data, same three lines, same fonts/sizes/colors — but BOTH
 //       columns are built identically (bar, then photo, then left-aligned
-//       text). Only rowEl()'s mirror flag differs between A and B; every
-//       other function (fetch, parse, descriptor selection) is shared so
-//       both stages are guaranteed to show the exact same player data.
-// Same ?team=<slug> / ?g=<gameid> / &w=1 params as the live page.
+//       text). Only rowEl()'s mirror flag differs between A and B.
+//   C = same construction as B (bar, then photo — no mirroring) but the 3
+//       text lines are centred within the pill instead of left-aligned.
+// Every other function (fetch, parse, descriptor selection) is shared so all
+// three stages are guaranteed to show the exact same player data — only
+// rowEl()'s mirror/centerText flags differ between A/B/C.
+// Same ?team=<slug> / ?g=<gameid> / &w=1 params as the live page (URL
+// structure unchanged — this is still one page, just a third stacked stage).
 
 const WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";
 const SHIM = u => WORKER ? (WORKER.replace(/\/$/,"") + "?url=" + encodeURIComponent(u)) : null;
@@ -305,7 +331,7 @@ function photoEl(p, ink, size){
 // `mirror` = true → variant A behaviour (right column reverses + right-aligns).
 // `mirror` = false → variant B: EVERY row is built like the current left
 // column regardless of which side it's on (bar, photo, left-aligned text).
-function rowEl(p, team, side, mirror){
+function rowEl(p, team, side, mirror, centerText){
   const ink = team.ink;
   const row = document.createElement("div");
   row.className = "prow " + ((mirror && side === "right") ? "right" : "left");
@@ -317,7 +343,7 @@ function rowEl(p, team, side, mirror){
   row.appendChild(photoEl(p, ink, photoSize));
 
   const ptext = document.createElement("div");
-  ptext.className = "ptext";
+  ptext.className = "ptext" + (centerText ? " ctext" : "");
 
   const line1 = document.createElement("div");
   line1.className = "pline";
@@ -336,7 +362,7 @@ function rowEl(p, team, side, mirror){
   return row;
 }
 
-function render(P, suf, mirror){
+function render(P, suf, mirror, centerText){
   const A = {ink:vis(P.away.id).ink, dark:vis(P.away.id).dark, logo:vis(P.away.id).logo};
   const H = {ink:vis(P.home.id).ink, dark:vis(P.home.id).dark, logo:vis(P.home.id).logo};
   washVectors(A,H,suf);
@@ -347,8 +373,8 @@ function render(P, suf, mirror){
 
   const colA = document.getElementById("colA-"+suf); colA.innerHTML = "";
   const colB = document.getElementById("colB-"+suf); colB.innerHTML = "";
-  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left", mirror)));
-  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right", mirror)));
+  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left", mirror, centerText)));
+  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right", mirror, centerText)));
 }
 
 function fitPlayerText(){
@@ -374,8 +400,8 @@ function fitBoth(){
   });
 }
 addEventListener("resize", fitBoth);
-function showMsg(t){ ["A","B"].forEach(suf=>{ const m=document.getElementById("msg-"+suf); m.style.display="flex"; m.textContent=t; }); }
-function hideMsg(){ ["A","B"].forEach(suf=>{ document.getElementById("msg-"+suf).style.display="none"; }); }
+function showMsg(t){ ["A","B","C"].forEach(suf=>{ const m=document.getElementById("msg-"+suf); m.style.display="flex"; m.textContent=t; }); }
+function hideMsg(){ ["A","B","C"].forEach(suf=>{ document.getElementById("msg-"+suf).style.display="none"; }); }
 
 async function getJSON(u){ const r = await fetch(u,{cache:"no-store"}); if(!r.ok) throw 0; return r.json(); }
 async function getText(u){ const r = await fetch(SHIM(u),{cache:"no-store"}); if(!r.ok) throw 0; return r.text(); }
@@ -470,8 +496,9 @@ async function tick(){
     };
     // Same resolved matchup + same computed descriptors feed BOTH stages —
     // only the row construction (mirror flag) differs.
-    render(P, "A", true);
-    render(P, "B", false);
+    render(P, "A", true, false);
+    render(P, "B", false, false);
+    render(P, "C", false, true);
     fitPlayerText();
     renderedOnce = true; fitBoth();
   } catch(e){
