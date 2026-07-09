@@ -51,6 +51,15 @@ no 2026 games).
   `https://raw.githubusercontent.com/matchavez/{nzihl,nzwihl}-broadcast-rosters/main/boxscores.json`
   — fields: `date, time, datetime(+12:00), away, home, away_code, home_code, venue, gameid,
   boxscore_url, in_core_window`. Selection: soonest game ≥ now−5h, else most recent with a gameid.
+- **Season data warehouse** (matchavez/nzihl-season-data, nightly cron 16:30 UTC + `workflow_dispatch`,
+  full contract/gotchas in that repo's own README):
+  `https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/{nzihl,nzwihl}.json` — every
+  **completed** game (gameid, date, away/home line scores + SOG/PP/PIM, goals, pens, goalies,
+  `finalType`), plus a `derived` block (`last5`, `streak`, `head_to_head`, `player_game_logs`) computed
+  fresh at build time. This is what `ticker/`'s pregame preview uses for last-meeting + head-to-head
+  instead of a live sequential-gameid probe (see `ticker/` section below) — reach for it before adding
+  any NEW season-level claim to an overlay page, rather than re-deriving it from a live probe.
+  Cursor/bookkeeping state lives in a separate `cursor.json` in that repo, not in the two data files.
 - **Team visual registry `REG`** (duplicated in ticker/scorebug/summary/activity-banner — keep in
   sync), keyed by esportsdesk **teamID**:
 
@@ -185,8 +194,14 @@ stable across rebuilds.
    break from the tally walk; shots cumulative from the SOG parens) after each period the game
    has moved PAST (`PERSDONE` = max(SOG paren count, highest event period)).
 5. **Pregame preview** (while the game has zero events): puck drop (manifest time/venue, only
-   while now < start+30min), standings line, each club's leading scorer, last meeting result
-   (sequential-gameid walk). **Anything unresolved is OMITTED — never invented.**
+   while now < start+30min), standings line, each club's leading scorer, last meeting result AND
+   a season head-to-head record ("Dunedin Thunder lead the season series 3-1" / "X and Y are tied
+   2-2 this season") — both read from the **season data warehouse**
+   (`matchavez/nzihl-season-data`'s `derived.head_to_head`, one instant fetch) via
+   `findLastMeetingFromWarehouse()`, not a live probe. `findLastMeetingLive()` (the original
+   25-fetch sequential-gameid walk) only runs as a fallback if that fetch fails; the head-to-head
+   line never renders off the fallback path (a season tally isn't worth a live crawl — omit
+   rather than under-report). **Anything unresolved is OMITTED — never invented.**
 6. **Ad slot (pre-wired, dormant):** `?ad=<slug>` → `ADMAP` entry `{img,lead,brand,url,accent}`;
    renders as a native item (sponsor logo in the crest slot + one line, brand in accent colour)
    after each period divider (end-of-loop if none yet). `?ad=test` previews. To go live: PNG
@@ -270,5 +285,7 @@ NOT an official club-brand colour, the Style Guide only defines a generic black/
    `traveled=ENTRY+unitW+1; step()` to force a seam) and read
    `track.firstElementChild.textContent` to assert exact strip wording.
 4. Real-data checks: game 2519940 (CRD/DUN, milestones), 2519941 (Final/OT — FINAL + OT-winner),
-   ?team=botany-swarm (pregame preview). Chrome-MCP console output REDACTS URL-like strings —
-   re-encode (`?`→" Q ") when dumping links.
+   ?team=botany-swarm (pregame preview, incl. warehouse-sourced last-meeting + head-to-head —
+   verify against `matchavez/nzihl-season-data`'s committed `derived.head_to_head` directly if in
+   doubt). Chrome-MCP console output REDACTS URL-like strings — re-encode (`?`→" Q ") when dumping
+   links.
