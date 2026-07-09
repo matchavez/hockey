@@ -21,18 +21,21 @@
   a{ color:inherit; text-decoration:none; }
   .wrap{ max-width:860px; margin:0 auto; padding:0 16px; }
 
+  /* Primary carries the wash; Secondary is a small, sparing accent tucked in
+     one corner — not a co-equal colour. Tertiary is unused here on purpose. */
   .brand-wash{ position:fixed; inset:0; z-index:-1; pointer-events:none;
     background:
-      radial-gradient(900px 620px at 12% -8%, color-mix(in srgb, var(--p1) 30%, transparent), transparent 62%),
-      radial-gradient(900px 620px at 105% 8%, color-mix(in srgb, var(--p2) 26%, transparent), transparent 62%),
-      radial-gradient(760px 520px at 50% 118%, color-mix(in srgb, var(--p3) 16%, transparent), transparent 66%); }
+      radial-gradient(1100px 720px at 18% -10%, color-mix(in srgb, var(--p1) 34%, transparent), transparent 65%),
+      radial-gradient(900px 620px at 100% 105%, color-mix(in srgb, var(--p1) 22%, transparent), transparent 62%),
+      radial-gradient(420px 320px at 97% 3%, color-mix(in srgb, var(--p2) 16%, transparent), transparent 70%); }
 
   header.hero{ padding:32px 0 30px; border-bottom:1px solid var(--line); position:relative; overflow:hidden; }
   header.hero::before{ content:""; position:absolute; inset:0; pointer-events:none;
-    background: linear-gradient(128deg, color-mix(in srgb, var(--p1) 58%, transparent) 0%,
-      color-mix(in srgb, var(--p2) 42%, transparent) 55%, transparent 100%); }
+    background: linear-gradient(128deg, color-mix(in srgb, var(--p1) 62%, transparent) 0%,
+      color-mix(in srgb, var(--p1) 38%, transparent) 45%,
+      color-mix(in srgb, var(--p2) 20%, transparent) 78%, transparent 100%); }
   header.hero::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:4px;
-    background:linear-gradient(90deg, var(--p1), var(--p2), var(--p3)); }
+    background:linear-gradient(90deg, var(--p1) 0%, var(--p1) 60%, var(--p2) 85%, var(--p3) 100%); }
   .hero .wrap{ position:relative; }
   .crumbs{ display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:16px; flex-wrap:wrap; }
   .crumbs a{ padding:4px 10px; border-radius:999px; border:1px solid var(--line); transition:color .15s,border-color .15s,background .15s; }
@@ -41,13 +44,14 @@
 
   .idcard{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
   .logo-plate{ width:148px; height:148px; border-radius:26px; flex:0 0 auto;
-    background:linear-gradient(145deg, var(--p1), var(--p2));
+    background:color-mix(in srgb, var(--p1) 88%, #10131a 12%);
     display:flex; align-items:center; justify-content:center;
-    box-shadow:0 14px 34px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.10); }
+    box-shadow:0 14px 34px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.10),
+      0 0 0 2px color-mix(in srgb, var(--p2) 55%, transparent); }
   .logo-plate img{ width:104px; height:104px; object-fit:contain; filter:drop-shadow(0 3px 10px rgba(0,0,0,.55)); }
   .idcard h1{ font-size:clamp(26px,5vw,40px); font-weight:800; margin:0; }
   .idcard .lg-tag{ display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:800;
-    letter-spacing:.14em; text-transform:uppercase; color:var(--p1); margin-top:7px; }
+    letter-spacing:.14em; text-transform:uppercase; color:var(--p2); margin-top:7px; }
 
   section{ padding:24px 0 4px; }
   .sec-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
@@ -92,7 +96,7 @@
   .team .nm{ font-size:13.5px; font-weight:600; }
 
   a.game{ display:block; }
-  .game .day{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--p1); text-transform:uppercase; }
+  .game .day{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--p2); text-transform:uppercase; }
   .game .match{ font-size:14px; font-weight:700; margin:4px 0 4px; display:flex; align-items:center; flex-wrap:wrap; gap:2px; }
   .game .match .mlg{ width:19px; height:19px; object-fit:contain; margin-right:5px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
   .game .match span{ color:var(--muted); font-weight:600; padding:0 6px; }
@@ -160,14 +164,16 @@ const NZWIHL = [
 ];
 [NZIHL, NZWIHL].forEach(a => a.sort((x,y) => x.nm.localeCompare(y.nm)));
 
-// Site-wide accent theme per league (gold = NZIHL, blue = NZWIHL — the same
-// convention used everywhere else on the portal, e.g. .chip.blue/.league-label.blue).
-// Not official club-brand colours (the Style & Colour Guide only defines those
-// per-club, plus a generic black/white "League Marks" pair) — this is purely
-// this site's own accent scheme, picked for visual consistency across pages.
+// Primary is the official "League Black" from the Style & Colour Guide's
+// League Marks entry (#000000 — the only colour actually IN the scheme; its
+// pair is a white "Reverse", not a colour). Secondary is this site's own
+// accent convention (gold = NZIHL, blue = NZWIHL — same as .chip.blue/
+// .league-label.blue elsewhere on the portal), used sparingly since it isn't
+// part of the official scheme — small corner glow + thin plate ring only,
+// never the dominant wash colour. Tertiary just reuses black for depth.
 const THEMES = {
-  NZIHL:  { p1:"#F7BE11", p2:"#3A2C00", p3:"#1A1500", logo:"NZIHL-White-2000.png",           roster:"nzihl-broadcast-rosters" },
-  NZWIHL: { p1:"#3AA0FF", p2:"#0A2A4A", p3:"#04121F", logo:"NZWIHL-Logo-White-1000px.png",   roster:"nzwihl-broadcast-rosters" },
+  NZIHL:  { p1:"#000000", p2:"#F7BE11", p3:"#000000", logo:"NZIHL-White-2000.png",           roster:"nzihl-broadcast-rosters" },
+  NZWIHL: { p1:"#000000", p2:"#3AA0FF", p3:"#000000", logo:"NZWIHL-Logo-White-1000px.png",   roster:"nzwihl-broadcast-rosters" },
 };
 
 const slug = nm => nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
