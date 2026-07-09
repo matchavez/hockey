@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NZIHL Team Scoring Leaders</title>
+<script>
+// Background mode toggle — identical convention to summary/index.html:
+// ?bg=opaque = translucent-but-highly-opaque stage (.92 alpha + 14px blur),
+// default (no param, or ?bg=black) = solid stage. Set before first paint.
+if (new URLSearchParams(location.search).get('bg') === 'opaque') {
+  document.documentElement.classList.add('bg-opaque');
+}
+</script>
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable-Italic.woff2') format('woff2');}
+:root{ --bg:#0b0b0d; --fg:#f4f6fa; --sub:#c3c9d4; --dim:#878d99; }
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:#000;font-family:Inter,-apple-system,Segoe UI,sans-serif;font-feature-settings:"tnum" 1,"cv05" 1;-webkit-font-smoothing:antialiased;}
+html.bg-opaque, html.bg-opaque body{background:transparent;}
+html.bg-opaque{--bg:rgba(9,9,11,.92);}
+html.bg-opaque #stage{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+#fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+#stage{width:1840px;height:1000px;flex:0 0 auto;position:relative;color:var(--fg);background:var(--bg);overflow:hidden;display:flex;flex-direction:column;}
+#wash{position:absolute;left:0;top:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.55;}
+.livedot{position:absolute;top:16px;left:22px;z-index:6;width:14px;height:14px;border-radius:50%;background:#5fe39a;box-shadow:0 0 0 0 rgba(95,227,154,.6);opacity:0;transition:opacity .2s ease;}
+.livedot.scraping{opacity:1;animation:pl 2.2s ease-out infinite;}
+@keyframes pl{0%{box-shadow:0 0 0 0 rgba(95,227,154,.55)}70%{box-shadow:0 0 0 11px rgba(95,227,154,0)}100%{box-shadow:0 0 0 0 rgba(95,227,154,0)}}
+
+header#hdr{height:333px;flex:0 0 auto;display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:0 56px;position:relative;z-index:1;}
+.hdr-logo{height:190px;max-width:420px;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(0,0,0,.5));}
+.hdr-mid{text-align:center;padding:0 24px;}
+.kicker{font-weight:700;font-size:24px;letter-spacing:.14em;color:#b9becc;text-transform:uppercase;}
+.title{font-weight:800;font-size:58px;letter-spacing:.01em;margin-top:14px;text-shadow:0 0 26px rgba(255,255,255,.28);}
+.sub{font-weight:500;font-size:19px;color:var(--sub);margin-top:14px;}
+.hline{height:1px;margin:0 56px;background:rgba(255,255,255,.16);flex:0 0 auto;}
+
+#grid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr 1fr;position:relative;z-index:1;padding:24px 0 40px;}
+#grid::after{content:"";position:absolute;left:50%;top:24px;bottom:40px;width:1px;background:rgba(255,255,255,.18);}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0;}
+.col.left{padding:0 26px 0 56px;}
+.col.right{padding:0 56px 0 26px;}
+
+.prow{flex:1;position:relative;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.14);border-radius:16px;display:flex;align-items:center;padding:0 30px;gap:26px;min-height:0;}
+.prow.right{flex-direction:row-reverse;}
+.accent{position:absolute;top:16px;bottom:16px;width:7px;border-radius:4px;}
+.prow.left .accent{left:9px;}
+.prow.right .accent{right:9px;}
+
+.photo{flex:0 0 auto;border-radius:50%;overflow:hidden;background:#1b2029;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 6px 18px rgba(0,0,0,.4);}
+.photo img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;}
+.photo .ini{font-weight:800;color:#a9b1bf;}
+
+.ptext{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px;}
+.prow.right .ptext{align-items:flex-end;text-align:right;}
+.pname{font-weight:800;font-size:29px;color:#f5f6fa;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.psub{font-size:16px;color:var(--dim);display:flex;gap:8px;align-items:baseline;}
+.psub .jnum{font-weight:800;}
+.pstats{display:flex;gap:26px;margin-top:2px;}
+.prow.right .pstats{flex-direction:row-reverse;}
+.pstat{text-align:center;min-width:52px;}
+.pstat .num{font-weight:800;font-size:33px;color:#ebedf2;display:block;}
+.pstat.pts .num{font-size:38px;}
+.pstat .lbl{font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.03em;}
+.pdescr{font-size:15px;color:#b7bcc6;display:flex;align-items:center;gap:8px;margin-top:2px;max-width:100%;}
+.prow.right .pdescr{flex-direction:row-reverse;}
+.pdescr .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;}
+.pdescr span.txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+#msg{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;text-align:center;
+  color:var(--sub);font-size:28px;font-weight:600;padding:60px;line-height:1.5;background:var(--bg);}
+</style>
+</head>
+<body>
+<div id="fit"><div id="stage">
+  <div id="wash"></div>
+  <span class="livedot"></span>
+  <header id="hdr">
+    <img class="hdr-logo" id="logoA" alt="">
+    <div class="hdr-mid">
+      <div class="kicker" id="kicker"></div>
+      <div class="title">TEAM SCORING LEADERS</div>
+      <div class="sub" id="sub"></div>
+    </div>
+    <img class="hdr-logo" id="logoB" alt="">
+  </header>
+  <div class="hline"></div>
+  <div id="grid">
+    <div class="col left" id="colA"></div>
+    <div class="col right" id="colB"></div>
+  </div>
+  <div id="msg" style="display:none"></div>
+</div></div>
+
+<script>
+// ---- config --------------------------------------------------------------
+// Same Cloudflare Worker Game Summary uses (already allowlists stats_1team.cfm).
+const WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";
+const SHIM = u => WORKER ? (WORKER.replace(/\/$/,"") + "?url=" + encodeURIComponent(u)) : null;
+const MANIFESTS = [
+  {league:"nzihl",  url:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",  clientid:7131, leagueid:35499},
+  {league:"nzwihl", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json", clientid:7132, leagueid:35501},
+];
+// Season data warehouse — static JSON, direct fetch (GitHub raw sends CORS headers, no Worker needed).
+const WAREHOUSE = {
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzihl.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzwihl.json",
+};
+const LOGO = "https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+const SHOT = "https://admin.esportsdesk.com/media/leagues/6795/graphics/";
+const STATS_URL = "https://admin.esportsdesk.com/leagues/stats_1team.cfm";
+
+// team visuals + display name (name MUST match boxscores.json's away/home strings exactly)
+const REG = {
+ "674110":{code:"ADM", ink:"#2F6FE0", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", venue:"Paradice Avondale", name:"Pure NZ Admirals"},
+ "675633":{code:"CRD", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png",       venue:"Alpine Ice Centre", name:"Canterbury Red Devils"},
+ "675634":{code:"DUN", ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png",              venue:"Dunedin Ice Stadium", name:"Dunedin Thunder"},
+ "675635":{code:"SCS", ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png",   venue:"Queenstown Ice Arena", name:"SkyCity Stampede"},
+ "674109":{code:"BSW", ink:"#C2455A", dark:"#441620", logo:"Botany Swarm 2000x2000.png",       venue:"Paradice Botany", name:"Botany Swarm"},
+ "675636":{code:"AST", ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png",         venue:"Paradice Avondale", name:"Auckland Steel"},
+ "675637":{code:"CIN", ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png",                venue:"Alpine Ice Centre", name:"Canterbury Inferno"},
+ "675638":{code:"DTW", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png",          venue:"Dunedin Ice Stadium", name:"Dunedin Thunder Women"},
+ "675639":{code:"WLD", ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png",          venue:"Queenstown Ice Arena", name:"Wakatipu Wild"},
+};
+const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:"", venue:"", name:""};
+const vis = id => REG[id] || DEFV;
+const NAME_TO_ID = Object.fromEntries(Object.entries(REG).map(([id,v]) => [v.name, id]));
+
+// ---- helpers ---------------------------------------------------------------
+const slug = s => s.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const normName = s => (s||"").toLowerCase().replace(/[^a-z]/g,"");
+const ini = n => n.split(/\s+/).map(w=>w[0]).filter(Boolean).join("").slice(0,2).toUpperCase();
+const shotURL = n => SHOT + encodeURIComponent(n.replace(/\s+/g,"")) + ".jpg";
+function properCase(s){
+  if(!s) return s;
+  const letters = s.replace(/[^a-zA-Z]/g,"");
+  if(!letters) return s;
+  const allUpper = letters===letters.toUpperCase() && letters!==letters.toLowerCase();
+  const allLower = letters===letters.toLowerCase() && letters!==letters.toUpperCase();
+  if(!allUpper && !allLower) return s;
+  return s.toLowerCase().replace(/(^|[\s\-'.(])([a-z])/g,(m,p1,p2)=>p1+p2.toUpperCase());
+}
+function decodeEntities(s){
+  const ta = document.createElement("textarea");
+  ta.innerHTML = s;
+  return ta.value;
+}
+// Quote-aware tag stripper (ported from the roster scraper's _TAG_RE) — a
+// naive <[^>]+> stops at the first bare '>' even inside a quoted attribute
+// (esportsdesk tooltip titles sometimes embed one), which garbles cells.
+const TAG_RE = /<(?:"[^"]*"|'[^']*'|[^>"'])*>/g;
+function clean(tdHtml){ return decodeEntities(tdHtml.replace(TAG_RE,"")).replace(/\s+/g," ").trim(); }
+
+// ---- parse stats_1team.cfm PLAYER STATISTICS table (ported from
+// nzihl-broadcast-rosters/scraper.py: header-label-driven column lookup, not
+// fixed offsets — stats_1team.cfm has shipped more than one column layout). ----
+function parseSkaterTable(html){
+  const blockM = html.match(/PLAYER STATISTICS[\s\S]*?TEAM TOTALS/i);
+  if(!blockM) return [];
+  const block = blockM[0];
+  const trs = [...block.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
+  if(!trs.length) return [];
+  const ths = [...trs[0][1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)].map(m=>clean(m[1]).toUpperCase());
+  const col = {}; ths.forEach((t,i)=>{ if(!(t in col)) col[t]=i; });
+  const idxNum = col["#"] ?? 2, idxPos = col["POSITION"] ?? 3, idxGp = col["GP"] ?? 4,
+        idxG = col["G"] ?? 5, idxA = col["A"] ?? 6;
+  const need = Math.max(idxNum,idxPos,idxGp,idxG,idxA) + 1;
+  const rows = [];
+  for(const trm of trs){
+    const rowHtml = trm[1];
+    const linkM = rowHtml.match(/<a[^>]*href="[^"]*playerID=(\d+)[^"]*"[^>]*title="([^"]+)"[^>]*>/i);
+    if(!linkM) continue;
+    const name = properCase(decodeEntities(linkM[2]).trim());
+    const tds = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>clean(m[1]));
+    if(tds.length < need) continue;
+    const jersey = parseInt(tds[idxNum]) || 0;
+    const pos = (tds[idxPos]||"").trim();
+    const gp = parseInt(tds[idxGp]) || 0;
+    const g = parseInt(tds[idxG]) || 0;
+    const a = parseInt(tds[idxA]) || 0;
+    if(!name) continue;
+    rows.push({name, jersey, pos, gp, g, a, pts:g+a});
+  }
+  return rows;
+}
+// Same "top 3 in points" rule as the roster PDF (layout.py _top3_keys):
+// points desc, goals desc, jersey asc.
+function top3(rows){
+  return rows.slice().sort((x,y)=> (y.pts-x.pts) || (y.g-x.g) || (x.jersey-y.jersey)).slice(0,3);
+}
+function statsURL(teamID, clientid, leagueid){
+  return `${STATS_URL}?clientid=${clientid}&leagueid=${leagueid}&teamid=${teamID}&printPage=1&_=${Date.now()}`;
+}
+
+// ---- descriptor line, sourced from the season data warehouse --------------
+// (matchavez/nzihl-season-data): active point streak > last-3-games points >
+// league-wide rank > season-total fallback (always available).
+function computeDescriptor(player, wh, leagueShort){
+  const fallback = `${player.pts} point${player.pts===1?"":"s"} in ${player.gp} game${player.gp===1?"":"s"} this season`;
+  if(!wh || !wh.derived || !wh.derived.player_game_logs) return fallback;
+  const log = wh.derived.player_game_logs[normName(player.name)];
+  if(!log || !log.games || !log.games.length) return fallback;
+  const games = log.games.slice().sort((a,b)=>a.gameid-b.gameid);
+
+  let streak = 0;
+  for(let i=games.length-1;i>=0;i--){
+    if((games[i].goals + games[i].assists) > 0) streak++; else break;
+  }
+  if(streak >= 3) return `Point streak: ${streak} straight games`;
+
+  const last3 = games.slice(-3).reduce((s,gm)=>s+gm.goals+gm.assists,0);
+  const last3n = Math.min(3, games.length);
+  if(last3 >= 3) return `${last3} points in the last ${last3n} games`;
+
+  const totals = [];
+  for(const k in wh.derived.player_game_logs){
+    const gs = wh.derived.player_game_logs[k].games || [];
+    totals.push(gs.reduce((s,x)=>s+x.goals+x.assists,0));
+  }
+  totals.sort((a,b)=>b-a);
+  const myPts = games.reduce((s,x)=>s+x.goals+x.assists,0);
+  const rank = totals.findIndex(t=>t<=myPts) + 1;
+  if(rank > 0 && rank <= 10) return `#${rank} in the ${leagueShort} scoring race`;
+
+  return fallback;
+}
+
+// ---- render -----------------------------------------------------------
+function washVectors(a,h){
+  document.getElementById("wash").style.background =
+    `linear-gradient(90deg, ${a.dark} 0%, ${a.dark} 4%, transparent 40%),` +
+    `linear-gradient(270deg, ${h.dark} 0%, ${h.dark} 4%, transparent 40%)`;
+}
+function setLogo(el,t){ if(t.logo){ el.src = LOGO+encodeURIComponent(t.logo); el.style.visibility=""; } else el.style.visibility="hidden"; }
+
+function photoEl(p, ink, size){
+  const el = document.createElement("div");
+  el.className = "photo";
+  el.style.width = size+"px"; el.style.height = size+"px";
+  el.style.boxShadow = `0 0 0 3px ${ink}, 0 6px 18px rgba(0,0,0,.4)`;
+  const iniSpan = document.createElement("span");
+  iniSpan.className = "ini"; iniSpan.style.fontSize = (size*0.34)+"px";
+  iniSpan.textContent = ini(p.name);
+  el.appendChild(iniSpan);
+  const img = new Image();
+  img.onload = () => { el.innerHTML=""; el.appendChild(img); };
+  img.src = shotURL(p.name);
+  return el;
+}
+
+function rowEl(p, team, side){
+  const ink = team.ink;
+  const row = document.createElement("div");
+  row.className = "prow " + side;
+  const accent = document.createElement("div");
+  accent.className = "accent"; accent.style.background = ink;
+  row.appendChild(accent);
+
+  const photoSize = 128;
+  row.appendChild(photoEl(p, ink, photoSize));
+
+  const ptext = document.createElement("div");
+  ptext.className = "ptext";
+  const nameEl = document.createElement("div");
+  nameEl.className = "pname"; nameEl.textContent = p.name;
+  const subEl = document.createElement("div");
+  subEl.className = "psub";
+  subEl.innerHTML = `<span class="jnum" style="color:${ink}">#${p.jersey}</span><span>${p.pos||""}</span>`;
+  const statsEl = document.createElement("div");
+  statsEl.className = "pstats";
+  [["G",p.g,false],["A",p.a,false],["PTS",p.pts,true]].forEach(([lbl,val,em])=>{
+    const s = document.createElement("div");
+    s.className = "pstat" + (em?" pts":"");
+    s.innerHTML = `<span class="num" style="${em?`color:${ink}`:""}">${val}</span><span class="lbl">${lbl}</span>`;
+    statsEl.appendChild(s);
+  });
+  const descrEl = document.createElement("div");
+  descrEl.className = "pdescr";
+  descrEl.innerHTML = `<span class="dot" style="background:${ink}"></span><span class="txt">${p.descr||""}</span>`;
+
+  ptext.appendChild(nameEl); ptext.appendChild(subEl); ptext.appendChild(statsEl); ptext.appendChild(descrEl);
+  row.appendChild(ptext);
+  return row;
+}
+
+function render(P){
+  const A = {ink:vis(P.away.id).ink, dark:vis(P.away.id).dark, logo:vis(P.away.id).logo};
+  const H = {ink:vis(P.home.id).ink, dark:vis(P.home.id).dark, logo:vis(P.home.id).logo};
+  washVectors(A,H);
+  setLogo(document.getElementById("logoA"), A);
+  setLogo(document.getElementById("logoB"), H);
+  document.getElementById("kicker").textContent = P.leagueShort + "  ·  SCORING LEADERS";
+  document.getElementById("sub").textContent = P.leagueName + (P.venue ? "  ·  " + P.venue : "");
+
+  const colA = document.getElementById("colA"); colA.innerHTML = "";
+  const colB = document.getElementById("colB"); colB.innerHTML = "";
+  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left")));
+  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right")));
+}
+
+function fitWindow(){
+  document.getElementById("stage").style.transform =
+    "scale(" + Math.min(innerWidth/1840, innerHeight/1000) + ")";
+}
+addEventListener("resize", fitWindow);
+function showMsg(t){ const m=document.getElementById("msg"); m.style.display="flex"; m.textContent=t; }
+function hideMsg(){ document.getElementById("msg").style.display="none"; }
+
+// ---- data flow ----------------------------------------------------------
+async function getJSON(u){ const r = await fetch(u,{cache:"no-store"}); if(!r.ok) throw 0; return r.json(); }
+async function getText(u){ const r = await fetch(SHIM(u),{cache:"no-store"}); if(!r.ok) throw 0; return r.text(); }
+
+// Per-team fallback when a team is idle/absent from the current manifest
+// window (mirrors summary.html's LAST_GAME, extended with the opponent's
+// name since this page doesn't fetch a box score to discover it otherwise).
+// UPDATE ONLY WHEN THE ROSTER/ROUND CHANGES — keep in sync with summary.html's
+// own LAST_GAME table where possible.
+const LAST_GAME = {
+  "botany-swarm":          {gid:2519938, league:"nzihl",  away:"Botany Swarm",           home:"Pure NZ Admirals"},
+  "canterbury-red-devils": {gid:2519940, league:"nzihl",  away:"Dunedin Thunder",         home:"Canterbury Red Devils"},
+  "dunedin-thunder":       {gid:2519940, league:"nzihl",  away:"Dunedin Thunder",         home:"Canterbury Red Devils"},
+  "pure-nz-admirals":      {gid:2519938, league:"nzihl",  away:"Botany Swarm",           home:"Pure NZ Admirals"},
+  "skycity-stampede":      {gid:2519934, league:"nzihl",  away:"Dunedin Thunder",         home:"SkyCity Stampede"},
+  "auckland-steel":        {gid:2520016, league:"nzwihl", away:"Auckland Steel",         home:"Canterbury Inferno"},
+  "canterbury-inferno":    {gid:2520016, league:"nzwihl", away:"Auckland Steel",         home:"Canterbury Inferno"},
+  "dunedin-thunder-women": {gid:2520018, league:"nzwihl", away:"Dunedin Thunder Women",  home:"Wakatipu Wild"},
+  "wakatipu-wild":         {gid:2520018, league:"nzwihl", away:"Dunedin Thunder Women",  home:"Wakatipu Wild"},
+};
+
+async function resolve(){
+  const q = new URLSearchParams(location.search);
+  const team = q.get("team");
+  const gParam = q.get("g") || q.get("gameid");
+
+  const all = [];
+  for(const m of MANIFESTS){
+    let data; try{ data = await getJSON(m.url + "?_=" + Date.now()); } catch(e){ continue; }
+    (data.games||[]).forEach(gm => all.push({m, gm}));
+  }
+
+  if(gParam){
+    const hit = all.find(x => String(x.gm.gameid)===String(gParam));
+    if(hit) return hit;
+    showMsg("Game " + gParam + " isn’t in the current manifest window.");
+    return null;
+  }
+
+  const slugTeam = slug(team || "canterbury-red-devils");
+  const cands = all.filter(x => slug(x.gm.away)===slugTeam || slug(x.gm.home)===slugTeam)
+                    .map(x => ({...x, dt: new Date(x.gm.datetime || x.gm.date).getTime() || 0}));
+  if(!cands.length){
+    const lg = LAST_GAME[slugTeam];
+    if(lg){
+      const m = MANIFESTS.find(x=>x.league===lg.league) || MANIFESTS[0];
+      return {m, gm:{away:lg.away, home:lg.home, gameid:lg.gid, venue:"", date:""}};
+    }
+    showMsg("No game found for “" + slugTeam + "”. Check the team slug.");
+    return null;
+  }
+  const now = Date.now();
+  const started = cands.filter(c=>c.dt<=now).sort((a,b)=>b.dt-a.dt);
+  const upcoming = cands.filter(c=>c.dt>now).sort((a,b)=>a.dt-b.dt);
+  return started[0] || upcoming[0];
+}
+
+let TARGET=null, renderedOnce=false, WH_CACHE={ts:0,data:null,league:null};
+async function fetchWarehouse(league){
+  const now = Date.now();
+  if(WH_CACHE.data && WH_CACHE.league===league && now-WH_CACHE.ts < 10*60*1000) return WH_CACHE.data;
+  const data = await getJSON(WAREHOUSE[league] + "?_=" + now);
+  WH_CACHE = {ts:now, data, league};
+  return data;
+}
+
+async function tick(){
+  if(!TARGET) return;
+  const dot = document.querySelector(".livedot"); const t0 = Date.now();
+  if(dot) dot.classList.add("scraping");
+  if(!renderedOnce) showMsg("Loading season leaders…");
+  try{
+    const gm = TARGET.gm, league = TARGET.m.league;
+    const awayID = NAME_TO_ID[gm.away], homeID = NAME_TO_ID[gm.home];
+    if(!awayID || !homeID) throw new Error("Unrecognised team name: " + gm.away + " / " + gm.home);
+    const cid = TARGET.m.clientid, lid = TARGET.m.leagueid;
+    const [awayHtml, homeHtml] = await Promise.all([
+      getText(statsURL(awayID, cid, lid)),
+      getText(statsURL(homeID, cid, lid)),
+    ]);
+    const awayTop = top3(parseSkaterTable(awayHtml));
+    const homeTop = top3(parseSkaterTable(homeHtml));
+    let wh = null; try{ wh = await fetchWarehouse(league); } catch(e){ wh = null; }
+    const leagueShort = league==="nzwihl" ? "NZWIHL" : "NZIHL";
+    awayTop.forEach(p => p.descr = computeDescriptor(p, wh, leagueShort));
+    homeTop.forEach(p => p.descr = computeDescriptor(p, wh, leagueShort));
+    hideMsg();
+    render({
+      away: {id:awayID, top:awayTop},
+      home: {id:homeID, top:homeTop},
+      venue: gm.venue || vis(homeID).venue || "",
+      leagueShort,
+      leagueName: league==="nzwihl" ? "New Zealand Women's Ice Hockey League" : "New Zealand Ice Hockey League",
+    });
+    renderedOnce = true; fitWindow();
+  } catch(e){
+    if(!renderedOnce) showMsg("Couldn’t load season stats — retrying…");
+    console.error(e);
+  } finally {
+    if(dot){ const wait = Math.max(0, 900-(Date.now()-t0)); setTimeout(()=>dot.classList.remove("scraping"), wait); }
+  }
+}
+
+async function start(){
+  fitWindow();
+  TARGET = await resolve();
+  if(!TARGET) return;
+  await tick();
+  const t0 = Date.now();
+  // Season stats move at most a few times a day — poll every 5 minutes
+  // (not Game Summary's 15s), auto-stop after ~3h15m like the other pages.
+  const iv = setInterval(() => { if(Date.now()-t0 > 3.25*3600*1000){ clearInterval(iv); return; } tick(); }, 5*60*1000);
+}
+start();
+</script>
+</body>
+</html>

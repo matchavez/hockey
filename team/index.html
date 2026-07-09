@@ -286,6 +286,8 @@ if(!team){
   const bannerPath    = `../activity-banner/?team=${sl}`;
   const tickerPath    = `../ticker/?team=${sl}`;
   const scorebugPath  = `../scorebug/?team=${sl}`;
+  const leadersBlack   = `../scoringleaders/?team=${sl}&bg=black`;
+  const leadersOpaque  = `../scoringleaders/?team=${sl}&bg=opaque`;
   const full = p => `https://matchavez.com/hockey/${p.replace(/^\.\.\//,'')}`;
 
   const overlayCard = (title, sub, chip, openLinks) => `
@@ -300,6 +302,10 @@ if(!team){
       `<a class="btn ext" target="_blank" rel="noopener" href="${summaryBlack}">Black</a>
        <a class="btn ext" target="_blank" rel="noopener" href="${summaryOpaque}">Opaque</a>
        <a class="btn cp" data-copy="${full(summaryBlack)}">Copy</a>`),
+    overlayCard("Team Scoring Leaders", "Each team's top-3 point scorers, live + season-form.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${leadersBlack}">Black</a>
+       <a class="btn ext" target="_blank" rel="noopener" href="${leadersOpaque}">Opaque</a>
+       <a class="btn cp" data-copy="${full(leadersBlack)}">Copy</a>`),
     overlayCard("Activity Banner", "Transparent goal/penalty banner, no scorebug.", '<span class="chip"><span class="dot"></span>Live</span>',
       `<a class="btn ext" target="_blank" rel="noopener" href="${bannerPath}">Open</a>
        <a class="btn cp" data-copy="${full(bannerPath)}">Copy</a>`),

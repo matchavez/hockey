@@ -373,6 +373,15 @@
     <div id="slugs-nzwihl" class="grid g3"></div>
   </section>
 
+  <!-- TEAM SCORING LEADERS TEAM SLUGS -->
+  <section id="leadersslugs">
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Team Scoring Leaders Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Each team's top-3 point scorers, live from stats_1team.cfm + the season data warehouse · open or copy as a source</span></span></div>
+    <div class="league-label">NZIHL</div>
+    <div id="leaders-nzihl" class="grid g3"></div>
+    <div class="league-label blue">NZWIHL</div>
+    <div id="leaders-nzwihl" class="grid g3"></div>
+  </section>
+
   <!-- ACTIVITY BANNER TEAM SLUGS -->
   <section id="bannerslugs">
     <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source - (<a target="_blank" rel="noopener" href="activity-banner/?test=1">test</a>)</span></span></div>
@@ -575,6 +584,22 @@ function summaryCard(t){
 // Auckland Mako has no 2026 games, so no Game Summary slug to point at — excluded from this list only.
 document.getElementById('slugs-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(summaryCard).join('');
 document.getElementById('slugs-nzwihl').innerHTML = NZWIHL.map(summaryCard).join('');
+
+// Team Scoring Leaders per-team static URLs — same ?bg=black/?bg=opaque
+// toggle and slug convention as Game Summary (same summaryCard() pattern).
+function leadersCard(t){
+  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const pathBlack  = `scoringleaders/?team=${sl}&bg=black`;
+  const pathOpaque = `scoringleaders/?team=${sl}&bg=opaque`;
+  const fullBlack  = `https://matchavez.com/hockey/${pathBlack}`;
+  return `<div class="team">${idw(t)}<span class="acts">
+    <a class="pill ext" title="Open — solid stage" target="_blank" rel="noopener" href="${pathBlack}">Black</a>
+    <a class="pill ext" title="Open — translucent, highly-opaque stage (for compositing over video)" target="_blank" rel="noopener" href="${pathOpaque}">Opaque</a>
+    <a class="pill cp" title="Copy the Black URL — paste as a browser source" data-copy="${fullBlack}" style="cursor:pointer">Copy</a></span></div>`;
+}
+// Auckland Mako excluded (no 2026 games) — same 9-team list as Game Summary.
+document.getElementById('leaders-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(leadersCard).join('');
+document.getElementById('leaders-nzwihl').innerHTML = NZWIHL.map(leadersCard).join('');
 
 // Activity Banner per-team static URLs ("Activity Banner Team Slugs") — same slugs as Game Summary.
 function bannerCard(t){
