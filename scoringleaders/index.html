@@ -58,9 +58,9 @@ header#hdr{height:333px;flex:0 0 auto;display:grid;grid-template-columns:auto 1f
    fitPlayerText() (below, called after every render) shrinks each line's own
    font-size until it actually fits its row, rather than ellipsizing. */
 .pline{font-weight:700;font-size:40px;line-height:1.15;color:#f5f6fa;white-space:nowrap;}
-.pline .jnum{font-size:.6em;} /* jersey number, no "#" — see rowEl() */
 .pline.descr{font-style:italic;font-size:32px;color:#c9cdd6;}
 .pline .unit{font-weight:300;font-size:.6em;} /* the G / A / Pts unit letters on the stat line */
+.pline .pm{font-weight:300;} /* the +/- value */
 
 #msg{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;text-align:center;
   color:var(--sub);font-size:28px;font-weight:600;padding:60px;line-height:1.5;background:var(--bg);}
@@ -318,15 +318,15 @@ function rowEl(p, team, side){
   const ptext = document.createElement("div");
   ptext.className = "ptext";
 
-  // Line 1: jersey (60% size, no "#") · position (team colour) · full name
+  // Line 1: jersey (no "#") · position — both in the team colour, same size · full name
   const line1 = document.createElement("div");
   line1.className = "pline";
-  line1.innerHTML = `<span class="jnum">${p.jersey}</span> <span style="color:${ink}">${p.pos||""}</span> ${p.name}`;
+  line1.innerHTML = `<span style="color:${ink}">${p.jersey}</span> <span style="color:${ink}">${p.pos||""}</span> ${p.name}`;
 
-  // Line 2: "20 G / 11 A (31 Pts)  +13" — unit letters lighter/smaller than the numbers
+  // Line 2: "20 G  11 A  31 Pts  +13" — unit letters lighter/smaller, +/- value lighter too
   const line2 = document.createElement("div");
   line2.className = "pline";
-  line2.innerHTML = `${p.g} <span class="unit">G</span> / ${p.a} <span class="unit">A</span> (${p.pts} <span class="unit">Pts</span>)\u00A0\u00A0${fmtPM(p.pm)}`;
+  line2.innerHTML = `${p.g} <span class="unit">G</span>\u00A0\u00A0${p.a} <span class="unit">A</span>\u00A0\u00A0${p.pts} <span class="unit">Pts</span>\u00A0\u00A0<span class="pm">${fmtPM(p.pm)}</span>`;
 
   // Line 3: italic descriptor, no dots, smaller than lines 1/2
   const line3 = document.createElement("div");
