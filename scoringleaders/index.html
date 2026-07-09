@@ -54,10 +54,13 @@ header#hdr{height:333px;flex:0 0 auto;display:grid;grid-template-columns:auto 1f
 /* Three equally-sized lines (Mat, 2026-07-09): #nn Pos Name / G · A · Pts · +/- / (dot) stat (dot).
    Uniform size for now — a deliberate simplification pass, expect this to get
    re-differentiated (weights/sizes) once he's seen it live. */
-.pline{font-weight:700;font-size:40px;line-height:1.15;color:#f5f6fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-.pline.descr{display:flex;align-items:center;gap:12px;color:#c9cdd6;}
-.pline.descr .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
-.pline.descr .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* No truncation, ever (Mat's rule) — .pline is intentionally NOT clipped;
+   fitPlayerText() (below, called after every render) shrinks each line's own
+   font-size until it actually fits its row, rather than ellipsizing. */
+.pline{font-weight:700;font-size:40px;line-height:1.15;color:#f5f6fa;white-space:nowrap;}
+.pline .jnum{font-size:.6em;} /* jersey number, no "#" — see rowEl() */
+.pline.descr{font-style:italic;font-size:32px;color:#c9cdd6;}
+.pline .unit{font-weight:300;font-size:.6em;} /* the G / A / Pts unit letters on the stat line */
 
 #msg{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;text-align:center;
   color:var(--sub);font-size:28px;font-weight:600;padding:60px;line-height:1.5;background:var(--bg);}
@@ -315,20 +318,20 @@ function rowEl(p, team, side){
   const ptext = document.createElement("div");
   ptext.className = "ptext";
 
-  // Line 1: "#nn Pos Firstname Lastname"
+  // Line 1: jersey (60% size, no "#") · position (team colour) · full name
   const line1 = document.createElement("div");
   line1.className = "pline";
-  line1.textContent = `#${p.jersey} ${p.pos||""} ${p.name}`.replace(/\s+/g," ").trim();
+  line1.innerHTML = `<span class="jnum">${p.jersey}</span> <span style="color:${ink}">${p.pos||""}</span> ${p.name}`;
 
-  // Line 2: "G / A / Pts / +/-"
+  // Line 2: "20 G / 11 A (31 Pts)  +13" — unit letters lighter/smaller than the numbers
   const line2 = document.createElement("div");
   line2.className = "pline";
-  line2.textContent = `${p.g} / ${p.a} / ${p.pts} / ${fmtPM(p.pm)}`;
+  line2.innerHTML = `${p.g} <span class="unit">G</span> / ${p.a} <span class="unit">A</span> (${p.pts} <span class="unit">Pts</span>)\u00A0\u00A0${fmtPM(p.pm)}`;
 
-  // Line 3: "(dot) interesting stat (dot)"
+  // Line 3: italic descriptor, no dots, smaller than lines 1/2
   const line3 = document.createElement("div");
   line3.className = "pline descr";
-  line3.innerHTML = `<span class="dot" style="background:${ink}"></span><span class="txt">${p.descr||""}</span><span class="dot" style="background:${ink}"></span>`;
+  line3.textContent = p.descr || "";
 
   ptext.appendChild(line1); ptext.appendChild(line2); ptext.appendChild(line3);
   row.appendChild(ptext);
@@ -348,6 +351,27 @@ function render(P){
   const colB = document.getElementById("colB"); colB.innerHTML = "";
   P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left")));
   P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right")));
+  fitPlayerText();
+}
+
+// No text gets truncated, ever — shrink each line's own font-size until its
+// true content width (scrollWidth, unaffected by nowrap-overflow) fits the
+// row's actual available width (the .ptext container's clientWidth, which is
+// correctly bounded by the flex layout regardless of which side's align-items
+// is stretch vs flex-end). Runs synchronously right after the rows are built,
+// so there's no visible flash of oversized text before the shrink applies.
+function fitPlayerText(){
+  document.querySelectorAll(".ptext .pline").forEach(el => {
+    const avail = el.parentElement.clientWidth;
+    if(!avail) return;
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    let guard = 0;
+    while(el.scrollWidth > avail && size > 10 && guard < 60){
+      size -= 1;
+      el.style.fontSize = size + "px";
+      guard++;
+    }
+  });
 }
 
 function fitWindow(){
