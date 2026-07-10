@@ -168,6 +168,7 @@ function parseSkaterTable(html){
     const rowHtml = trm[1];
     const linkM = rowHtml.match(/<a[^>]*href="[^"]*playerID=(\d+)[^"]*"[^>]*title="([^"]+)"[^>]*>/i);
     if(!linkM) continue;
+    const pid = linkM[1];
     const name = properCase(decodeEntities(linkM[2]).trim());
     const tds = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>clean(m[1]));
     if(tds.length < need) continue;
@@ -182,7 +183,7 @@ function parseSkaterTable(html){
       const raw = tds[idxPM].trim();
       pm = raw.toUpperCase()==="E" ? 0 : (parseInt(raw)||0);
     }
-    rows.push({name, jersey, pos, gp, g, a, pts:g+a, pm});
+    rows.push({name, pid, jersey, pos, gp, g, a, pts:g+a, pm});
   }
   return rows;
 }
@@ -287,7 +288,28 @@ function washVectors(a,h){
 }
 function setLogo(el,t){ if(t.logo){ el.src = LOGO+encodeURIComponent(t.logo); el.style.visibility=""; } else el.style.visibility="hidden"; }
 
-function photoEl(p, ink, size){
+// Cache of resolved fallback photo URLs per playerID — url string on success,
+// false when we've confirmed there's genuinely no photo. Avoids re-hitting
+// nzihl.com every 5-minute tick for the same player.
+const PHOTO_FALLBACK_CACHE = {};
+async function resolvePhotoFallback(pid, teamID, cid, lid){
+  if(!pid) return null;
+  if(pid in PHOTO_FALLBACK_CACHE) return PHOTO_FALLBACK_CACHE[pid];
+  let result = null;
+  try{
+    const url = `https://www.nzihl.com/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
+    const html = await getText(url);
+    const m = html.match(/largeHeadshot[^"]*"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
+    if(m){
+      let path = m[1].trim().replace(/^["']|["']$/g,"");
+      result = path.startsWith("http") ? path : "https://admin.esportsdesk.com" + path;
+    }
+  } catch(e){ /* leave result null — treated as "no photo found" */ }
+  PHOTO_FALLBACK_CACHE[pid] = result;
+  return result;
+}
+
+function photoEl(p, ink, size, teamID, cid, lid){
   const el = document.createElement("div");
   el.className = "photo";
   el.style.width = size+"px"; el.style.height = size+"px";
@@ -298,11 +320,16 @@ function photoEl(p, ink, size){
   el.appendChild(iniSpan);
   const img = new Image();
   img.onload = () => { el.innerHTML=""; el.appendChild(img); };
+  img.onerror = () => {
+    if(img.dataset.fallbackTried) return; // fallback URL itself failed — stay on initials
+    img.dataset.fallbackTried = "1";
+    resolvePhotoFallback(p.pid, teamID, cid, lid).then(u => { if(u) img.src = u; });
+  };
   img.src = shotURL(p.name);
   return el;
 }
 
-function rowEl(p, team, side){
+function rowEl(p, team, side, teamID){
   const ink = team.ink;
   const row = document.createElement("div");
   row.className = "prow " + side;
@@ -311,7 +338,7 @@ function rowEl(p, team, side){
   row.appendChild(accent);
 
   const photoSize = 145;
-  row.appendChild(photoEl(p, ink, photoSize));
+  row.appendChild(photoEl(p, ink, photoSize, teamID, CID, LID));
 
   const ptext = document.createElement("div");
   ptext.className = "ptext";
@@ -347,8 +374,8 @@ function render(P){
 
   const colA = document.getElementById("colA"); colA.innerHTML = "";
   const colB = document.getElementById("colB"); colB.innerHTML = "";
-  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left")));
-  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right")));
+  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left", P.away.id)));
+  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right", P.home.id)));
   fitPlayerText();
 }
 
@@ -437,7 +464,7 @@ async function resolve(){
   return started[0] || upcoming[0];
 }
 
-let TARGET=null, renderedOnce=false, WH_CACHE={ts:0,data:null,league:null};
+let TARGET=null, renderedOnce=false, WH_CACHE={ts:0,data:null,league:null}, CID=null, LID=null;
 async function fetchWarehouse(league){
   const now = Date.now();
   if(WH_CACHE.data && WH_CACHE.league===league && now-WH_CACHE.ts < 10*60*1000) return WH_CACHE.data;
@@ -456,6 +483,7 @@ async function tick(){
     const awayID = NAME_TO_ID[gm.away], homeID = NAME_TO_ID[gm.home];
     if(!awayID || !homeID) throw new Error("Unrecognised team name: " + gm.away + " / " + gm.home);
     const cid = TARGET.m.clientid, lid = TARGET.m.leagueid;
+    CID = cid; LID = lid;
     const [awayHtml, homeHtml] = await Promise.all([
       getText(statsURL(awayID, cid, lid)),
       getText(statsURL(homeID, cid, lid)),
