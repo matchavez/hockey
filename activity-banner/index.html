@@ -256,6 +256,7 @@ function parse(html){
   const h5=[...doc.querySelectorAll("h5")];
   const findH=re=>h5.find(h=>re.test(h.textContent));
   const tidOf=el=>{const a=el&&el.querySelector&&el.querySelector('a[href*="teamID="]');const m=a&&a.getAttribute("href").match(/teamID=(\d+)/i);return m?m[1]:null;};
+  const pidOf=el=>{const a=el&&el.querySelector&&el.querySelector('a[href*="playerID="]');const m=a&&a.getAttribute("href").match(/playerID=(\d+)/i);return m?m[1]:null;};
   const btw=(a,b)=>{const r=[];let e=a&&a.nextElementSibling;while(e&&e!==b){r.push(e);e=e.nextElementSibling;}return r;};
   const tables=[...doc.querySelectorAll("table")];
   const scoreTbl=tables[0]; const srows=[...scoreTbl.querySelectorAll("tr")];
@@ -267,9 +268,10 @@ function parse(html){
   h5.filter(h=>/SKATERS/i.test(h.textContent)).forEach(h=>{
     let e=h.nextElementSibling,tbl=null;
     while(e&&!/^H5$/.test(e.tagName)){if(e.tagName==="TABLE"){tbl=e;break;}if(e.querySelector&&e.querySelector("table")){tbl=e.querySelector("table");break;}e=e.nextElementSibling;}
-    if(tbl)[...tbl.querySelectorAll("tr")].slice(1).forEach(row=>{const id=tidOf(row);if(id)skaters.push({id,text:txt(row)});});
+    if(tbl)[...tbl.querySelectorAll("tr")].slice(1).forEach(row=>{const id=tidOf(row);if(id)skaters.push({id,pid:pidOf(row),text:txt(row)});});
   });
   const teamOfName=who=>{const s=skaters.find(sk=>sk.text.includes(who));return s?s.id:null;};
+  const pidOfName=who=>{const s=skaters.find(sk=>sk.text.includes(who));return s?s.pid:null;};
   function section(h5el,stopEl){
     const items=[];let per="";
     btw(h5el,stopEl).forEach(el=>{
@@ -283,7 +285,7 @@ function parse(html){
   const ssH=findH(/SCORING SUMMARY/i),psH=findH(/PENALTY SUMMARY/i),skH=findH(/SKATERS/i);
   const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\((.*)\)\s*$/);
     const who=m?m[2].trim():o.c[0];const id=teamOfName(who);
-    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",teamID:id};}):[];
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",teamID:id,pid:pidOfName(who)};}):[];
   const pens=psH?section(psH,skH).map(o=>{
     const cell=o.c[0];
     const tm=cell.match(/\(([^)]*)\)\s*$/);                      // team is ALWAYS in the trailing parens — incl. team penalties (no player/#)
@@ -317,6 +319,54 @@ function loadImage(src, timeoutMs){
     img.onload=()=>finish(true); img.onerror=()=>finish(false);
     img.src=src;
     setTimeout(()=>finish(false), timeoutMs||ASSET_TIMEOUT_MS);
+  });
+}
+
+// Some clubs' esportsdesk photos aren't filed under the guessed <FirstLast>.jpg (e.g.
+// Dunedin Thunder's whole roster uses ad hoc names like "LukeEASPORT.png"; other teams
+// use shortened first names). Same fix as scoringleaders/index.html: on a guess miss,
+// pull the real photo path from the scorer's public nzihl.com profile page (via the
+// same Worker shim) and retry with that. Cached per playerID so repeat goals by the
+// same player in one broadcast don't re-fetch the profile page.
+const PHOTO_FALLBACK_CACHE = {};
+async function resolvePhotoFallback(pid, teamID, cid, lid){
+  if(!pid||!teamID||!cid||!lid) return null;
+  if(pid in PHOTO_FALLBACK_CACHE) return PHOTO_FALLBACK_CACHE[pid];
+  let result=null;
+  try{
+    const url=`https://www.nzihl.com/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
+    const html=await getText(url);
+    const m=html.match(/largeHeadshot[^"]*"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
+    if(m){
+      let path=m[1].trim().replace(/^["']|["']$/g,"");
+      result=path.startsWith("http")?path:"https://admin.esportsdesk.com"+path;
+    }
+  }catch(e){ /* leave result null — treated as "no photo found" */ }
+  PHOTO_FALLBACK_CACHE[pid]=result;
+  return result;
+}
+// Overall budget for resolving a goal-scorer photo, guess + fallback combined (widened
+// from the base 1500ms asset timeout, per Mat 2026-07-11, specifically so the fallback's
+// extra network round trip has a real chance to land before the banner reveals with no
+// avatar). The initial <FirstLast>.jpg guess gets a short slice of that; whatever's left
+// goes to the fallback lookup + its own image load. Still never blocks forever on a miss.
+const PHOTO_TOTAL_TIMEOUT_MS = 2800;
+const PHOTO_GUESS_TIMEOUT_MS = 900;
+function resolvePlayerPhoto(who, pid, teamID, cid, lid){
+  return new Promise(res=>{
+    let done=false;
+    const finish=img=>{ if(done) return; done=true; res(img); };
+    const overall=setTimeout(()=>finish(null), PHOTO_TOTAL_TIMEOUT_MS);
+    loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
+      if(done) return;
+      if(img){ clearTimeout(overall); finish(img); return; }
+      if(!pid){ clearTimeout(overall); finish(null); return; }
+      resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+        if(done) return;
+        if(!url){ clearTimeout(overall); finish(null); return; }
+        loadImage(url, 1200).then(img2=>{ clearTimeout(overall); finish(img2); });
+      });
+    });
   });
 }
 
@@ -418,8 +468,7 @@ function pump(){
   const logoFile = job.logoFile || vis(job.eventID).logo;
   const logoSrc = logoFile ? LOGO+encodeURIComponent(logoFile) : null;
   const logoP = loadImage(logoSrc);
-  const photoSrc = job.photoWho ? shotURL(job.photoWho) : null;
-  const photoP = job.photoWho ? loadImage(photoSrc) : Promise.resolve(null);
+  const photoP = job.photoWho ? resolvePlayerPhoto(job.photoWho, job.photoPid, job.eventID, CID, LID) : Promise.resolve(null);
   const gsp = btxt.querySelector(".gsp");   // goalHTML() bakes this in right before the team name; absent for penalties
 
   bnr.classList.remove("hide");
@@ -449,7 +498,7 @@ function pump(){
 function fireGoal(g, awayID, homeID, awayName, homeName){
   const v=vis(g.teamID);
   enqueue({html:goalHTML({...g,awayID,homeID,awayName,homeName}, awayName, homeName),
-    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL, photoWho:g.who});
+    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL, photoWho:g.who, photoPid:g.pid});
 }
 function firePen(p, awayID, homeID){
   const v=vis(p.teamID);
@@ -460,7 +509,7 @@ function firePen(p, awayID, homeID){
 const sigGoal=g=>`G|${g.teamID}|${g.p}|${g.t}|${g.no}|${surnameUC(g.who)}`;
 const sigPen =p=>`P|${p.teamID}|${p.p}|${p.t}|${p.no}|${surnameUC(p.who)}|${p.inf}`;
 const seen=new Set(); let baselined=false;
-let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="";
+let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="", CID=null, LID=null;
 let PREGAME=null;   // {away,home,venue,date,time,datetime} for the resolved target game, used by the pre-game confidence alert only
 
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
@@ -515,6 +564,7 @@ async function resolveTarget(){
 let firstGoal=null, firstPen=null;     // captured for the test buttons
 async function tick(){
   if(!TARGET||!WORKER) return;
+  CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
   let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   // tag each goal with a display name (its own team)
