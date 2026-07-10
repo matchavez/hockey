@@ -61,18 +61,21 @@
   .pal-chip .nm{ font-size:10.5px; font-weight:600; opacity:.9; }
   .pal-chip .rl{ font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; opacity:.65; }
 
-  /* Schedule/results widget — small form guide tucked top-right of the idcard row */
-  .sched{ align-self:flex-start; margin-left:auto; flex:0 0 auto; width:100%; max-width:300px;
-    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px 8px;
+  /* Schedule/results widget — full form guide, below the header fold,
+     right-aligned within its section. No max-height/scroll: it just grows
+     to fit the season, so there's never an inner scrollbar. */
+  .sched-section{ display:flex; justify-content:flex-end; }
+  .sched{ flex:0 0 auto; width:100%; max-width:340px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px 10px;
     font-variant-numeric:tabular-nums; }
-  @media(max-width:720px){ .sched{ max-width:none; } }
-  .sched-hd{ font-size:11.5px; font-weight:700; color:var(--muted); padding-bottom:7px; margin-bottom:6px;
+  @media(max-width:560px){ .sched{ max-width:none; } }
+  .sched-hd{ font-size:12.5px; font-weight:700; color:var(--muted); padding-bottom:8px; margin-bottom:6px;
     border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sched-hd b{ color:var(--tx); font-weight:800; }
   .sched-rec{ color:var(--txt); font-weight:700; }
-  .sched-body{ max-height:168px; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:1px; padding-right:4px; }
+  .sched-body{ overflow-x:hidden; display:flex; flex-direction:column; gap:1px; }
   .sched-row{ display:grid; grid-template-columns:46px minmax(0,1fr) 38px; align-items:center; gap:6px;
-    font-size:11px; padding:3px 2px; border-radius:6px; white-space:nowrap; }
+    font-size:11.5px; padding:4px 2px; border-radius:6px; white-space:nowrap; }
   .sched-row:hover{ background:var(--panel2); }
   .sched-row.future{ opacity:.68; }
   .sd-date{ color:var(--muted); font-weight:600; min-width:0; white-space:nowrap; }
@@ -298,10 +301,6 @@ if(!team){
           <span class="hx">${hex}</span><span class="nm">${nm}</span><span class="rl">${role}</span>
         </div>`).join('')}
       </div>
-    </div>
-    <div class="sched" id="sched-widget">
-      <div class="sched-hd" id="sched-hd">Loading form…</div>
-      <div class="sched-body" id="sched-body"></div>
     </div>`;
 
   const standPng  = `${ASSETS}/${team.league}_Standings.png`;
@@ -351,6 +350,15 @@ if(!team){
   const dvdBrowse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${team.dvd}`;
 
   document.getElementById('main').innerHTML = `
+    <section>
+      <div class="sched-section">
+        <div class="sched" id="sched-widget">
+          <div class="sched-hd" id="sched-hd">Loading form…</div>
+          <div class="sched-body" id="sched-body"></div>
+        </div>
+      </div>
+    </section>
+
     <section>
       <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/standings.png" alt=""><span class="sec-txt"><h2>${team.league} Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · this club's league table</span></span></div>
       <div class="card" style="padding:10px">
@@ -444,11 +452,13 @@ if(!team){
     }
   })();
 
-  // Small schedule/results widget (top-right of the idcard). Completed games
-  // come from the nzihl-season-data archive (nzihl.json/nzwihl.json — full
-  // season, rebuilt nightly); upcoming fixtures come from the same
-  // boxscores.json manifest the roster card above reads (rolling ~11-day
-  // lookahead), so it only ever shows fixtures we actually know about yet.
+  // Schedule/results widget — its own section below the header fold,
+  // right-aligned. Completed games come from the nzihl-season-data archive
+  // (nzihl.json/nzwihl.json — full season, rebuilt nightly); upcoming
+  // fixtures come from the same boxscores.json manifest the roster card
+  // reads (rolling ~11-day lookahead), so it only ever shows fixtures we
+  // actually know about yet. No max-height/scroll on the body — it just
+  // grows to fit the whole season.
   (async function loadSchedule(){
     const hd = document.getElementById('sched-hd');
     const body = document.getElementById('sched-body');
@@ -562,7 +572,6 @@ if(!team){
             <span class="sd-mu">${r.matchup}</span>
             <span class="sd-tag ${r.future ? "tk" : "tag-"+r.tag}">${r.tag}</span>
           </div>`).join("");
-        body.scrollTop = body.scrollHeight; // land on most-recent + upcoming, not the season opener
       }
     }catch(e){
       hd.textContent = "Schedule unavailable";
