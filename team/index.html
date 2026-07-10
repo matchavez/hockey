@@ -82,9 +82,13 @@
   .sd-date{ color:var(--muted); font-weight:600; min-width:0; white-space:nowrap; }
   .sd-mu{ font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .sd-tag{ font-size:9.5px; font-weight:800; text-align:center; padding:2px 0; border-radius:5px; letter-spacing:.02em; min-width:0; white-space:nowrap; }
-  .tag-W, .tag-OTW, .tag-SOW{ background:rgba(46,204,113,.16); color:#3ee382; }
-  .tag-L{ background:rgba(255,255,255,.06); color:var(--muted); }
-  .tag-OTL, .tag-SOL{ background:rgba(247,190,17,.16); color:var(--gold); }
+  /* Mat 2026-07-11: colour-code results — L red, OTW/SOW yellow,
+     OTL/SOL orange (SO grouped with its OT counterpart, same as the
+     standings graphic's W/OTW/OTL/L buckets do). W stays green. */
+  .tag-W{ background:rgba(46,204,113,.16); color:#3ee382; }
+  .tag-OTW, .tag-SOW{ background:rgba(250,204,21,.18); color:#fde047; }
+  .tag-OTL, .tag-SOL{ background:rgba(249,115,22,.18); color:#fb923c; }
+  .tag-L{ background:rgba(232,96,96,.18); color:#f87171; }
   .sd-tag.tk{ background:transparent; color:var(--accent); font-weight:700; text-transform:none; }
 
   section{ padding:24px 0 4px; }
