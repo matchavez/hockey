@@ -70,14 +70,14 @@
     border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sched-hd b{ color:var(--tx); font-weight:800; }
   .sched-rec{ color:var(--txt); font-weight:700; }
-  .sched-body{ max-height:168px; overflow-y:auto; display:flex; flex-direction:column; gap:1px; }
-  .sched-row{ display:grid; grid-template-columns:40px 1fr 34px; align-items:center; gap:8px;
+  .sched-body{ max-height:168px; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:1px; padding-right:4px; }
+  .sched-row{ display:grid; grid-template-columns:36px minmax(0,1fr) 40px; align-items:center; gap:6px;
     font-size:11px; padding:3px 2px; border-radius:6px; }
   .sched-row:hover{ background:var(--panel2); }
   .sched-row.future{ opacity:.68; }
-  .sd-date{ color:var(--muted); font-weight:600; }
-  .sd-mu{ font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sd-tag{ font-size:9.5px; font-weight:800; text-align:center; padding:2px 0; border-radius:5px; letter-spacing:.02em; }
+  .sd-date{ color:var(--muted); font-weight:600; min-width:0; }
+  .sd-mu{ font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .sd-tag{ font-size:9.5px; font-weight:800; text-align:center; padding:2px 0; border-radius:5px; letter-spacing:.02em; min-width:0; white-space:nowrap; }
   .tag-W, .tag-OTW, .tag-SOW{ background:rgba(46,204,113,.16); color:#3ee382; }
   .tag-L{ background:rgba(255,255,255,.06); color:var(--muted); }
   .tag-OTL, .tag-SOL{ background:rgba(247,190,17,.16); color:var(--gold); }
