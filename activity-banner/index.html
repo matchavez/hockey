@@ -329,25 +329,16 @@ function loadImage(src, timeoutMs){
 // same Worker shim) and retry with that. Cached per playerID so repeat goals by the
 // same player in one broadcast don't re-fetch the profile page.
 const PHOTO_FALLBACK_CACHE = {};
-async function resolvePhotoFallback(pid, teamID, cid, lid, league){
+async function resolvePhotoFallback(pid, teamID, cid, lid){
   if(!pid||!teamID||!cid||!lid) return null;
   if(pid in PHOTO_FALLBACK_CACHE) return PHOTO_FALLBACK_CACHE[pid];
   let result=null;
   try{
-    // Per-league domain — nzihl.com no-ops (a JS frameset-redirect stub, no largeHeadshot
-    // at all) for NZWIHL clientIDs and vice versa, so this must match the game's own
-    // league (Mat, 2026-07-11: caught NZWIHL never getting a fallback because this was
-    // hardcoded to nzihl.com).
-    const host = league==="nzwihl" ? "www.nzwihl.com" : "www.nzihl.com";
-    const url=`https://${host}/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
+    const url=`https://www.nzihl.com/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
     const html=await getText(url);
-    // A player with no individual photo still gets a largeHeadshot div, just pointed at
-    // the TEAM CREST instead (e.g. Wakatipu Wild's whole roster -> wild.png) — marked by
-    // dropping the "bg-light" class esportsdesk adds only for a real uploaded photo.
-    // Without this check we'd show the team crest as if it were that scorer's avatar.
-    const m=html.match(/<div\s+class="largeHeadshot([^"]*)"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
-    if(m && /bg-light/.test(m[1])){
-      let path=m[2].trim().replace(/^["']|["']$/g,"");
+    const m=html.match(/largeHeadshot[^"]*"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
+    if(m){
+      let path=m[1].trim().replace(/^["']|["']$/g,"");
       result=path.startsWith("http")?path:"https://admin.esportsdesk.com"+path;
     }
   }catch(e){ /* leave result null — treated as "no photo found" */ }
@@ -361,7 +352,7 @@ async function resolvePhotoFallback(pid, teamID, cid, lid, league){
 // goes to the fallback lookup + its own image load. Still never blocks forever on a miss.
 const PHOTO_TOTAL_TIMEOUT_MS = 2800;
 const PHOTO_GUESS_TIMEOUT_MS = 900;
-function resolvePlayerPhoto(who, pid, teamID, cid, lid, league){
+function resolvePlayerPhoto(who, pid, teamID, cid, lid){
   return new Promise(res=>{
     let done=false;
     const finish=img=>{ if(done) return; done=true; res(img); };
@@ -370,7 +361,7 @@ function resolvePlayerPhoto(who, pid, teamID, cid, lid, league){
       if(done) return;
       if(img){ clearTimeout(overall); finish(img); return; }
       if(!pid){ clearTimeout(overall); finish(null); return; }
-      resolvePhotoFallback(pid, teamID, cid, lid, league).then(url=>{
+      resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
         if(done) return;
         if(!url){ clearTimeout(overall); finish(null); return; }
         loadImage(url, 1200).then(img2=>{ clearTimeout(overall); finish(img2); });
@@ -477,7 +468,7 @@ function pump(){
   const logoFile = job.logoFile || vis(job.eventID).logo;
   const logoSrc = logoFile ? LOGO+encodeURIComponent(logoFile) : null;
   const logoP = loadImage(logoSrc);
-  const photoP = job.photoWho ? resolvePlayerPhoto(job.photoWho, job.photoPid, job.eventID, CID, LID, LEAGUE) : Promise.resolve(null);
+  const photoP = job.photoWho ? resolvePlayerPhoto(job.photoWho, job.photoPid, job.eventID, CID, LID) : Promise.resolve(null);
   const gsp = btxt.querySelector(".gsp");   // goalHTML() bakes this in right before the team name; absent for penalties
 
   bnr.classList.remove("hide");
@@ -518,7 +509,7 @@ function firePen(p, awayID, homeID){
 const sigGoal=g=>`G|${g.teamID}|${g.p}|${g.t}|${g.no}|${surnameUC(g.who)}`;
 const sigPen =p=>`P|${p.teamID}|${p.p}|${p.t}|${p.no}|${surnameUC(p.who)}|${p.inf}`;
 const seen=new Set(); let baselined=false;
-let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="", CID=null, LID=null, LEAGUE=null;
+let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="", CID=null, LID=null;
 let PREGAME=null;   // {away,home,venue,date,time,datetime} for the resolved target game, used by the pre-game confidence alert only
 
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
@@ -573,7 +564,7 @@ async function resolveTarget(){
 let firstGoal=null, firstPen=null;     // captured for the test buttons
 async function tick(){
   if(!TARGET||!WORKER) return;
-  CID=TARGET.m.clientid; LID=TARGET.m.leagueid; LEAGUE=TARGET.m.league;
+  CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
   let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   // tag each goal with a display name (its own team)
