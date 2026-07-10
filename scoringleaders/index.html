@@ -368,7 +368,14 @@ async function preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid){
   return {logoAImg, logoBImg};
 }
 
-function photoEl(p, ink, size){
+// hideAll (set by render() when NONE of the 6 players on screen resolved a real photo,
+// e.g. current Wakatipu Wild games) skips the photo slot entirely — no circle, no
+// initials — rather than rendering six identical, unhelpful initials placeholders.
+// When at least one of the 6 has a real photo, individual misses still fall back to
+// initials as before (Mat, 2026-07-11 — narrow fix, NZWIHL fallback/team-crest
+// detection deliberately left for later).
+function photoEl(p, ink, size, hideAll){
+  if(hideAll) return null;
   const el = document.createElement("div");
   el.className = "photo";
   el.style.width = size+"px"; el.style.height = size+"px";
@@ -387,7 +394,7 @@ function photoEl(p, ink, size){
   return el;
 }
 
-function rowEl(p, team, side){
+function rowEl(p, team, side, hideAllPhotos){
   const ink = team.ink;
   const row = document.createElement("div");
   row.className = "prow " + side;
@@ -396,7 +403,8 @@ function rowEl(p, team, side){
   row.appendChild(accent);
 
   const photoSize = 174; // near-fills the ~190px-tall row ("pill"), ~8px clearance top/bottom (Mat, 2026-07-11 — bigger, more visible photo)
-  row.appendChild(photoEl(p, ink, photoSize));
+  const photoNode = photoEl(p, ink, photoSize, hideAllPhotos);
+  if(photoNode) row.appendChild(photoNode);
 
   const ptext = document.createElement("div");
   ptext.className = "ptext";
@@ -430,10 +438,14 @@ function render(P){
   document.getElementById("kicker").textContent = P.leagueShort + "  ·  SCORING LEADERS";
   document.getElementById("sub").textContent = ""; // league/venue line cleared per Mat — may hold future content
 
+  // Only omit photo slots when NONE of the 6 displayed players have a real photo —
+  // a mixed team (some real photos, some misses) still shows initials for the misses.
+  const hideAllPhotos = P.away.top.every(p => !p._photoImg) && P.home.top.every(p => !p._photoImg);
+
   const colA = document.getElementById("colA"); colA.innerHTML = "";
   const colB = document.getElementById("colB"); colB.innerHTML = "";
-  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left")));
-  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right")));
+  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left", hideAllPhotos)));
+  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right", hideAllPhotos)));
   fitPlayerText();
 }
 
