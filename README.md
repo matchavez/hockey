@@ -358,9 +358,10 @@ array, not just a 2-colour ink/dark pair; keep both in sync). Branding is intent
 logo renders 2x on a gradient plate (`--p1`/`--p2`/`--p3` CSS vars set from the club's palette),
 and a full-page fixed `.brand-wash` tints every section as you scroll, not just the hero. No
 `?team=` (or an unrecognised one) renders a team picker grid instead. Roster matching resolves
-the club's esportsdesk short code from `boxscores.json` (`away_code`/`home_code`) rather than a
-fixed table, since those codes don't always match our own naming (e.g. Pure NZ Admirals = `WAA`,
-not `ADM`). All 10 clubs are covered, including Auckland Mako (stood down, no 2026 games) — its
+the club's short code from `boxscores.json` (`away_code`/`home_code`) rather than a fixed table,
+as a safety net against future code drift (2026-07-11: retired the legacy `WAA` short code for
+Pure NZ Admirals in favour of `ADM`, matching the Style Guide TLA — see `nzihl-broadcast-rosters`
+`teams.py`). All 10 clubs are covered, including Auckland Mako (stood down, no 2026 games) — its
 page still renders cleanly, just mostly "no game"/"not wired"/"no roster yet" states.
 
 ## league/ — one-league aggregate view

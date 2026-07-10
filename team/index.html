@@ -405,8 +405,8 @@ if(!team){
   // Live latest roster PDF for this club — matches the release asset (named
   // <date>_<AWAYCODE>_at_<HOMECODE>.pdf) whose code belongs to this team.
   // Codes come from boxscores.json (away_code/home_code) rather than a fixed
-  // table, since esportsdesk's short codes don't always match our own (e.g.
-  // Pure NZ Admirals = "WAA", a legacy code, not "ADM").
+  // table, as a safety net against future code drift (2026-07-11: retired the
+  // legacy "WAA" short code for Pure NZ Admirals in favour of "ADM").
   (async function loadRoster(){
     const el = document.getElementById('roster-slot');
     const repo = team.roster;
