@@ -535,8 +535,9 @@ if(!team){
         })).sort((a,b) => b.pts - a.pts || (b.W+b.OTW) - (a.W+a.OTW) || b.gd - a.gd);
         const rank = standings.findIndex(r => Number(r.tid) === teamID) + 1;
         const us = tally[teamID];
+        const ourPts = us ? us.W*3 + us.OTW*2 + us.OTL : null;
         hd.innerHTML = (rank && us)
-          ? `Currently <b>${ordinal(rank)}</b> <span class="sched-rec">(${us.W}-${us.OTW}-${us.OTL}-${us.L})</span>`
+          ? `Currently <b>${ordinal(rank)}</b> <span class="sched-rec">(${us.W}-${us.OTW}-${us.OTL}-${us.L} ${ourPts}pts)</span>`
           : "Form";
       }
 
