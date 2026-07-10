@@ -286,7 +286,22 @@ function washVectors(a,h){
     `linear-gradient(90deg, ${a.dark} 0%, ${a.dark} 4%, transparent 40%),` +
     `linear-gradient(270deg, ${h.dark} 0%, ${h.dark} 4%, transparent 40%)`;
 }
-function setLogo(el,t){ if(t.logo){ el.src = LOGO+encodeURIComponent(t.logo); el.style.visibility=""; } else el.style.visibility="hidden"; }
+function setLogo(el,img){ if(img){ el.src = img.src; el.style.visibility=""; } else el.style.visibility="hidden"; }
+
+// Preload-and-gate: resolves once `src` has actually loaded (or errors, or a timeout
+// elapses) — mirrors activity-banner's loadImage(), so this graphic can hold its
+// render until every asset is actually there instead of popping images in afterward.
+function loadImage(src, timeoutMs){
+  return new Promise(res=>{
+    if(!src){ res(null); return; }
+    let done=false; const img=new Image();
+    const finish=ok=>{ if(done) return; done=true; res(ok?img:null); };
+    img.onload=()=>finish(true); img.onerror=()=>finish(false);
+    img.src=src;
+    setTimeout(()=>finish(false), timeoutMs||1500);
+  });
+}
+const LOGO_TIMEOUT_MS = 1500;
 
 // Cache of resolved fallback photo URLs per playerID — url string on success,
 // false when we've confirmed there's genuinely no photo. Avoids re-hitting
@@ -309,27 +324,70 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
   return result;
 }
 
-function photoEl(p, ink, size, teamID, cid, lid){
+// Overall budget for resolving one player's photo, guess + fallback combined — same
+// two-stage approach as activity-banner's resolvePlayerPhoto(), just with a more
+// generous cap since this graphic isn't gated by a live-reveal deadline (Mat,
+// 2026-07-11: preload everything before the graphic is shown/rebuilt, same idea as
+// the Activity Banner, so nothing ever pops in over the broadcast).
+const PHOTO_GUESS_TIMEOUT_MS = 1200;
+const PHOTO_TOTAL_TIMEOUT_MS = 4000;
+function resolvePlayerPhoto(who, pid, teamID, cid, lid){
+  return new Promise(res=>{
+    let done=false;
+    const finish=img=>{ if(done) return; done=true; res(img); };
+    const overall=setTimeout(()=>finish(null), PHOTO_TOTAL_TIMEOUT_MS);
+    loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
+      if(done) return;
+      if(img){ clearTimeout(overall); finish(img); return; }
+      if(!pid){ clearTimeout(overall); finish(null); return; }
+      resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+        if(done) return;
+        if(!url){ clearTimeout(overall); finish(null); return; }
+        loadImage(url, 1500).then(img2=>{ clearTimeout(overall); finish(img2); });
+      });
+    });
+  });
+}
+
+// Preloads BOTH team logos and all 6 players' photos, in parallel, before tick()
+// paints anything. Photo results are stashed on the player objects (_photoImg);
+// logos are returned. render()/rowEl()/photoEl() below stay purely synchronous —
+// nothing async happens after the graphic is already on screen, so a photo can
+// never pop in over an initials placeholder mid-broadcast.
+async function preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid){
+  const av = vis(awayID), hv = vis(homeID);
+  const logoASrc = av.logo ? LOGO+encodeURIComponent(av.logo) : null;
+  const logoBSrc = hv.logo ? LOGO+encodeURIComponent(hv.logo) : null;
+  const [logoAImg, logoBImg] = await Promise.all([
+    loadImage(logoASrc, LOGO_TIMEOUT_MS), loadImage(logoBSrc, LOGO_TIMEOUT_MS)
+  ]);
+  await Promise.all([
+    ...awayTop.map(p => resolvePlayerPhoto(p.name, p.pid, awayID, cid, lid).then(img => { p._photoImg = img; })),
+    ...homeTop.map(p => resolvePlayerPhoto(p.name, p.pid, homeID, cid, lid).then(img => { p._photoImg = img; })),
+  ]);
+  return {logoAImg, logoBImg};
+}
+
+function photoEl(p, ink, size){
   const el = document.createElement("div");
   el.className = "photo";
   el.style.width = size+"px"; el.style.height = size+"px";
   el.style.boxShadow = `0 0 0 3px ${ink}, 0 6px 18px rgba(0,0,0,.4)`;
-  const iniSpan = document.createElement("span");
-  iniSpan.className = "ini"; iniSpan.style.fontSize = (size*0.34)+"px";
-  iniSpan.textContent = ini(p.name);
-  el.appendChild(iniSpan);
-  const img = new Image();
-  img.onload = () => { el.innerHTML=""; el.appendChild(img); };
-  img.onerror = () => {
-    if(img.dataset.fallbackTried) return; // fallback URL itself failed — stay on initials
-    img.dataset.fallbackTried = "1";
-    resolvePhotoFallback(p.pid, teamID, cid, lid).then(u => { if(u) img.src = u; });
-  };
-  img.src = shotURL(p.name);
+  if(p._photoImg){
+    // Already loaded (or cached) by preloadAssets() — paints immediately, no onload/pop-in.
+    const img = document.createElement("img");
+    img.src = p._photoImg.src;
+    el.appendChild(img);
+  } else {
+    const iniSpan = document.createElement("span");
+    iniSpan.className = "ini"; iniSpan.style.fontSize = (size*0.34)+"px";
+    iniSpan.textContent = ini(p.name);
+    el.appendChild(iniSpan);
+  }
   return el;
 }
 
-function rowEl(p, team, side, teamID){
+function rowEl(p, team, side){
   const ink = team.ink;
   const row = document.createElement("div");
   row.className = "prow " + side;
@@ -338,7 +396,7 @@ function rowEl(p, team, side, teamID){
   row.appendChild(accent);
 
   const photoSize = 174; // near-fills the ~190px-tall row ("pill"), ~8px clearance top/bottom (Mat, 2026-07-11 — bigger, more visible photo)
-  row.appendChild(photoEl(p, ink, photoSize, teamID, CID, LID));
+  row.appendChild(photoEl(p, ink, photoSize));
 
   const ptext = document.createElement("div");
   ptext.className = "ptext";
@@ -364,18 +422,18 @@ function rowEl(p, team, side, teamID){
 }
 
 function render(P){
-  const A = {ink:vis(P.away.id).ink, dark:vis(P.away.id).dark, logo:vis(P.away.id).logo};
-  const H = {ink:vis(P.home.id).ink, dark:vis(P.home.id).dark, logo:vis(P.home.id).logo};
+  const A = {ink:vis(P.away.id).ink, dark:vis(P.away.id).dark};
+  const H = {ink:vis(P.home.id).ink, dark:vis(P.home.id).dark};
   washVectors(A,H);
-  setLogo(document.getElementById("logoA"), A);
-  setLogo(document.getElementById("logoB"), H);
+  setLogo(document.getElementById("logoA"), P.logoAImg);
+  setLogo(document.getElementById("logoB"), P.logoBImg);
   document.getElementById("kicker").textContent = P.leagueShort + "  ·  SCORING LEADERS";
   document.getElementById("sub").textContent = ""; // league/venue line cleared per Mat — may hold future content
 
   const colA = document.getElementById("colA"); colA.innerHTML = "";
   const colB = document.getElementById("colB"); colB.innerHTML = "";
-  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left", P.away.id)));
-  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right", P.home.id)));
+  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left")));
+  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right")));
   fitPlayerText();
 }
 
@@ -464,7 +522,7 @@ async function resolve(){
   return started[0] || upcoming[0];
 }
 
-let TARGET=null, renderedOnce=false, WH_CACHE={ts:0,data:null,league:null}, CID=null, LID=null;
+let TARGET=null, renderedOnce=false, WH_CACHE={ts:0,data:null,league:null};
 async function fetchWarehouse(league){
   const now = Date.now();
   if(WH_CACHE.data && WH_CACHE.league===league && now-WH_CACHE.ts < 10*60*1000) return WH_CACHE.data;
@@ -483,14 +541,21 @@ async function tick(){
     const awayID = NAME_TO_ID[gm.away], homeID = NAME_TO_ID[gm.home];
     if(!awayID || !homeID) throw new Error("Unrecognised team name: " + gm.away + " / " + gm.home);
     const cid = TARGET.m.clientid, lid = TARGET.m.leagueid;
-    CID = cid; LID = lid;
     const [awayHtml, homeHtml] = await Promise.all([
       getText(statsURL(awayID, cid, lid)),
       getText(statsURL(homeID, cid, lid)),
     ]);
     const awayRows = parseSkaterTable(awayHtml), homeRows = parseSkaterTable(homeHtml);
     const awayTop = top3(awayRows), homeTop = top3(homeRows);
-    let wh = null; try{ wh = await fetchWarehouse(league); } catch(e){ wh = null; }
+    // Preload every asset (both logos + all 6 photos) before touching the DOM — same
+    // principle as activity-banner's gated reveal. On a refresh tick this means the
+    // OLD (already-complete) render just keeps showing on screen for the extra second
+    // or two this takes; it never gets torn down until the new one is fully ready, so
+    // nothing ever flashes to initials/blank over the broadcast.
+    const [wh, assets] = await Promise.all([
+      fetchWarehouse(league).catch(()=>null),
+      preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid),
+    ]);
     const leagueShort = league==="nzwihl" ? "NZWIHL" : "NZIHL";
     assignDescriptors(
       [{top:awayTop, totalPts:awayRows.reduce((s,r)=>s+r.pts,0)},
@@ -504,6 +569,8 @@ async function tick(){
       venue: gm.venue || vis(homeID).venue || "",
       leagueShort,
       leagueName: league==="nzwihl" ? "New Zealand Women's Ice Hockey League" : "New Zealand Ice Hockey League",
+      logoAImg: assets.logoAImg,
+      logoBImg: assets.logoBImg,
     });
     renderedOnce = true; fitWindow();
   } catch(e){
