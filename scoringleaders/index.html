@@ -337,7 +337,7 @@ function rowEl(p, team, side, teamID){
   accent.className = "accent"; accent.style.background = ink;
   row.appendChild(accent);
 
-  const photoSize = 145;
+  const photoSize = 174; // near-fills the ~190px-tall row ("pill"), ~8px clearance top/bottom (Mat, 2026-07-11 — bigger, more visible photo)
   row.appendChild(photoEl(p, ink, photoSize, teamID, CID, LID));
 
   const ptext = document.createElement("div");
