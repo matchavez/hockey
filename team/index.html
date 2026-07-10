@@ -352,14 +352,16 @@ if(!team){
 
   document.getElementById('main').innerHTML = `
     <section>
-      <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/standings.png" alt=""><span class="sec-txt"><h2>${team.league} Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · this club's league table</span></span></div>
       <div class="top-row">
-        <div class="card standings-card" style="padding:10px">
-          <a target="_blank" rel="noopener" href="${standPng}"><img src="${standPng}?v=${Date.now()}" alt="${team.league} standings" style="display:block;width:100%;border-radius:10px;background:#000"></a>
-          <div class="links" style="margin-top:10px">
-            <a class="btn cp" data-copy="${standPng}">1920×1080</a>
-            <a class="btn cp" data-copy="${stand1840}">1840×1000</a>
-            <a class="btn ext" target="_blank" rel="noopener" href="../league/?league=${leagueSlug}">Full ${team.league} Page</a>
+        <div class="standings-col">
+          <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/standings.png" alt=""><span class="sec-txt"><h2>${team.league} Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · this club's league table</span></span></div>
+          <div class="card standings-card" style="padding:10px">
+            <a target="_blank" rel="noopener" href="${standPng}"><img src="${standPng}?v=${Date.now()}" alt="${team.league} standings" style="display:block;width:100%;border-radius:10px;background:#000"></a>
+            <div class="links" style="margin-top:10px">
+              <a class="btn cp" data-copy="${standPng}">1920×1080</a>
+              <a class="btn cp" data-copy="${stand1840}">1840×1000</a>
+              <a class="btn ext" target="_blank" rel="noopener" href="../league/?league=${leagueSlug}">Full ${team.league} Page</a>
+            </div>
           </div>
         </div>
         <div class="sched" id="sched-widget">
