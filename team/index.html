@@ -61,6 +61,28 @@
   .pal-chip .nm{ font-size:10.5px; font-weight:600; opacity:.9; }
   .pal-chip .rl{ font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; opacity:.65; }
 
+  /* Schedule/results widget — small form guide tucked top-right of the idcard row */
+  .sched{ align-self:flex-start; margin-left:auto; flex:0 0 auto; width:100%; max-width:300px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px 8px;
+    font-variant-numeric:tabular-nums; }
+  @media(max-width:720px){ .sched{ max-width:none; } }
+  .sched-hd{ font-size:11.5px; font-weight:700; color:var(--muted); padding-bottom:7px; margin-bottom:6px;
+    border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sched-hd b{ color:var(--tx); font-weight:800; }
+  .sched-rec{ color:var(--txt); font-weight:700; }
+  .sched-body{ max-height:168px; overflow-y:auto; display:flex; flex-direction:column; gap:1px; }
+  .sched-row{ display:grid; grid-template-columns:40px 1fr 34px; align-items:center; gap:8px;
+    font-size:11px; padding:3px 2px; border-radius:6px; }
+  .sched-row:hover{ background:var(--panel2); }
+  .sched-row.future{ opacity:.68; }
+  .sd-date{ color:var(--muted); font-weight:600; }
+  .sd-mu{ font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sd-tag{ font-size:9.5px; font-weight:800; text-align:center; padding:2px 0; border-radius:5px; letter-spacing:.02em; }
+  .tag-W, .tag-OTW, .tag-SOW{ background:rgba(46,204,113,.16); color:#3ee382; }
+  .tag-L{ background:rgba(255,255,255,.06); color:var(--muted); }
+  .tag-OTL, .tag-SOL{ background:rgba(247,190,17,.16); color:var(--gold); }
+  .sd-tag.tk{ background:transparent; color:var(--accent); font-weight:700; text-transform:none; }
+
   section{ padding:24px 0 4px; }
   .sec-head{ display:flex; align-items:center; gap:14px; margin-bottom:12px; }
   .sec-thumb{ width:88px; height:50px; object-fit:cover; border-radius:9px;
@@ -276,6 +298,10 @@ if(!team){
           <span class="hx">${hex}</span><span class="nm">${nm}</span><span class="rl">${role}</span>
         </div>`).join('')}
       </div>
+    </div>
+    <div class="sched" id="sched-widget">
+      <div class="sched-hd" id="sched-hd">Loading form…</div>
+      <div class="sched-body" id="sched-body"></div>
     </div>`;
 
   const standPng  = `${ASSETS}/${team.league}_Standings.png`;
@@ -415,6 +441,132 @@ if(!team){
       el.innerHTML = `<div class="roster-item"><span class="f">${label}</span><a class="btn dl" href="${pick.url}">PDF</a></div>`;
     }catch(e){
       el.innerHTML = `<p class="muted-note">Couldn't load live — <a style="color:var(--accent)" target="_blank" rel="noopener" href="https://github.com/matchavez/${repo}/releases">browse releases →</a></p>`;
+    }
+  })();
+
+  // Small schedule/results widget (top-right of the idcard). Completed games
+  // come from the nzihl-season-data archive (nzihl.json/nzwihl.json — full
+  // season, rebuilt nightly); upcoming fixtures come from the same
+  // boxscores.json manifest the roster card above reads (rolling ~11-day
+  // lookahead), so it only ever shows fixtures we actually know about yet.
+  (async function loadSchedule(){
+    const hd = document.getElementById('sched-hd');
+    const body = document.getElementById('sched-body');
+    const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const fmtDate = iso => { const d = new Date(iso + "T00:00:00"); return `${String(d.getDate()).padStart(2,"0")} ${MON[d.getMonth()]}`; };
+    const ordinal = n => { const s=["th","st","nd","rd"], v=n%100; return `${n}${s[(v-20)%10]||s[v]||s[0]}`; };
+    try{
+      const leagueFile = team.league === "NZIHL" ? "nzihl.json" : "nzwihl.json";
+      const [seasonRes, bsRes] = await Promise.all([
+        fetch(`https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/${leagueFile}`, {cache:"no-store"}),
+        fetch(`https://raw.githubusercontent.com/matchavez/${team.roster}/main/boxscores.json`, {cache:"no-store"}).catch(()=>null),
+      ]);
+      if(!seasonRes.ok) throw new Error(String(seasonRes.status));
+      const season = await seasonRes.json();
+      const games = season.games || [];
+
+      // A couple of clubs' names drift between the season archive and live
+      // feeds (early box scores logged "Red Devils" before the scraper
+      // switched to "Canterbury Red Devils"; NZWIHL's site doesn't always
+      // disambiguate "Dunedin Thunder" from "Dunedin Thunder Women"). Resolve
+      // once via accepted name -> teamID, then key everything off teamID.
+      const ALIASES = { "Canterbury Red Devils": ["Red Devils"], "Dunedin Thunder Women": ["Dunedin Thunder"] };
+      const accepted = new Set([team.nm, ...(ALIASES[team.nm] || [])]);
+
+      const codeByTeamId = {}, nameToCode = {};
+      let teamID = null;
+      games.forEach(g => ["away","home"].forEach(side=>{
+        const t = g[side];
+        if(t.teamID != null) codeByTeamId[t.teamID] = t.code;
+        nameToCode[t.name] = t.code;
+        if(teamID == null && accepted.has(t.name)) teamID = t.teamID;
+      }));
+
+      const resultFor = g => {
+        const us = g.away.teamID === teamID ? g.away : g.home;
+        const opp = g.away.teamID === teamID ? g.home : g.away;
+        const won = us.total > opp.total;
+        if(!g.finalType) return won ? "W" : "L";
+        return (g.finalType === "OT" ? "OT" : "SO") + (won ? "W" : "L");
+      };
+
+      let playedRows = [], playedIds = new Set();
+      if(teamID != null){
+        const played = games.filter(g => g.away.teamID === teamID || g.home.teamID === teamID)
+          .sort((a,b) => (a.date||"").localeCompare(b.date||"") || a.gameid - b.gameid);
+        playedIds = new Set(played.map(g => g.gameid));
+        playedRows = played.map(g=>{
+          const isAway = g.away.teamID === teamID;
+          const ac = codeByTeamId[g.away.teamID], hc = codeByTeamId[g.home.teamID];
+          const matchup = isAway
+            ? `${ac} ${g.away.total} @${hc} ${g.home.total}`
+            : `${ac} ${g.away.total} ${hc} ${g.home.total}`;
+          return { date: fmtDate(g.date), matchup, tag: resultFor(g), future: false };
+        });
+      }
+
+      // Standings header line. Points scheme matches the broadcast standings
+      // graphic (W=3, OTW/SOW=2, OTL/SOL=1, L=0). The wins-then-goal-diff
+      // tiebreak is our own approximation, not scraped from the official
+      // site (which can't be fetched cross-origin from a plain browser
+      // fetch) — fine for a quick-glance form guide, not a source of truth.
+      if(teamID != null){
+        const tally = {};
+        games.forEach(g=>{
+          const aWon = g.away.total > g.home.total;
+          [[g.away, g.home, aWon], [g.home, g.away, !aWon]].forEach(([side, opp, won])=>{
+            const tid = side.teamID; if(tid == null) return;
+            const e = tally[tid] || (tally[tid] = { W:0, OTW:0, OTL:0, L:0, GF:0, GA:0 });
+            e.GF += side.total; e.GA += opp.total;
+            if(!g.finalType) e[won ? "W" : "L"]++; else e[won ? "OTW" : "OTL"]++;
+          });
+        });
+        const standings = Object.entries(tally).map(([tid,e]) => ({
+          tid, ...e, pts: e.W*3 + e.OTW*2 + e.OTL, gd: e.GF - e.GA,
+        })).sort((a,b) => b.pts - a.pts || (b.W+b.OTW) - (a.W+a.OTW) || b.gd - a.gd);
+        const rank = standings.findIndex(r => Number(r.tid) === teamID) + 1;
+        const us = tally[teamID];
+        hd.innerHTML = (rank && us)
+          ? `Currently <b>${ordinal(rank)}</b> <span class="sched-rec">(${us.W}-${us.OTW}-${us.OTL}-${us.L})</span>`
+          : "Form";
+      }
+
+      // Upcoming fixtures, from the same rolling manifest the roster card
+      // reads — only ever shows what's inside that lookahead window.
+      let upcomingRows = [];
+      if(bsRes && bsRes.ok){
+        const bs = await bsRes.json();
+        upcomingRows = (bs.games || [])
+          .filter(g => (g.away === team.nm || g.home === team.nm) && !playedIds.has(g.gameid))
+          .sort((a,b) => (a.datetime||"").localeCompare(b.datetime||""))
+          .map(g=>{
+            const isAway = g.away === team.nm;
+            const ac = nameToCode[g.away] || g.away_code, hc = nameToCode[g.home] || g.home_code;
+            const matchup = isAway ? `${ac} @${hc}` : `${ac} - ${hc}`;
+            const time = (g.time || "").replace(/\s+/g,"").toLowerCase();
+            return { date: fmtDate(g.date), matchup, tag: time, future: true };
+          });
+      }
+
+      if(teamID == null && !hd.innerHTML.trim()){
+        hd.textContent = upcomingRows.length ? "Upcoming" : "No games yet this season";
+      }
+
+      const rows = [...playedRows, ...upcomingRows];
+      if(!rows.length){
+        body.innerHTML = `<p class="muted-note" style="margin:0;font-size:11.5px">No games played or scheduled yet.</p>`;
+      }else{
+        body.innerHTML = rows.map(r => `
+          <div class="sched-row${r.future ? " future" : ""}">
+            <span class="sd-date">${r.date}</span>
+            <span class="sd-mu">${r.matchup}</span>
+            <span class="sd-tag ${r.future ? "tk" : "tag-"+r.tag}">${r.tag}</span>
+          </div>`).join("");
+        body.scrollTop = body.scrollHeight; // land on most-recent + upcoming, not the season opener
+      }
+    }catch(e){
+      hd.textContent = "Schedule unavailable";
+      body.innerHTML = `<p class="muted-note" style="margin:0;font-size:11.5px">Couldn't load live — try again shortly.</p>`;
     }
   })();
 }
