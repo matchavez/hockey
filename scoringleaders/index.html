@@ -304,19 +304,30 @@ function loadImage(src, timeoutMs){
 const LOGO_TIMEOUT_MS = 1500;
 
 // Cache of resolved fallback photo URLs per playerID — url string on success,
-// false when we've confirmed there's genuinely no photo. Avoids re-hitting
-// nzihl.com every 5-minute tick for the same player.
+// null when we've confirmed there's genuinely no individual photo. Avoids
+// re-hitting the profile page every 5-minute tick for the same player.
 const PHOTO_FALLBACK_CACHE = {};
-async function resolvePhotoFallback(pid, teamID, cid, lid){
+async function resolvePhotoFallback(pid, teamID, cid, lid, league){
   if(!pid) return null;
   if(pid in PHOTO_FALLBACK_CACHE) return PHOTO_FALLBACK_CACHE[pid];
   let result = null;
   try{
-    const url = `https://www.nzihl.com/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
+    // Profile pages are per-league-domain — nzihl.com silently no-ops (a JS frameset
+    // redirect stub, no largeHeadshot at all) for NZWIHL clientIDs and vice versa, so
+    // the fallback must hit the domain matching the game's own league (Mat, 2026-07-11:
+    // caught NZWIHL falling back to nothing because this was hardcoded to nzihl.com).
+    const host = league==="nzwihl" ? "www.nzwihl.com" : "www.nzihl.com";
+    const url = `https://${host}/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
     const html = await getText(url);
-    const m = html.match(/largeHeadshot[^"]*"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
-    if(m){
-      let path = m[1].trim().replace(/^["']|["']$/g,"");
+    // When a player has no individual photo uploaded, esportsdesk's own profile page
+    // still renders a largeHeadshot div, just pointed at the TEAM CREST instead (e.g.
+    // Wakatipu Wild's whole roster resolves to wild.png; Admirals' Roscoe Eade resolves
+    // to the Admirals crest) — and marks that case by dropping the "bg-light" class and
+    // adding a border instead. A real uploaded photo always keeps "bg-light". Without
+    // this check we'd render the team crest as if it were that player's photo.
+    const m = html.match(/<div\s+class="largeHeadshot([^"]*)"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
+    if(m && /bg-light/.test(m[1])){
+      let path = m[2].trim().replace(/^["']|["']$/g,"");
       result = path.startsWith("http") ? path : "https://admin.esportsdesk.com" + path;
     }
   } catch(e){ /* leave result null — treated as "no photo found" */ }
@@ -331,7 +342,7 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
 // the Activity Banner, so nothing ever pops in over the broadcast).
 const PHOTO_GUESS_TIMEOUT_MS = 1200;
 const PHOTO_TOTAL_TIMEOUT_MS = 4000;
-function resolvePlayerPhoto(who, pid, teamID, cid, lid){
+function resolvePlayerPhoto(who, pid, teamID, cid, lid, league){
   return new Promise(res=>{
     let done=false;
     const finish=img=>{ if(done) return; done=true; res(img); };
@@ -340,7 +351,7 @@ function resolvePlayerPhoto(who, pid, teamID, cid, lid){
       if(done) return;
       if(img){ clearTimeout(overall); finish(img); return; }
       if(!pid){ clearTimeout(overall); finish(null); return; }
-      resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+      resolvePhotoFallback(pid, teamID, cid, lid, league).then(url=>{
         if(done) return;
         if(!url){ clearTimeout(overall); finish(null); return; }
         loadImage(url, 1500).then(img2=>{ clearTimeout(overall); finish(img2); });
@@ -354,7 +365,7 @@ function resolvePlayerPhoto(who, pid, teamID, cid, lid){
 // logos are returned. render()/rowEl()/photoEl() below stay purely synchronous —
 // nothing async happens after the graphic is already on screen, so a photo can
 // never pop in over an initials placeholder mid-broadcast.
-async function preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid){
+async function preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid, league){
   const av = vis(awayID), hv = vis(homeID);
   const logoASrc = av.logo ? LOGO+encodeURIComponent(av.logo) : null;
   const logoBSrc = hv.logo ? LOGO+encodeURIComponent(hv.logo) : null;
@@ -362,28 +373,27 @@ async function preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid){
     loadImage(logoASrc, LOGO_TIMEOUT_MS), loadImage(logoBSrc, LOGO_TIMEOUT_MS)
   ]);
   await Promise.all([
-    ...awayTop.map(p => resolvePlayerPhoto(p.name, p.pid, awayID, cid, lid).then(img => { p._photoImg = img; })),
-    ...homeTop.map(p => resolvePlayerPhoto(p.name, p.pid, homeID, cid, lid).then(img => { p._photoImg = img; })),
+    ...awayTop.map(p => resolvePlayerPhoto(p.name, p.pid, awayID, cid, lid, league).then(img => { p._photoImg = img; })),
+    ...homeTop.map(p => resolvePlayerPhoto(p.name, p.pid, homeID, cid, lid, league).then(img => { p._photoImg = img; })),
   ]);
   return {logoAImg, logoBImg};
 }
 
+// Returns null (no element at all) when no real photo was resolved — Mat, 2026-07-11:
+// don't show an initials placeholder circle, just drop the photo slot entirely so the
+// text takes the full row width. Matters most for teams where NONE of the top-3 have an
+// individual photo on file (e.g. Wakatipu Wild's whole roster currently has none) — three
+// identical initials circles read as broken; no circles at all reads as intentional.
 function photoEl(p, ink, size){
+  if(!p._photoImg) return null;
   const el = document.createElement("div");
   el.className = "photo";
   el.style.width = size+"px"; el.style.height = size+"px";
   el.style.boxShadow = `0 0 0 3px ${ink}, 0 6px 18px rgba(0,0,0,.4)`;
-  if(p._photoImg){
-    // Already loaded (or cached) by preloadAssets() — paints immediately, no onload/pop-in.
-    const img = document.createElement("img");
-    img.src = p._photoImg.src;
-    el.appendChild(img);
-  } else {
-    const iniSpan = document.createElement("span");
-    iniSpan.className = "ini"; iniSpan.style.fontSize = (size*0.34)+"px";
-    iniSpan.textContent = ini(p.name);
-    el.appendChild(iniSpan);
-  }
+  // Already loaded (or cached) by preloadAssets() — paints immediately, no onload/pop-in.
+  const img = document.createElement("img");
+  img.src = p._photoImg.src;
+  el.appendChild(img);
   return el;
 }
 
@@ -396,7 +406,8 @@ function rowEl(p, team, side){
   row.appendChild(accent);
 
   const photoSize = 174; // near-fills the ~190px-tall row ("pill"), ~8px clearance top/bottom (Mat, 2026-07-11 — bigger, more visible photo)
-  row.appendChild(photoEl(p, ink, photoSize));
+  const photoNode = photoEl(p, ink, photoSize);
+  if(photoNode) row.appendChild(photoNode); // omitted entirely (not initials) when there's no real photo
 
   const ptext = document.createElement("div");
   ptext.className = "ptext";
@@ -554,7 +565,7 @@ async function tick(){
     // nothing ever flashes to initials/blank over the broadcast.
     const [wh, assets] = await Promise.all([
       fetchWarehouse(league).catch(()=>null),
-      preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid),
+      preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid, league),
     ]);
     const leagueShort = league==="nzwihl" ? "NZWIHL" : "NZIHL";
     assignDescriptors(
