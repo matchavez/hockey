@@ -911,7 +911,10 @@ async function showL3(identity, fact, includeFact, opts){
     // mode: "photo" | "logo" | "initials" -- in priority order.
     l3img.style.display = mode==="photo" ? "" : "none";
     if(mode==="photo") l3img.src = img.src; else l3img.removeAttribute("src");
-    l3photologo.classList.toggle("show", mode==="logo");
+    // Direct style.display, not a CSS class toggle -- the element's inline
+    // style="display:none" default (same pattern as l3initials/l3img below)
+    // otherwise wins over a class selector's specificity.
+    l3photologo.style.display = mode==="logo" ? "flex" : "none";
     if(mode==="logo") l3photologoImg.src = img.src; else l3photologoImg.removeAttribute("src");
     l3initials.style.display = mode==="initials" ? "flex" : "none";
     if(mode==="initials") l3initials.textContent = initialsOf(identity.name);
