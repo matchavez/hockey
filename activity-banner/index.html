@@ -117,48 +117,65 @@
   .pline2{font-weight:600;opacity:.85;line-height:1.2;margin-top:2px;
     white-space:nowrap;overflow:hidden;text-shadow:0 2px 8px rgba(0,0,0,.4);}
 
-  /* --- PLAYER LOWER THIRDS (added 2026-07-12) ---
+  /* --- PLAYER LOWER THIRDS (added 2026-07-12, redesigned same day) ---
      A centered, bottom-anchored traditional broadcast lower third — deliberately
      distinct from the full-width #bnr goal/penalty strip. Fired via the phone
      control page (hockey/lowerthirds/) through the Cloudflare Durable Object
      control channel, or rendered statically from a ?preview= URL param by that
      same page's live miniature preview iframe — both paths call the SAME
-     renderL3()/buildL3Data() functions below (see the JS section), so preview
+     showL3()/buildL3Data() functions below (see the JS section), so preview
      and broadcast can never drift.
-     Geometry: ~1500x260, centered horizontally, sitting comfortably above the
-     78px goal-banner zone (bottom:120px) so the two never visually collide
-     even during a fast handoff. Collision RULE (not just geometry): an auto
-     goal/penalty banner always interrupts/kills a live or about-to-fire L3 —
-     see pump()/pollControl(). */
+     Geometry: ~1000x174 (noFact 130), centered horizontally, flush against the
+     SAME bottom edge as #bnr (bottom:0). Collision RULE (not just geometry):
+     an auto goal/penalty banner always interrupts/kills a live or
+     about-to-fire L3 — see enqueue()/pollControl() — so the two sharing a
+     baseline never actually collide on screen. */
   :root{ --l3ink:#9aa3ad; --l3dark:#181c22; }
-  #l3{position:absolute;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);
-    width:1500px;height:260px;border-radius:18px;overflow:hidden;
-    display:none;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
+  /* REDESIGNED 2026-07-12 (Mat): flush-bottom on the SAME edge as #bnr
+     (bottom:0 -- the collision rule below already guarantees an auto
+     banner always interrupts/kills a live L3 first, so sharing the same
+     baseline is safe, they never actually render at once), ~1/3 smaller
+     than the original 1500x260, a framed circular headshot (left) balanced
+     by a team-logo end panel (right, mirrors #bnr's crest-end treatment),
+     and a fuller Scoring-Leaders-style stat row (bold value + small unit
+     label pairs) instead of a single "13 GP · 6 G · 11 A" text line. */
+  #l3{position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(16px);
+    width:1000px;height:174px;border-radius:14px;overflow:hidden;
+    display:none;align-items:stretch;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
     opacity:0;z-index:4;
     transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);}
   #l3.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0);}
-  #l3.noFact{height:196px;}
-  #l3 .l3photo{flex:0 0 232px;align-self:stretch;background:#1b2029;overflow:hidden;position:relative;}
+  #l3.noFact{height:130px;}
+  #l3 .l3photowrap{flex:0 0 140px;align-self:stretch;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.03);}
+  #l3 .l3photo{width:108px;height:108px;border-radius:50%;overflow:hidden;position:relative;
+    background:#1b2029;border:3px solid var(--l3ink);box-shadow:0 6px 16px rgba(0,0,0,.45);flex:none;}
   #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
   #l3 .l3initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:64px;color:#4a525f;letter-spacing:.02em;}
-  #l3 .l3accent{flex:0 0 8px;align-self:stretch;background:var(--l3ink);}
-  #l3 .l3body{flex:1 1 auto;min-width:0;padding:22px 30px;display:flex;flex-direction:column;
-    justify-content:center;color:#fff;font-family:Inter,sans-serif;}
-  #l3 .l3name{font-weight:800;font-size:38px;line-height:1.12;letter-spacing:.005em;
+    font-weight:800;font-size:36px;color:#4a525f;letter-spacing:.02em;}
+  #l3 .l3accent{flex:0 0 5px;align-self:stretch;background:var(--l3ink);}
+  #l3 .l3body{flex:1 1 auto;min-width:0;padding:14px 22px;display:flex;flex-direction:column;
+    justify-content:center;gap:5px;color:#fff;font-family:Inter,sans-serif;}
+  #l3 .l3name{font-weight:800;font-size:25px;line-height:1.14;letter-spacing:.005em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 10px rgba(0,0,0,.4);}
-  #l3 .l3meta{font-weight:600;font-size:21px;opacity:.82;margin-top:3px;
+  #l3 .l3meta{font-weight:600;font-size:14px;opacity:.8;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #l3 .l3stat{font-weight:800;font-size:25px;margin-top:14px;color:var(--l3ink);
+  #l3 .l3stat{font-weight:800;font-size:20px;color:#fff;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #l3 .l3tonight{display:none;margin-top:9px;padding:4px 11px;border-radius:7px;
-    background:rgba(255,255,255,.16);font-weight:800;font-size:17px;letter-spacing:.02em;
+  #l3 .l3stat .unit{font-weight:400;font-size:.58em;opacity:.65;}
+  #l3 .l3tonight{display:none;margin-top:1px;padding:3px 9px;border-radius:6px;
+    background:rgba(255,255,255,.16);font-weight:800;font-size:13px;letter-spacing:.02em;
     align-self:flex-start;}
   #l3 .l3tonight.show{display:inline-block;}
-  #l3 .l3fact{display:none;margin-top:13px;font-weight:500;font-size:19px;line-height:1.32;
+  #l3 .l3fact{display:none;font-weight:500;font-size:14px;line-height:1.3;
     opacity:.92;max-height:2.7em;overflow:hidden;}
   #l3.noFact .l3fact{display:none;}
   #l3:not(.noFact) .l3fact.has{display:block;}
+  #l3 .l3logowrap{flex:0 0 140px;align-self:stretch;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.09);}
+  #l3 .l3logowrap img{max-width:80px;max-height:80px;object-fit:contain;display:none;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));}
+  #l3 .l3logowrap img.show{display:block;}
 
   /* --- test controls (only with ?test=1) --- */
   /* pinned to the TOP now (was bottom:22px) so the dev panel doesn't sit on top of the
@@ -201,7 +218,9 @@
   </div>
 
   <div id="l3">
-    <div class="l3photo" id="l3photo"><img id="l3img" alt=""><div class="l3initials" id="l3initials" style="display:none"></div></div>
+    <div class="l3photowrap">
+      <div class="l3photo" id="l3photo"><img id="l3img" alt=""><div class="l3initials" id="l3initials" style="display:none"></div></div>
+    </div>
     <div class="l3accent" id="l3accent"></div>
     <div class="l3body">
       <div class="l3name" id="l3name"></div>
@@ -210,6 +229,7 @@
       <div class="l3tonight" id="l3tonight"></div>
       <div class="l3fact" id="l3fact"></div>
     </div>
+    <div class="l3logowrap"><img id="l3logo" alt=""></div>
   </div>
 
   <div id="test">
@@ -765,19 +785,25 @@ async function buildL3Data(identity){
   const teamPeople = (manifest && manifest.leagues && manifest.leagues[league] &&
                        manifest.leagues[league].teams[identity.team_code] &&
                        manifest.leagues[league].teams[identity.team_code].people) || {};
-  let statLine=null, photo=null, tonight=null;
+  // statParts: array of {val,unit} pairs rendered as a fuller Scoring-Leaders-
+  // style stat row (bold value + small unit label) instead of a single
+  // "13 GP · 6 G · 11 A" text line — see showL3()'s l3stat.innerHTML build.
+  let statParts=null, photo=null, tonight=null;
   if(identity.role==="coach"){
     const row = await standingsRowFor(league, identity.team_code);
-    if(row) statLine = `${row.w}-${row.l}-${row.otw}-${row.otl} record · ${ordinal(row.pos)} in ${league.toUpperCase()}`;
+    if(row) statParts = [
+      {val:`${row.w}-${row.l}-${row.otw}-${row.otl}`, unit:"RECORD"},
+      {val:ordinal(row.pos), unit:`IN ${league.toUpperCase()}`},
+    ];
     const person = Object.values(teamPeople).find(p=>p.role==="coach" && normName(p.name)===normName(identity.name));
     if(person && person.photo) photo = PHOTO_BASE+person.photo;
   } else {
     const list = identity.role==="goalie" ? (teamStats&&teamStats.goalies||[]) : (teamStats&&teamStats.skaters||[]);
     const row = list.find(r=>String(r.number)===String(identity.number));
     if(row){
-      statLine = identity.role==="goalie"
-        ? `${row.gp} GP · ${row.gaa} GAA · ${row.sv_pct} SV% · ${row.so} SO`
-        : `${row.gp} GP · ${row.g} G · ${row.a} A · ${row.pts} PTS · ${row.pim} PIM`;
+      statParts = identity.role==="goalie"
+        ? [{val:row.gp,unit:"GP"},{val:row.gaa,unit:"GAA"},{val:row.sv_pct,unit:"SV%"},{val:row.so,unit:"SO"}]
+        : [{val:row.gp,unit:"GP"},{val:row.g,unit:"G"},{val:row.a,unit:"A"},{val:row.pts,unit:"PTS"},{val:row.pim,unit:"PIM"}];
     }
     // Photo warehouse tags BOTH skaters and goalies role:"player" (goalies are
     // distinguished only by position:"G") — match by number regardless of
@@ -786,7 +812,7 @@ async function buildL3Data(identity){
     if(person && person.photo) photo = PHOTO_BASE+person.photo;
     tonight = tonightChipFor(identity);
   }
-  return {statLine, photo, tonight};
+  return {statParts, photo, tonight};
 }
 
 function initialsOf(name){
@@ -800,7 +826,8 @@ const l3=document.getElementById("l3"), l3photo=document.getElementById("l3photo
       l3img=document.getElementById("l3img"), l3initials=document.getElementById("l3initials"),
       l3accent=document.getElementById("l3accent"), l3name=document.getElementById("l3name"),
       l3meta=document.getElementById("l3meta"), l3stat=document.getElementById("l3stat"),
-      l3tonight=document.getElementById("l3tonight"), l3fact=document.getElementById("l3fact");
+      l3tonight=document.getElementById("l3tonight"), l3fact=document.getElementById("l3fact"),
+      l3logo=document.getElementById("l3logo");
 let l3HideTimer=null, l3Token=0;
 
 function hideL3(){
@@ -828,9 +855,22 @@ async function showL3(identity, fact, includeFact, opts){
   if(identity.role==="coach"){ metaBits.push(identity.position||"Coach"); }
   else { if(identity.number) metaBits.push("#"+identity.number); metaBits.push(identity.position||(identity.role==="goalie"?"G":"")); }
   l3meta.textContent = metaBits.filter(Boolean).join(" · ");
-  l3stat.textContent = data.statLine || "";
+  l3stat.innerHTML = (data.statParts||[])
+    .map(p=>`${p.val} <span class="unit">${p.unit}</span>`).join("\u00A0\u00A0");
   if(data.tonight){ l3tonight.textContent=data.tonight; l3tonight.classList.add("show"); }
   else { l3tonight.classList.remove("show"); l3tonight.textContent=""; }
+
+  // Team logo end panel (right side, balances the framed headshot on the left) —
+  // same LOGO base + REG[..].logo filename #bnr's crest ends already use.
+  if(v.logo){
+    loadImage(LOGO+encodeURIComponent(v.logo), 1800).then(img=>{
+      if(myToken!==l3Token) return;
+      if(img){ l3logo.src=img.src; l3logo.classList.add("show"); }
+      else { l3logo.removeAttribute("src"); l3logo.classList.remove("show"); }
+    });
+  } else {
+    l3logo.removeAttribute("src"); l3logo.classList.remove("show");
+  }
 
   const factText = (fact||"").trim();
   const showFact = !!includeFact && !!factText;
