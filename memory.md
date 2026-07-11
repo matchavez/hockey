@@ -88,8 +88,28 @@ preview; no-fact/toggle-off layout shrinks with no empty gap; a no-photo
 player falls back to initials and still fires; a test goal banner instantly
 kills a live L3 (collision rule confirmed); AND, after Mat's worker deploy,
 the full control-channel fire round trip end-to-end (queue -> fire -> live
-overlay render -> auto-hide -> self-heal to queued -> clear). Every piece
-of this project is now fully live, nothing left pending.
+overlay render -> auto-hide -> self-heal to queued -> clear).
+
+**Redesigned same day, second pass (Mat's feedback after seeing it live):**
+flush-bottom on the SAME edge as `#bnr` (`bottom:0`, was `bottom:120px` --
+safe because the collision rule already guarantees an auto banner kills a
+live L3 first, so they never actually render at once); ~1/3 smaller overall
+(1000x174, noFact 130 -- was 1500x260/196); headshot switched from a
+portrait rectangle to a circular photo with a 3px team-ink border ring
+("framing boundary"); stat line rewritten from a single "13 GP · 6 G · 11 A"
+text string to a Scoring-Leaders-style row of bold value + small unit-label
+pairs (`buildL3Data()` now returns `statParts:[{val,unit}]`, not a
+`statLine` string); added a team-logo end panel on the right
+(`.l3logowrap`, same `LOGO`+`REG[..].logo` source `#bnr`'s crest ends use),
+balanced in width against the photo panel on the left. Re-verified live via
+`?preview=` for the full-fact, no-fact, and no-photo-initials states --
+all correct. `hockey/lowerthirds/` also gained a simple client-side
+password gate (word: "domigan", case-insensitive) at Mat's request -- same
+trust model as the `CONTROL_TOKEN` already embedded in that page's source
+(a static GitHub Pages file, so this is a deterrent, not real security),
+persisted via `localStorage` so a producer's phone doesn't re-prompt every
+reload. Every piece of this project is now fully live, nothing left
+pending.
 
 See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
