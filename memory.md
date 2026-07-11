@@ -6,7 +6,7 @@ Self-context for Claude. README.md here is already extremely thorough and explic
 The live portal + every deployed broadcast overlay page for NZIHL/NZWIHL. `https://matchavez.com/hockey/` via GitHub Pages, custom domain, deploy = push to `main`. Single-file HTML overlays, no build step, 1920×1080 YoloBox browser sources.
 
 ## Page inventory (see README for full param contracts)
-`index.html` (portal), `team/`, `league/`, `ticker/`, `scorebug/`, `activity-banner/`, `summary/` (Live Game Summary), `scoringleaders/` (+ `ab-test.html`, a design-experiment page not in the deployed rotation — ask before deleting once a variant is promoted), `box/`, `preflight/` (producer tool, not an overlay), `warehouse/` (producer tool, not an overlay — added 2026-07-11), `assets/fonts/`.
+`index.html` (portal), `team/`, `league/`, `ticker/`, `scorebug/`, `activity-banner/` (now also renders Player Lower Thirds, see below), `summary/` (Live Game Summary), `scoringleaders/` (+ `ab-test.html`, a design-experiment page not in the deployed rotation — ask before deleting once a variant is promoted), `box/`, `preflight/` (producer tool, not an overlay), `warehouse/` (producer tool, not an overlay — added 2026-07-11), `lowerthirds/` (producer tool, phone control page — added 2026-07-12), `assets/fonts/`.
 
 ## warehouse/ (2026-07-11)
 Single page combining two data sources that previously only had standalone/linked-out views: the full season game archive (nzihl-season-data) and the full player+coach photo library (nzihl-player-photos). Built in the preflight/-style dark producer-tool theme (--bg:#0d0f13 etc.), not the flashy portal-landing style -- this is a browsing tool for Mat, not a broadcast overlay or a public-facing showcase page.
@@ -27,7 +27,71 @@ Team registry (short_code -> display name + logo filename, 10 clubs incl. a Mako
 - **matchavez/nzihl-season-data** — `nzihl.json`/`nzwihl.json` game-level warehouse; powers streaks/H2H/last-meeting on `ticker/` and player game-logs on `scoringleaders/`.
 - **matchavez/nzihl-broadcast-rosters**, **matchavez/nzwihl-broadcast-rosters** — roster PDFs and `boxscores.json` (gameid resolution); `hockeyrosters` repo/page surfaces the PDFs to talent.
 - **matchavez/hockeyrosters** — separate repo/page (matchavez.com/hockeyrosters) for talent-facing roster downloads; linked from this portal.
-- Cloudflare Worker (admin.esportsdesk.com no-cache origin) — all live scraping across this whole family of repos switched to this no-cache origin; some ticker/activity-banner work is still blocked on a worker redeploy (see [[nzihl_activity_banner]] equivalent in Claude's cross-session memory if picking this back up).
+- Cloudflare Worker (admin.esportsdesk.com no-cache origin) — all live scraping across this whole family of repos switched to this no-cache origin; this redeploy was completed and verified live 2026-06-30 (this line was stale as of 2026-07-11 and is corrected here). A SEPARATE, unrelated worker deploy is pending as of 2026-07-12 -- the Player Lower Thirds control channel, see below.
+
+## Player Lower Thirds (2026-07-12)
+New producer tool + overlay extension, built end-to-end this session per
+Mat's spec. Phone-friendly control page at `lowerthirds/?team=<slug>` lists
+tonight's roster as tappable jersey pills; tapping selects a player, shows a
+live preview (a scaled `activity-banner/?preview=...` iframe -- the SAME
+renderer as the live overlay, not a separate mock), auto-computes a fact
+line (editable, one-tap toggle to omit), and "Fire" pushes it through a
+Cloudflare Worker Durable Object control channel to whichever
+`activity-banner/?team=<slug>` instance is already loaded in the video
+mixer -- no new browser source needed.
+
+**Data:** season stat lines come from `stats.json`, now emitted by both
+roster repos (nzihl-broadcast-rosters, nzwihl-broadcast-rosters) -- see
+those repos' memory.md. Tonight's game resolves from `boxscores.json`
+(primary) falling back to nzihl-season-data's `upcoming` field. Photos come
+from nzihl-player-photos' manifest. Facts engine checks (in priority order)
+tonight's-multi-point -> active streak -> H2H series record -> leads-team ->
+league-top10 -> milestone-watch, each keyed against nzihl-season-data's
+`player_game_logs`/`head_to_head`/`streak` structures.
+
+**Collision rule:** a goal/penalty auto-banner INTERRUPTS a live player L3
+(kills it instantly, player returns to queued on the phone for a one-tap
+re-fire); firing an L3 while an auto-banner is live is rejected. This is
+enforced client-side in `activity-banner/`'s own `enqueue()` (the only party
+that actually knows its local busy-state) via a dedicated `interrupt` call
+back to the control channel -- not server-side domain logic.
+
+**"One renderer" invariant:** `activity-banner/index.html`'s `showL3()` is
+defined exactly once and called from exactly two places -- the live
+`pollControl()` loop and the `?preview=` URL-param path used by the phone's
+iframe. If this ever needs touching, grep `function showL3` first to
+confirm it's still singular before assuming preview/live could have drifted
+apart.
+
+**Control channel:** `nzihl-broadcast-assets`'s `summary/worker.js` grew a
+`/control/<slug>` route backed by a Durable Object (`ControlChannel`,
+SQLite-backed, Free-plan compatible) -- see that repo's memory.md for the
+API shape. **Not deployed as of 2026-07-12** -- Mat's manual step per his
+explicit ask ("I execute the worker deploy"), prepared in
+`nzihl-broadcast-assets/summary/DEPLOY.md`. Until deployed, the phone page
+and `preflight/`'s new "Player L3 control channel" check both degrade
+gracefully (amber "NOT DEPLOYED YET", not a hard error) rather than
+crashing on the 501 `NO_DO_BINDING` response.
+
+**Consumers wired:** portal `index.html` got a "Player Lower Thirds" card
+(`#lowerthirds`, evergreen per-team Open/Copy URLs, both leagues, Mako
+excluded) and a "Player L3s" nav link; `preflight/index.html` got
+`checkStatsJson()` (stats.json freshness per league) and
+`checkControlChannel()` (worker reachability, tolerant of the pre-deploy
+501/plain-text response) system checks, plus a per-club "Player L3" copy
+button.
+
+**Verified live (Chrome, this session):** real game resolution matches
+today's actual boxscores.json entry; real photo+stats+fact render in
+preview; no-fact/toggle-off layout shrinks with no empty gap; a no-photo
+player falls back to initials and still fires; a test goal banner instantly
+kills a live L3 (collision rule confirmed). NOT yet tested: the full
+control-channel fire round trip end-to-end, since that requires the worker
+deploy Mat hasn't run yet.
+
+See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
+design-decision log (this is the "built" follow-up to that memory, which
+previously said "not built yet" -- update that memory too if revisiting).
 
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
