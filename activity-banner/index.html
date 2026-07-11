@@ -117,7 +117,7 @@
   .pline2{font-weight:600;opacity:.85;line-height:1.2;margin-top:2px;
     white-space:nowrap;overflow:hidden;text-shadow:0 2px 8px rgba(0,0,0,.4);}
 
-  /* --- PLAYER LOWER THIRDS (added 2026-07-12, redesigned same day) ---
+  /* --- PLAYER LOWER THIRDS (added 2026-07-12, iterated same day) ---
      A centered, bottom-anchored traditional broadcast lower third — deliberately
      distinct from the full-width #bnr goal/penalty strip. Fired via the phone
      control page (hockey/lowerthirds/) through the Cloudflare Durable Object
@@ -125,72 +125,73 @@
      same page's live miniature preview iframe — both paths call the SAME
      showL3()/buildL3Data() functions below (see the JS section), so preview
      and broadcast can never drift.
-     Geometry: ~1000x174 (noFact 130), centered horizontally, flush against the
+     Geometry: 1200x245 (noFact 180), centered horizontally, flush against the
      SAME bottom edge as #bnr (bottom:0). Collision RULE (not just geometry):
      an auto goal/penalty banner always interrupts/kills a live or
      about-to-fire L3 — see enqueue()/pollControl() — so the two sharing a
      baseline never actually collide on screen. */
   :root{ --l3ink:#9aa3ad; --l3dark:#181c22; }
-  /* REDESIGNED 2026-07-12 (Mat): flush-bottom on the SAME edge as #bnr
-     (bottom:0 -- the collision rule below already guarantees an auto
-     banner always interrupts/kills a live L3 first, so sharing the same
-     baseline is safe, they never actually render at once), ~1/3 smaller
-     than the original 1500x260, a framed circular headshot (left) balanced
-     by a team-logo end panel (right, mirrors #bnr's crest-end treatment),
-     and a fuller Scoring-Leaders-style stat row (bold value + small unit
-     label pairs) instead of a single "13 GP · 6 G · 11 A" text line. */
+  /* FOURTH PASS (Mat, 2026-07-12): back to a full-bleed rectangular portrait
+     (no circle) -- the team-ink accent bar that used to sit as a thin 5px
+     divider between the photo and the body is now EXTENDED into a full
+     border frame wrapping the rectangle instead (so there's no separate
+     .l3accent element anymore, the photo's own border IS the accent).
+     Also scaled the whole card up (was 1000x180/135) so the photo/text
+     fill more of the box top-to-bottom -- less empty vertical space, not
+     just a bigger box. */
   #l3{position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(16px);
-    width:1000px;height:180px;border-radius:14px;overflow:hidden;
+    width:1200px;height:245px;border-radius:14px;overflow:hidden;
     display:none;align-items:stretch;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
     opacity:0;z-index:4;
     transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);}
   #l3.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0);}
-  #l3.noFact{height:135px;}
-  #l3 .l3photowrap{flex:0 0 140px;align-self:stretch;display:flex;align-items:center;justify-content:center;
-    background:rgba(255,255,255,.03);}
-  #l3 .l3photo{width:108px;height:108px;border-radius:50%;overflow:hidden;position:relative;
-    background:#1b2029;border:3px solid var(--l3ink);box-shadow:0 6px 16px rgba(0,0,0,.45);flex:none;}
+  #l3.noFact{height:180px;}
+  /* Photo: flex:0 0 + align-self:stretch = fills the card's FULL current
+     height edge-to-edge (whether that's the 245px full state or the 180px
+     noFact state) -- a genuine full-bleed portrait, not a small photo
+     centred in a padded box. The border IS the frame (was a separate
+     .l3accent bar); box-sizing:border-box keeps the 6px border inside the
+     190px flex-basis rather than adding to it. */
+  #l3 .l3photo{flex:0 0 190px;align-self:stretch;overflow:hidden;position:relative;
+    box-sizing:border-box;background:#1b2029;border:6px solid var(--l3ink);}
   #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
-  /* No-photo fallback is now a SECOND choice, not the default: prefer the team
+  /* No-photo fallback is a SECOND choice, not the default: prefer the team
      crest (so a missing headshot still balances the crest already on the right
-     side, per Mat 2026-07-12) and only fall back to initials if the team has
-     no registered logo at all (DEFV). Mirrors #l3 .l3initials' centering. */
+     side) and only fall back to initials if the team has no registered logo
+     at all (DEFV). */
   #l3 .l3photologo{position:absolute;inset:0;display:none;align-items:center;justify-content:center;}
-  #l3 .l3photologo.show{display:flex;}
-  #l3 .l3photologo img{max-width:62px;max-height:62px;object-fit:contain;
+  #l3 .l3photologo img{max-width:96px;max-height:96px;object-fit:contain;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));}
   #l3 .l3initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:36px;color:#4a525f;letter-spacing:.02em;}
-  #l3 .l3accent{flex:0 0 5px;align-self:stretch;background:var(--l3ink);}
-  #l3 .l3body{flex:1 1 auto;min-width:0;padding:14px 22px;display:flex;flex-direction:column;
-    justify-content:center;gap:7px;color:#fff;font-family:Inter,sans-serif;}
+    font-weight:800;font-size:48px;color:#4a525f;letter-spacing:.02em;}
+  #l3 .l3body{flex:1 1 auto;min-width:0;padding:20px 30px;display:flex;flex-direction:column;
+    justify-content:center;gap:9px;color:#fff;font-family:Inter,sans-serif;}
   /* Line 1: jersey # + position + name, matching scoringleaders/index.html's
      .pline/.jnum pattern exactly -- jersey number smaller+bold+team-ink
      coloured, position same size as the name but also ink-coloured, name
-     itself white. Built as one innerHTML string in showL3() (l3name), no
-     separate meta line anymore. */
-  #l3 .l3name{font-weight:800;font-size:26px;line-height:1.15;letter-spacing:.005em;
+     itself white. Built as one innerHTML string in showL3() (l3name). */
+  #l3 .l3name{font-weight:800;font-size:32px;line-height:1.15;letter-spacing:.005em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 10px rgba(0,0,0,.4);}
   #l3 .l3name .jnum{font-size:.72em;font-weight:800;color:var(--l3ink);}
   #l3 .l3name .pos{color:var(--l3ink);}
   /* Line 2: stat row, same weight/size family as line 1 (Scoring Leaders keeps
      its line1/line2 at the same base size -- only the unit labels shrink). */
-  #l3 .l3stat{font-weight:800;font-size:26px;color:#fff;
+  #l3 .l3stat{font-weight:800;font-size:32px;color:#fff;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #l3 .l3stat .unit{font-weight:400;font-size:.56em;opacity:.65;}
-  #l3 .l3tonight{display:none;margin-top:1px;padding:3px 9px;border-radius:6px;
-    background:rgba(255,255,255,.16);font-weight:800;font-size:13px;letter-spacing:.02em;
+  #l3 .l3tonight{display:none;margin-top:1px;padding:4px 11px;border-radius:7px;
+    background:rgba(255,255,255,.16);font-weight:800;font-size:15px;letter-spacing:.02em;
     align-self:flex-start;}
   #l3 .l3tonight.show{display:inline-block;}
   /* Line 3: fact, matching scoringleaders/index.html's .pline.descr treatment
-     (italic, bold, light grey) rather than the old plain/regular-weight text. */
-  #l3 .l3fact{display:none;font-weight:700;font-style:italic;font-size:17px;line-height:1.25;
+     (italic, bold, light grey) rather than plain/regular-weight text. */
+  #l3 .l3fact{display:none;font-weight:700;font-style:italic;font-size:22px;line-height:1.25;
     color:#c9cdd6;max-height:2.6em;overflow:hidden;}
   #l3.noFact .l3fact{display:none;}
   #l3:not(.noFact) .l3fact.has{display:block;}
-  #l3 .l3logowrap{flex:0 0 140px;align-self:stretch;display:flex;align-items:center;justify-content:center;
+  #l3 .l3logowrap{flex:0 0 190px;align-self:stretch;display:flex;align-items:center;justify-content:center;
     background:rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.09);}
-  #l3 .l3logowrap img{max-width:80px;max-height:80px;object-fit:contain;display:none;
+  #l3 .l3logowrap img{max-width:110px;max-height:110px;object-fit:contain;display:none;
     filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));}
   #l3 .l3logowrap img.show{display:block;}
 
@@ -235,14 +236,11 @@
   </div>
 
   <div id="l3">
-    <div class="l3photowrap">
-      <div class="l3photo" id="l3photo">
-        <img id="l3img" alt="">
-        <div class="l3photologo" id="l3photologo" style="display:none"><img id="l3photologoImg" alt=""></div>
-        <div class="l3initials" id="l3initials" style="display:none"></div>
-      </div>
+    <div class="l3photo" id="l3photo">
+      <img id="l3img" alt="">
+      <div class="l3photologo" id="l3photologo" style="display:none"><img id="l3photologoImg" alt=""></div>
+      <div class="l3initials" id="l3initials" style="display:none"></div>
     </div>
-    <div class="l3accent" id="l3accent"></div>
     <div class="l3body">
       <div class="l3name" id="l3name"></div>
       <div class="l3stat" id="l3stat"></div>
@@ -846,7 +844,7 @@ const l3=document.getElementById("l3"), l3photo=document.getElementById("l3photo
       l3img=document.getElementById("l3img"),
       l3photologo=document.getElementById("l3photologo"), l3photologoImg=document.getElementById("l3photologoImg"),
       l3initials=document.getElementById("l3initials"),
-      l3accent=document.getElementById("l3accent"), l3name=document.getElementById("l3name"),
+      l3name=document.getElementById("l3name"),
       l3stat=document.getElementById("l3stat"),
       l3tonight=document.getElementById("l3tonight"), l3fact=document.getElementById("l3fact"),
       l3logo=document.getElementById("l3logo");
@@ -867,7 +865,6 @@ async function showL3(identity, fact, includeFact, opts){
   const v = vis(Object.keys(REG).find(id=>REG[id].code===identity.team_code)) || DEFV;
   document.documentElement.style.setProperty("--l3ink", v.ink);
   document.documentElement.style.setProperty("--l3dark", v.dark);
-  l3accent.style.background = v.ink;
 
   const data = await buildL3Data(identity);
   if(myToken!==l3Token) return;   // superseded while awaiting stats/photo fetches
