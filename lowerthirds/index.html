@@ -20,6 +20,21 @@
 :root{--bg:#0d0f13;--card:#14171d;--card2:#191d24;--line:#242a33;--txt:#dfe4ea;--dim:#8a93a0;
   --ok:#36d399;--warn:#f5b942;--bad:#ef5b5b;--acc:#7db2ff;}
 *{box-sizing:border-box;}
+/* Simple client-side password gate (word: see JS GATE_PASSWORD below) — same
+   trust model as CONTROL_TOKEN elsewhere in this page (a static GitHub Pages
+   file, so this is a deterrent against casual visitors, not real security).
+   Persisted in localStorage so a producer's phone doesn't need to re-enter
+   it every reload mid-broadcast. */
+#gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;
+  align-items:center;justify-content:center;}
+.gateBox{width:260px;text-align:center;}
+.gateTitle{font-size:19px;font-weight:800;margin-bottom:4px;}
+.gateSub{font-size:13px;color:var(--dim);margin-bottom:14px;}
+#gatePw{width:100%;font:600 16px Inter,sans-serif;background:var(--card);border:1px solid var(--line);
+  color:var(--txt);border-radius:10px;padding:12px 14px;text-align:center;margin-bottom:10px;}
+#gateBtn{width:100%;font:800 15px Inter,sans-serif;color:#0d0f13;background:var(--ok);
+  border:none;border-radius:10px;padding:12px;cursor:pointer;}
+.gateErr{color:var(--bad);font-size:12px;font-weight:700;margin-top:10px;display:none;}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
   font-family:Inter,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;
   min-height:100%;}
@@ -88,6 +103,15 @@ footer{margin-top:26px;font-size:12px;color:#525a66;text-align:center;line-heigh
 </style>
 </head>
 <body>
+<div id="gate">
+  <div class="gateBox">
+    <div class="gateTitle">Player Lower Thirds</div>
+    <div class="gateSub">Enter password</div>
+    <input type="password" id="gatePw" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="gateBtn">Unlock</button>
+    <div class="gateErr" id="gateErr">Wrong password</div>
+  </div>
+</div>
 <h1>Player Lower Thirds</h1>
 <div id="matchup" class="matchup">Loading tonight's game…</div>
 <div id="notice" class="notice" style="display:none"></div>
@@ -648,7 +672,31 @@ async function start(){
   setInterval(pollState, 750);
   setInterval(refreshTonightBoxscore, 15000);
 }
-start();
+/* ====================== PASSWORD GATE ====================== */
+const GATE_PASSWORD = "domigan";
+const GATE_KEY = "l3_gate_ok";
+function unlockGate(){
+  document.getElementById("gate").style.display = "none";
+  start();
+}
+if(localStorage.getItem(GATE_KEY)==="1"){
+  unlockGate();
+} else {
+  const gateBtn=document.getElementById("gateBtn"), gatePw=document.getElementById("gatePw"),
+        gateErr=document.getElementById("gateErr");
+  function tryUnlock(){
+    if((gatePw.value||"").trim().toLowerCase()===GATE_PASSWORD){
+      localStorage.setItem(GATE_KEY,"1");
+      unlockGate();
+    } else {
+      gateErr.style.display="block";
+      gatePw.value=""; gatePw.focus();
+    }
+  }
+  gateBtn.addEventListener("click", tryUnlock);
+  gatePw.addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock(); });
+  gatePw.focus();
+}
 </script>
 </body>
 </html>
