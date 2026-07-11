@@ -208,7 +208,7 @@ function parseSkaterTable(html){
     const rowHtml = trm[1];
     const linkM = rowHtml.match(/<a[^>]*href="[^"]*playerID=(\d+)[^"]*"[^>]*title="([^"]+)"[^>]*>/i);
     if(!linkM) continue;
-    const name = properCase(decodeEntities(linkM[2]).trim());
+    const name = properCase(decodeEntities(linkM[2]).trim().replace(/\s*\(Niskakoski\)\s*$/i,"")); // 2026-07-11: drop Inferno #3 Shattock's maiden-name parenthetical, per Mat
     const tds = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>clean(m[1]));
     if(tds.length < need) continue;
     const jersey = parseInt(tds[idxNum]) || 0;

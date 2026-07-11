@@ -227,7 +227,15 @@ function properCase(s){s=String(s||"");if(!s)return s;
 // "First Last", camelCase "FirstLast", and Maori multi-given-name "Te Rangi Henare" -> "Henare")
 // first-initial + surname (siblings on a roster can share a surname — the initial
 // disambiguates, e.g. two Ruski-Jones players). Applied to every shortened name.
-function initSurname(n){const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?(w[0][0]+". "+w[w.length-1]):(w[0]||"");}
+// Per-player surname corrections the generic decamel/initSurname logic can't get
+// right on its own -- e.g. genuine two-word surnames it would otherwise treat as
+// "given name + surname" and truncate/initial away. Keyed by the raw scraped text
+// (case-insensitive, decamel'd). Mirrors the roster pipeline's overrides.py.
+// 2026-07-11: de Jonge (Pure NZ Admirals #26) added after Michael reported the
+// Activity Banner showing "Jonge" instead of "de Jonge" mid-broadcast.
+const SURNAME_OVERRIDES={"de jonge":"De Jonge"};
+const surnameOverride=n=>SURNAME_OVERRIDES[decamel(n).trim().replace(/\s+/g," ").toLowerCase()]||null;
+function initSurname(n){const forced=surnameOverride(n);if(forced)return forced;const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?(w[0][0]+". "+w[w.length-1]):(w[0]||"");}
 function surnameUC(n){return initSurname(n).toUpperCase();}
 function surnameTC(n){return properCase(initSurname(n));}
 function assistList(a){
@@ -251,6 +259,7 @@ function parse(html){
   // harmless where a space/tag already followed (collapsed back down by the \s+ normalisation
   // every cell-text reader already does), and it fixes this at the source for every field.
   html=html.replace(/<\/span>/gi,"</span> ");
+  html=html.replace(/Shattock\s*\(\s*Niskakoski\s*\)/gi,"Shattock"); // 2026-07-11: strip Inferno #3's maiden-name parenthetical before any regex parsing, per Mat
   const doc=new DOMParser().parseFromString(html,"text/html");
   const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
   const h5=[...doc.querySelectorAll("h5")];
