@@ -738,8 +738,10 @@ function beginCrawl(){
 }
 // Native loop-boundary event — fires once per full unit scrolled, for free, at full compositor
 // accuracy. Replaces the old per-frame `cycles` counter entirely. Nothing happens if the data
-// hasn't changed: the same infinite CSS animation just keeps looping untouched by JS.
-track.addEventListener("animationiteration",()=>{ if(dirty&&!holding) beginCrawl(); });
+// hasn't changed: the same infinite CSS animation just keeps looping untouched by JS. When it
+// HAS changed, rebuild() must run here (not just inside beginCrawl's unitW<1 safety net) — this
+// is the actual splice point where new events enter the strip.
+track.addEventListener("animationiteration",()=>{ if(dirty&&!holding){ rebuild(); beginCrawl(); } });
 function placeTick(){
   tick.style.left=TICK.x+"px"; tick.style.top=TICK.y+"px";
   tick.style.width=TICK.w+"px"; tick.style.height=TICK.h+"px";
