@@ -184,6 +184,22 @@ font-size now only drives `.jnum`/`.pos`, while the actual name text is wrapped 
 34px->51px (1.5x, "half-again as much space" per Mat), panel widened 1320->1360 to compensate
 so the text column doesn't lose room. Verified live via `?preview=`.
 
+**Seventh pass, 2026-07-12:** two small fixes to `lowerthirds/`. (1) The pre-game
+"confidence alert" banner in `activity-banner/index.html` (`#pre`, shown before puck-drop)
+was firing on EVERY page load including `?preview=` mode, which meant the phone-page preview
+iframe always had it stacked over the L3 test render. `start()` now only calls
+`showConfidenceAlert(PREGAME)` when there's no `preview` query param -- verified live via
+computed style (`display:none`, `opacity:0` on `#pre` with `?preview=` set). (2)
+`lowerthirds/index.html`'s control card was showing four separate things (preview iframe,
+status text, a full-width CLEAR row with a redundant `selectedLbl` name/number readout, FIRE
+button) when the preview graphic itself already displays the player's name/number -- so
+`selectedLbl` was pure duplication. Removed `.controlRow`/`#selectedLbl` entirely (and the
+matching JS writes in `selectPlayer()`, the clear handler, and `start()`'s control-state
+adoption), moved `#clearBtn` to a small absolute-positioned corner button inside the preview
+card itself, and tightened header/factBox/groupTitle spacing so the whole page reads as
+"preview graphic + queued/fire header + fact box + pills" per Mat's ask. Verified live:
+selecting a player, clearing, and page-load state adoption all work with no console errors.
+
 See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
 previously said "not built yet" -- update that memory too if revisiting).
