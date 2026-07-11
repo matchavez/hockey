@@ -723,19 +723,21 @@ function endHold(){
   if(ENTRY>0.5) beginEntry(); else beginCrawl();   // skip the entry stage if there's no distance to cover
 }
 // 2026-07-11 (Mat: still seeing visual "bumps" after the CSS-animation switch): restarting a
-// CSS animation from JS normally needs a forced synchronous reflow (`animation:none` then an
-// immediate layout read like offsetWidth) so the browser "sees" the none state before the new
-// animation is applied — otherwise it can coalesce old->new and never restart. That forced
-// reflow was measured on a real box score's worth of content at ~4-8ms of BLOCKING main-thread
-// work, happening right at every content-change loop seam — on a broadcast rig already busy
-// with capture/encoding, that's enough to drop a frame or two (a visible "bump"). Fix: the
-// classic double-rAF trick gets the same guaranteed restart without ever forcing a synchronous
-// layout — the browser processes the "none" state on its own schedule across two paints, and
-// we only touch style again once that's settled, so the layout work rides the browser's normal
-// (non-blocking) rendering pipeline instead of a JS-forced stall.
+// CSS animation from JS needs the browser to "see" an intermediate animation:none before the
+// new animation is applied, or it can coalesce old->new and never restart. Tried replacing the
+// forced-reflow trick (animation:none + a synchronous offsetWidth read, ~4-8ms of blocking
+// work, measured) with the classic double-rAF deferral instead — but caught it live, on this
+// same tab, backgrounded: requestAnimationFrame simply does not fire at all while a tab is
+// hidden/unfocused (confirmed: a bare rAF call didn't fire within 3s while
+// document.visibilityState was "hidden"). That's the NORMAL state of a capture-source browser
+// window on a broadcast rig — so an rAF-gated restart would have FROZEN the crawl outright
+// whenever the tab isn't focused, which is strictly worse than the bump it was meant to fix.
+// Reverted to the forced-reflow restart, which works regardless of tab visibility (confirmed
+// against tonight's real content) — its ~4-8ms cost is a safe trade against a silent freeze.
 function restartAnim(spec){
   track.style.animation="none";
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{ track.style.animation=spec; }));
+  void track.offsetWidth;   // forces the browser to observe the "none" state before we reapply
+  track.style.animation=spec;
 }
 function beginEntry(){
   track.style.transform="";
