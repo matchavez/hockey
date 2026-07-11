@@ -125,7 +125,7 @@
      same page's live miniature preview iframe — both paths call the SAME
      showL3()/buildL3Data() functions below (see the JS section), so preview
      and broadcast can never drift.
-     Geometry: 1200x245 (noFact 180), centered horizontally, flush against the
+     Geometry: 1320x245 (noFact 180), centered horizontally, flush against the
      SAME bottom edge as #bnr (bottom:0). Collision RULE (not just geometry):
      an auto goal/penalty banner always interrupts/kills a live or
      about-to-fire L3 — see enqueue()/pollControl() — so the two sharing a
@@ -140,19 +140,22 @@
      fill more of the box top-to-bottom -- less empty vertical space, not
      just a bigger box. */
   #l3{position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(16px);
-    width:1200px;height:245px;border-radius:14px;overflow:hidden;
+    width:1320px;height:245px;border-radius:14px;overflow:hidden;
     display:none;align-items:stretch;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
     opacity:0;z-index:4;
     transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);}
   #l3.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0);}
   #l3.noFact{height:180px;}
-  /* Photo: flex:0 0 + align-self:stretch = fills the card's FULL current
-     height edge-to-edge (whether that's the 245px full state or the 180px
-     noFact state) -- a genuine full-bleed portrait, not a small photo
-     centred in a padded box. The border IS the frame (was a separate
+  /* Photo: SQUARE (Mat, 2026-07-12 -- was a full-bleed portrait rectangle,
+     which looked too elongated/stretched; "compress" it into a square by
+     matching width to whichever height the card currently has). align-self
+     :stretch still tracks the card's live height (245 full / 180 noFact);
+     aspect-ratio:1/1 then derives the width from that same height instead
+     of a separate fixed flex-basis, so it's always a true square in both
+     states, no extra JS needed. Border still IS the frame (no separate
      .l3accent bar); box-sizing:border-box keeps the 6px border inside the
-     190px flex-basis rather than adding to it. */
-  #l3 .l3photo{flex:0 0 190px;align-self:stretch;overflow:hidden;position:relative;
+     square rather than adding to it. */
+  #l3 .l3photo{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;overflow:hidden;position:relative;
     box-sizing:border-box;background:#1b2029;border:6px solid var(--l3ink);}
   #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
   /* No-photo fallback is a SECOND choice, not the default: prefer the team
@@ -160,38 +163,38 @@
      side) and only fall back to initials if the team has no registered logo
      at all (DEFV). */
   #l3 .l3photologo{position:absolute;inset:0;display:none;align-items:center;justify-content:center;}
-  #l3 .l3photologo img{max-width:96px;max-height:96px;object-fit:contain;
+  #l3 .l3photologo img{max-width:70%;max-height:70%;object-fit:contain;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));}
   #l3 .l3initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:48px;color:#4a525f;letter-spacing:.02em;}
-  #l3 .l3body{flex:1 1 auto;min-width:0;padding:20px 30px;display:flex;flex-direction:column;
-    justify-content:center;gap:9px;color:#fff;font-family:Inter,sans-serif;}
+    font-weight:800;font-size:56px;color:#4a525f;letter-spacing:.02em;}
+  #l3 .l3body{flex:1 1 auto;min-width:0;padding:20px 34px;display:flex;flex-direction:column;
+    justify-content:center;gap:10px;color:#fff;font-family:Inter,sans-serif;}
   /* Line 1: jersey # + position + name, matching scoringleaders/index.html's
      .pline/.jnum pattern exactly -- jersey number smaller+bold+team-ink
      coloured, position same size as the name but also ink-coloured, name
      itself white. Built as one innerHTML string in showL3() (l3name). */
-  #l3 .l3name{font-weight:800;font-size:32px;line-height:1.15;letter-spacing:.005em;
+  #l3 .l3name{font-weight:800;font-size:38px;line-height:1.15;letter-spacing:.005em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 10px rgba(0,0,0,.4);}
   #l3 .l3name .jnum{font-size:.72em;font-weight:800;color:var(--l3ink);}
   #l3 .l3name .pos{color:var(--l3ink);}
   /* Line 2: stat row, same weight/size family as line 1 (Scoring Leaders keeps
      its line1/line2 at the same base size -- only the unit labels shrink). */
-  #l3 .l3stat{font-weight:800;font-size:32px;color:#fff;
+  #l3 .l3stat{font-weight:800;font-size:38px;color:#fff;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #l3 .l3stat .unit{font-weight:400;font-size:.56em;opacity:.65;}
-  #l3 .l3tonight{display:none;margin-top:1px;padding:4px 11px;border-radius:7px;
-    background:rgba(255,255,255,.16);font-weight:800;font-size:15px;letter-spacing:.02em;
+  #l3 .l3tonight{display:none;margin-top:1px;padding:4px 12px;border-radius:7px;
+    background:rgba(255,255,255,.16);font-weight:800;font-size:16px;letter-spacing:.02em;
     align-self:flex-start;}
   #l3 .l3tonight.show{display:inline-block;}
   /* Line 3: fact, matching scoringleaders/index.html's .pline.descr treatment
      (italic, bold, light grey) rather than plain/regular-weight text. */
-  #l3 .l3fact{display:none;font-weight:700;font-style:italic;font-size:22px;line-height:1.25;
+  #l3 .l3fact{display:none;font-weight:700;font-style:italic;font-size:24px;line-height:1.25;
     color:#c9cdd6;max-height:2.6em;overflow:hidden;}
   #l3.noFact .l3fact{display:none;}
   #l3:not(.noFact) .l3fact.has{display:block;}
-  #l3 .l3logowrap{flex:0 0 190px;align-self:stretch;display:flex;align-items:center;justify-content:center;
+  #l3 .l3logowrap{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
     background:rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.09);}
-  #l3 .l3logowrap img{max-width:110px;max-height:110px;object-fit:contain;display:none;
+  #l3 .l3logowrap img{max-width:60%;max-height:60%;object-fit:contain;display:none;
     filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));}
   #l3 .l3logowrap img.show{display:block;}
 
