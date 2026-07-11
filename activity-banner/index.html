@@ -910,7 +910,7 @@ async function showL3(identity, fact, includeFact, opts){
   const showPhotoState = (mode, img)=>{
     // mode: "photo" | "logo" | "initials" -- in priority order.
     l3img.style.display = mode==="photo" ? "" : "none";
-    if(mode!=="photo") l3img.removeAttribute("src");
+    if(mode==="photo") l3img.src = img.src; else l3img.removeAttribute("src");
     l3photologo.classList.toggle("show", mode==="logo");
     if(mode==="logo") l3photologoImg.src = img.src; else l3photologoImg.removeAttribute("src");
     l3initials.style.display = mode==="initials" ? "flex" : "none";
