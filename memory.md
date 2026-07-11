@@ -108,8 +108,48 @@ password gate (word: "domigan", case-insensitive) at Mat's request -- same
 trust model as the `CONTROL_TOKEN` already embedded in that page's source
 (a static GitHub Pages file, so this is a deterrent, not real security),
 persisted via `localStorage` so a producer's phone doesn't re-prompt every
-reload. Every piece of this project is now fully live, nothing left
-pending.
+reload.
+
+**Third pass (same day, Mat's feedback after seeing the second pass live):**
+- **No-photo fallback now shows the team crest on the LEFT side too** (photo
+  circle), not initials -- a player with no headshot shows the SAME crest on
+  both sides, balanced, instead of a crest vs. bare initials. Priority chain
+  is photo -> team logo -> initials (only a team with no `REG` entry at all,
+  e.g. Auckland Mako, falls all the way to initials). The crest image is
+  fetched once and reused for both the left fallback slot and the always-on
+  right end panel (one `logoP` promise, `Promise.all([photoP, logoP])`).
+- **Line 1 (name) rebuilt to match `scoringleaders/index.html`'s
+  `.pline`/`.jnum` pattern**: jersey number (smaller, bold, team-ink
+  coloured) + position (team-ink coloured, same size as name) + name
+  (white), all one line, built as one `innerHTML` string in `showL3()` --
+  replaces the old separate name+meta lines. Line 2 (stats) bumped to the
+  same base font size as line 1 (26px, was 20px) to "balance" per Mat's ask
+  -- Scoring Leaders keeps line1/line2 at one shared size, only the unit
+  labels shrink. Line 3 (fact) restyled italic+bold+light-grey to match
+  Scoring Leaders' `.descr` treatment (was plain-weight, non-italic). Panel
+  height bumped 174->180 (noFact 130->135) for clearance at the larger sizes.
+- **`fitWindow()` rewritten to lock the frame's bottom-centre to the
+  window's bottom-centre at any aspect ratio** (was: scale only, from a
+  fixed top-left origin -- on a non-16:9 window the whole frame, including
+  the L3, visibly drifted toward the top-left instead of staying centred).
+  Now computes `translate(left,top) scale(s)` with
+  `left=(innerWidth-1920*s)/2` (always symmetric) and
+  `top=innerHeight-1080*s` (always bottom-anchored, so any letterboxing
+  lands entirely at the top). Verified via live transform-matrix inspection
+  for both a height-constrained and a width-constrained window shape.
+- **Two bugs caught + fixed during this round's live verification** (worth
+  knowing if this class of code gets touched again): (1) `showPhotoState()`'s
+  "photo" branch never actually set `l3img.src` -- the circle stayed blank
+  even though the image had loaded successfully; (2) the team-crest fallback
+  `<div>` had an inline `style="display:none"` in the markup, which beats a
+  CSS class selector's specificity, so toggling a `.show` class never
+  actually revealed it -- fixed by setting `.style.display` directly in JS
+  instead, matching how `l3initials`/`l3img` were already handled. Both
+  caught by inspecting live DOM/computed-style state via Chrome devtools JS,
+  not by screenshot alone -- default to that check first next time a "why
+  isn't this rendering" bug shows up here.
+
+Every piece of this project is now fully live, nothing left pending.
 
 See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
