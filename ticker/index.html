@@ -722,19 +722,32 @@ function endHold(){
   rebuild();
   if(ENTRY>0.5) beginEntry(); else beginCrawl();   // skip the entry stage if there's no distance to cover
 }
+// 2026-07-11 (Mat: still seeing visual "bumps" after the CSS-animation switch): restarting a
+// CSS animation from JS normally needs a forced synchronous reflow (`animation:none` then an
+// immediate layout read like offsetWidth) so the browser "sees" the none state before the new
+// animation is applied — otherwise it can coalesce old->new and never restart. That forced
+// reflow was measured on a real box score's worth of content at ~4-8ms of BLOCKING main-thread
+// work, happening right at every content-change loop seam — on a broadcast rig already busy
+// with capture/encoding, that's enough to drop a frame or two (a visible "bump"). Fix: the
+// classic double-rAF trick gets the same guaranteed restart without ever forcing a synchronous
+// layout — the browser processes the "none" state on its own schedule across two paints, and
+// we only touch style again once that's settled, so the layout work rides the browser's normal
+// (non-blocking) rendering pipeline instead of a JS-forced stall.
+function restartAnim(spec){
+  track.style.animation="none";
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ track.style.animation=spec; }));
+}
 function beginEntry(){
-  track.style.animation="none"; track.style.transform="";
-  void track.offsetWidth;                          // force reflow so the animation restarts clean
+  track.style.transform="";
   track.style.setProperty("--entryFrom",ENTRY+"px");
-  track.style.animation=`tickEntry ${(ENTRY/SPEED).toFixed(3)}s linear 1`;
+  restartAnim(`tickEntry ${(ENTRY/SPEED).toFixed(3)}s linear 1`);
   track.addEventListener("animationend",beginCrawl,{once:true});
 }
 function beginCrawl(){
   if(unitW<1)rebuild();
-  track.style.animation="none"; track.style.transform="";
-  void track.offsetWidth;                          // same reflow trick — every seam restarts clean
+  track.style.transform="";
   track.style.setProperty("--unitW",unitW+"px");
-  track.style.animation=`tickCrawl ${(unitW/SPEED).toFixed(3)}s linear infinite`;
+  restartAnim(`tickCrawl ${(unitW/SPEED).toFixed(3)}s linear infinite`);
 }
 // Native loop-boundary event — fires once per full unit scrolled, for free, at full compositor
 // accuracy. Replaces the old per-frame `cycles` counter entirely. Nothing happens if the data
@@ -754,10 +767,16 @@ function rebuild(){
   const unit=`<span class="item">`+items.map(i=>i+sepHTML()).join("")+`</span>`;
   track.innerHTML=unit;
   SW=document.getElementById("swrap").clientWidth;        // layout px — transform-independent
-  unitW=track.firstElementChild.offsetWidth;
+  unitW=track.firstElementChild.offsetWidth;              // the one layout read we can't avoid —
+                                                            // rendered width depends on fonts/images
   if(unitW<1)unitW=SW||TICK.w;
   const copies=Math.max(2,Math.ceil((SW+unitW)/unitW)+1);
-  track.innerHTML=new Array(copies).fill(unit).join("");
+  // Duplicate via cloneNode instead of a second full innerHTML rewrite (was: re-parse the whole
+  // HTML string again from scratch). Cloning an already-rendered node is cheaper — no HTML
+  // re-parse, and crucially no re-decode of the crest/league-logo <img>s (clones share the same
+  // already-decoded image resource) — this runs at every content-change seam, so it's worth it.
+  const first=track.firstElementChild;
+  for(let i=1;i<copies;i++) track.appendChild(first.cloneNode(true));
   dirty=false;
 }
 function showTicker(){ if(visible)return; visible=true; tick.classList.add("on"); updDiag(); }
