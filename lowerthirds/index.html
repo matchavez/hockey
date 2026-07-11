@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NZIHL — Player Lower Thirds</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+/* ============================================================
+   NZIHL / NZWIHL — Player Lower Thirds phone control page.
+   URL: hockey/lowerthirds/?team=<slug>[&token=...]
+   Phone-first (also usable as a small desktop window). Resolves tonight's
+   game for ?team=<slug> the same way activity-banner does, shows tappable
+   jersey pills for BOTH clubs, and queues/fires a stat+photo player lower
+   third through the Cloudflare Durable Object control channel — rendered
+   by the SAME activity-banner overlay already loaded in the mixer (this
+   page never renders the L3 itself; the preview iframe below IS the
+   overlay's own renderer, in ?preview= mode).
+   ============================================================ */
+:root{--bg:#0d0f13;--card:#14171d;--card2:#191d24;--line:#242a33;--txt:#dfe4ea;--dim:#8a93a0;
+  --ok:#36d399;--warn:#f5b942;--bad:#ef5b5b;--acc:#7db2ff;}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+  font-family:Inter,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;
+  min-height:100%;}
+body{padding:14px 14px 40px;max-width:720px;margin:0 auto;}
+h1{font-size:19px;font-weight:800;margin:2px 0 2px;letter-spacing:.01em;}
+.matchup{font-size:14px;color:var(--dim);font-weight:600;margin-bottom:12px;}
+.notice{background:#2a1f10;border:1px solid #6b4a12;color:#f5c26b;border-radius:10px;
+  padding:10px 13px;font-size:13px;font-weight:600;margin-bottom:12px;line-height:1.4;}
+.notice.err{background:#2a1414;border-color:#6b2020;color:#f79a9a;}
+.emptyState{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:32px 20px;text-align:center;color:var(--dim);font-size:15px;font-weight:600;}
+
+.previewWrap{position:relative;border-radius:14px;overflow:hidden;background:#000;
+  border:1px solid var(--line);margin-bottom:10px;}
+.previewFrameHolder{position:relative;width:100%;aspect-ratio:16/9;background:
+  repeating-conic-gradient(#15181d 0% 25%, #191d24 0% 50%) 50% / 22px 22px;}
+#previewFrame{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.previewTop{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+  align-items:flex-start;padding:8px;pointer-events:none;}
+#fireBtn{pointer-events:auto;font:800 15px Inter,sans-serif;letter-spacing:.03em;color:#0d0f13;
+  background:var(--ok);border:none;border-radius:10px;padding:12px 22px;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.4);min-width:104px;}
+#fireBtn:disabled{background:#3a4048;color:#7a828d;cursor:default;}
+#fireBtn.counting{background:var(--warn);color:#241a03;}
+.statusMsg{pointer-events:auto;align-self:flex-start;font:700 12px Inter,sans-serif;
+  color:#fff;background:rgba(0,0,0,.55);border-radius:8px;padding:6px 10px;min-height:14px;}
+.statusMsg.interrupted{background:rgba(239,91,91,.85);}
+
+.controlRow{display:flex;gap:10px;margin-bottom:14px;}
+#clearBtn{flex:0 0 auto;font:800 14px Inter,sans-serif;letter-spacing:.02em;color:#f79a9a;
+  background:#1c1414;border:1px solid #4a2222;border-radius:10px;padding:11px 18px;cursor:pointer;}
+#clearBtn:active{background:#2a1a1a;}
+.selectedLbl{flex:1 1 auto;align-self:center;font-size:13px;color:var(--dim);font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.factBox{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;margin-bottom:16px;}
+.toggleRow{display:flex;align-items:center;gap:10px;margin-bottom:8px;user-select:none;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.toggleRow input{display:none;}
+.swatch{width:46px;height:27px;border-radius:14px;background:#2a303a;position:relative;
+  transition:background .15s ease;flex:0 0 auto;}
+.swatch::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;
+  border-radius:50%;background:#8a93a0;transition:transform .15s ease,background .15s ease;}
+.toggleRow input:checked + .swatch{background:var(--ok);}
+.toggleRow input:checked + .swatch::after{transform:translateX(19px);background:#0d0f13;}
+.toggleRow span.lbl{font-size:14px;font-weight:700;}
+#factText{width:100%;min-height:64px;resize:vertical;background:#0e1116;border:1px solid var(--line);
+  border-radius:9px;color:var(--txt);font:500 14px/1.4 Inter,sans-serif;padding:10px 11px;}
+#factText::placeholder{color:#525a66;}
+
+.groupTitle{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--dim);margin:14px 2px 8px;}
+.pillWrap{display:flex;flex-wrap:wrap;gap:8px;}
+.pill{position:relative;border:2px solid transparent;border-radius:11px;min-width:52px;height:52px;
+  padding:0 10px;display:flex;align-items:center;justify-content:center;gap:3px;
+  font:800 17px Inter,sans-serif;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);}
+.pill.coach{font-size:13px;letter-spacing:.02em;padding:0 14px;}
+.pill .g{font:800 10px Inter,sans-serif;background:rgba(255,255,255,.28);border-radius:5px;
+  padding:1px 4px;margin-left:1px;}
+.pill.selected{border-color:#fff;transform:scale(1.05);}
+.pill.noPhoto{color:#c7cdd6;}
+
+footer{margin-top:26px;font-size:12px;color:#525a66;text-align:center;line-height:1.6;}
+</style>
+</head>
+<body>
+<h1>Player Lower Thirds</h1>
+<div id="matchup" class="matchup">Loading tonight's game…</div>
+<div id="notice" class="notice" style="display:none"></div>
+<div id="emptyState" class="emptyState" style="display:none"></div>
+
+<div id="mainUI" style="display:none">
+  <div class="previewWrap">
+    <div class="previewFrameHolder">
+      <iframe id="previewFrame" src="about:blank" title="Lower third preview"></iframe>
+    </div>
+    <div class="previewTop">
+      <div class="statusMsg" id="statusMsg"></div>
+      <button id="fireBtn" disabled>FIRE</button>
+    </div>
+  </div>
+
+  <div class="controlRow">
+    <button id="clearBtn">CLEAR</button>
+    <div class="selectedLbl" id="selectedLbl">No player selected</div>
+  </div>
+
+  <div class="factBox">
+    <label class="toggleRow">
+      <input type="checkbox" id="factToggle">
+      <span class="swatch"></span>
+      <span class="lbl">Include fact</span>
+    </label>
+    <textarea id="factText" placeholder="Tap a player — a suggested fact will appear here, editable"></textarea>
+  </div>
+
+  <div id="pillsAway"></div>
+  <div id="pillsHome"></div>
+</div>
+
+<footer id="footer"></footer>
+
+<script>
+/* ====================== CONFIG ====================== */
+let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";
+// Same shared-secret as activity-banner/index.html and worker.js — gates
+// control-channel WRITES only (reads are open). See worker.js's comment
+// for the trust model (this is not real secrecy, matches how WORKER itself
+// is a plain constant in every overlay page already).
+const CONTROL_TOKEN = "l3-EXleXBAfHbgn7P1qHeJ81U1K";
+
+const SCRAPE_HOST = "https://admin.esportsdesk.com";
+const MANIFESTS=[
+  {league:"nzihl",  url:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",
+   statsUrl:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/stats.json", clientid:7131, leagueid:35499},
+  {league:"nzwihl", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json",
+   statsUrl:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/stats.json", clientid:7132, leagueid:35501},
+];
+const SEASON_DATA_URLS = {
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzihl.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzwihl.json",
+};
+const PHOTO_MANIFEST_URL = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json";
+
+// Team visuals — same table as activity-banner (kept in sync manually, same
+// "sibling pages drift silently" tradeoff already accepted across this repo).
+const REG={
+ "674110":{code:"ADM", ink:"#F7BE11", dark:"#081D48", name:"Pure NZ Admirals"},
+ "675633":{code:"CRD", ink:"#E5242B", dark:"#550000", name:"Canterbury Red Devils"},
+ "675634":{code:"DUN", ink:"#1E9E63", dark:"#012C1E", name:"Dunedin Thunder"},
+ "675635":{code:"SCS", ink:"#FAC805", dark:"#162543", name:"SkyCity Stampede"},
+ "674109":{code:"BSW", ink:"#F7AF28", dark:"#441620", name:"Botany Swarm"},
+ "675636":{code:"AST", ink:"#9FB6C8", dark:"#18263E", name:"Auckland Steel"},
+ "675637":{code:"CIN", ink:"#E0564E", dark:"#550000", name:"Canterbury Inferno"},
+ "675638":{code:"DTW", ink:"#1E9E63", dark:"#012C1E", name:"Dunedin Thunder Women"},
+ "675639":{code:"WLD", ink:"#FAC805", dark:"#162543", name:"Wakatipu Wild"},
+};
+const CODE_TEAMID={}; Object.entries(REG).forEach(([id,v])=>CODE_TEAMID[v.code]=id);
+const CODE_INK={}; Object.entries(REG).forEach(([,v])=>CODE_INK[v.code]=v.ink);
+const CODE_NAME={}; Object.entries(REG).forEach(([,v])=>CODE_NAME[v.code]=v.name);
+// Exact grey of the initials-placeholder frame used everywhere else in this
+// codebase (warehouse/, Game Summary, Scoring Leaders, the .gav goal-avatar
+// slot) — "team colour = has headshot, grey = will render with initials".
+const GREY = "#1b2029";
+
+/* ====================== HELPERS (ported from activity-banner for parity) ====================== */
+const Q=new URLSearchParams(location.search);
+if(Q.get("worker")) WORKER=Q.get("worker");
+const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+// Matches nzihl-season-data's own normalize_name() exactly (alpha-only, no
+// spaces) — required to hit player_game_logs/standings keys correctly.
+const pgKey=s=>String(s||"").toLowerCase().replace(/[^a-z]/g,"");
+function properCase(s){s=String(s||"");if(!s)return s;
+  const letters=s.replace(/[^a-zA-Z]/g,"");if(!letters)return s;
+  const allUpper=letters===letters.toUpperCase()&&letters!==letters.toLowerCase();
+  const allLower=letters===letters.toLowerCase()&&letters!==letters.toUpperCase();
+  if(!allUpper&&!allLower)return s;
+  return s.toLowerCase().replace(/(^|[\s\-'.(])([a-z])/g,(m,p1,p2)=>p1+p2.toUpperCase());}
+const ordinal=n=>{n=+n||0;const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+const SHIM=u=>WORKER?(WORKER.replace(/\/$/,"")+"?url="+encodeURIComponent(u)):null;
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
+async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
+
+/* ---- box-score parser, ported verbatim from activity-banner/index.html ----
+   (kept byte-identical on purpose — this file needs it for the facts
+   engine's "tonight" rule; see nzihl_player_name_overrides memory re: this
+   parser being duplicated across files, same known tradeoff.) */
+const normP=s=>{s=String(s).toUpperCase();if(s.startsWith("1"))return"1";if(s.startsWith("2"))return"2";if(s.startsWith("3"))return"3";if(/OT|OVER/.test(s))return"OT";if(/SO|SHOOT/.test(s))return"SO";return s;};
+function parseBox(html){
+  html=html.replace(/<\/span>/gi,"</span> ");
+  html=html.replace(/Shattock\s*\(\s*Niskakoski\s*\)/gi,"Shattock");
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
+  const h5=[...doc.querySelectorAll("h5")];
+  const findH=re=>h5.find(h=>re.test(h.textContent));
+  const tidOf=el=>{const a=el&&el.querySelector&&el.querySelector('a[href*="teamID="]');const m=a&&a.getAttribute("href").match(/teamID=(\d+)/i);return m?m[1]:null;};
+  const btw=(a,b)=>{const r=[];let e=a&&a.nextElementSibling;while(e&&e!==b){r.push(e);e=e.nextElementSibling;}return r;};
+  const tables=[...doc.querySelectorAll("table")];
+  const scoreTbl=tables[0]; const srows=[...scoreTbl.querySelectorAll("tr")];
+  const team=tr=>{const c=[...tr.children].map(txt);const m=c[0].match(/^(.*?)\s+([A-Z]{2,4})$/);
+    return {teamID:tidOf(tr),name:(m?m[1]:c[0]).trim(),code:(m?m[2]:"").trim(),tot:+c[c.length-1]||0};};
+  const away=team(srows[1]), home=team(srows[2]);
+  function section(h5el,stopEl){
+    const items=[];let per="";
+    btw(h5el,stopEl).forEach(el=>{
+      const t=txt(el);
+      if(/^(1ST|2ND|3RD|\dTH|OVERTIME|OT\d*|SHOOTOUT)(\s+PERIOD)?(\s*\d+)?$/i.test(t)&&!(el.querySelector&&el.querySelector("table"))){per=normP(t);return;}
+      const tbl=(el.querySelector&&el.querySelector("table"))||(el.tagName==="TABLE"?el:null);
+      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties/i.test(c[0]))items.push({per,c});});
+    });
+    return items;
+  }
+  const ssH=findH(/SCORING SUMMARY/i),psH=findH(/PENALTY SUMMARY/i),skH=findH(/SKATERS/i);
+  const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\((.*)\)\s*$/);
+    const who=m?m[2].trim():o.c[0];
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",teamID:tidGoalTeam(o,away,home)};}):[];
+  function tidGoalTeam(o,away,home){
+    // esportsdesk doesn't tag scoring rows with teamID directly; infer from
+    // the trailing team column against away/home names/codes (team-level is
+    // enough for the facts engine's tonight-tally rule — this file doesn't
+    // need per-skater roster precision the way activity-banner's live
+    // parse() does).
+    const t=(o.c[o.c.length-1]||"").trim();
+    if(t===away.code||t===away.name) return away.teamID;
+    if(t===home.code||t===home.name) return home.teamID;
+    return null;
+  }
+  const pens=psH?section(psH,skH).map(o=>{
+    const cell=o.c[0];
+    const tm=cell.match(/\(([^)]*)\)\s*$/);
+    const tn=tm?tm[1].trim():"";const id=tn===away.name?away.teamID:tn===home.name?home.teamID:null;
+    const pm=cell.match(/^#?(\d+)\s+(.+?)\s*\([^)]*\)\s*$/);
+    const who=pm?pm[2].trim():cell.replace(/\s*\([^)]*\)\s*$/,"").trim();
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:pm?+pm[1]:"",who,inf:o.c[1]||"",dur:o.c[2]||"",teamID:id};}):[];
+  return {away,home,goals,pens};
+}
+
+/* ====================== STATE ====================== */
+let GAME=null;            // {league, m, gid, awayCode, homeCode, awayName, homeName, ...}
+let TEAM_DATA={};         // {ADM:{items,...}, DUN:{...}}
+let STATS_CACHE={};       // {nzihl:{teams:{...}}, nzwihl:{...}}
+let PHOTO_MANIFEST=null;
+let SEASON_CACHE={};
+let TONIGHT_PARSE=null;
+let SELECTED=null;        // {team_code, team_name, role, number, name, position}
+let CONTROL_STATE={status:"idle"};
+let workerBroken=false;
+
+/* ====================== GAME RESOLUTION (mirrors activity-banner's resolveTarget) ====================== */
+async function resolveGame(teamSlug){
+  const cands=[];
+  for(const m of MANIFESTS){
+    let data; try{ data=await getJSON(m.url); }catch(e){ continue; }
+    (data.games||[]).forEach(gm=>{
+      if(!gm.gameid) return;
+      if(slug(gm.away)!==teamSlug && slug(gm.home)!==teamSlug) return;
+      cands.push({m, gid:gm.gameid, dt:new Date(gm.datetime||gm.date).getTime()||0, gm});
+    });
+  }
+  if(cands.length){
+    const now=Date.now(), LIVE=5*3600*1000;
+    const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);
+    const pick=live[0] || cands.sort((a,b)=>b.dt-a.dt)[0];
+    return {league:pick.m.league, m:pick.m, gid:pick.gid,
+      awayName:pick.gm.away, homeName:pick.gm.home,
+      awayCode:pick.gm.away_code, homeCode:pick.gm.home_code,
+      venue:pick.gm.venue, datetime:pick.gm.datetime};
+  }
+  // Fallback: nzihl-season-data's uncapped `upcoming` list (no lookahead cap,
+  // unlike boxscores.json's 11-day window — catches games further out).
+  for(const [league,url] of Object.entries(SEASON_DATA_URLS)){
+    let data; try{ data=await getJSON(url); }catch(e){ continue; }
+    const m=MANIFESTS.find(x=>x.league===league);
+    const ups=(data.upcoming||[]).filter(u=>slug(u.away.name)===teamSlug || slug(u.home.name)===teamSlug);
+    if(ups.length){
+      ups.sort((a,b)=>new Date(a.date+"T"+(a.time||"00:00")) - new Date(b.date+"T"+(b.time||"00:00")));
+      const u=ups[0];
+      return {league, m, gid:null,
+        awayName:u.away.name, homeName:u.home.name,
+        awayCode:(REG[u.away.teamID]||{}).code||"", homeCode:(REG[u.home.teamID]||{}).code||"",
+        venue:"", datetime:u.date+"T"+(u.time||"00:00")};
+    }
+  }
+  return null;
+}
+
+/* ====================== DATA LOADING ====================== */
+async function getStats(league){
+  if(STATS_CACHE[league]) return STATS_CACHE[league];
+  const m=MANIFESTS.find(x=>x.league===league);
+  try{ const d=await getJSON(m.statsUrl); STATS_CACHE[league]=d; return d; }catch(e){ return null; }
+}
+async function getPhotoManifest(){
+  if(PHOTO_MANIFEST) return PHOTO_MANIFEST;
+  try{ PHOTO_MANIFEST=await getJSON(PHOTO_MANIFEST_URL); return PHOTO_MANIFEST; }catch(e){ return null; }
+}
+async function getSeasonData(league){
+  if(SEASON_CACHE[league]) return SEASON_CACHE[league];
+  try{ const d=await getJSON(SEASON_DATA_URLS[league]); SEASON_CACHE[league]=d; return d; }catch(e){ return null; }
+}
+async function refreshTonightBoxscore(){
+  if(!GAME || !GAME.gid){ TONIGHT_PARSE=null; return; }
+  try{
+    const u=`${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${GAME.m.clientid}&leagueid=${GAME.m.leagueid}&gameid=${GAME.gid}&printPage=1&_=${Date.now()}`;
+    TONIGHT_PARSE = parseBox(await getText(u));
+  }catch(e){ /* keep whatever we had — best effort */ }
+}
+
+async function loadTeamData(league, teamCode){
+  const [stats, manifest] = await Promise.all([getStats(league), getPhotoManifest()]);
+  const teamStats = stats && stats.teams && stats.teams[teamCode];
+  const teamPeople = (manifest && manifest.leagues && manifest.leagues[league] &&
+    manifest.leagues[league].teams[teamCode] && manifest.leagues[league].teams[teamCode].people) || {};
+  const photoByNum={}, photoByCoachName={};
+  Object.values(teamPeople).forEach(p=>{
+    if(p.role==="player" && p.number!=null) photoByNum[String(p.number)] = !!p.photo;
+    if(p.role==="coach") photoByCoachName[normName(p.name)] = !!p.photo;
+  });
+  const items=[];
+  (teamStats&&teamStats.skaters||[]).forEach(r=>items.push({
+    role:"player", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
+    position:r.position, hasPhoto: !!photoByNum[String(r.number)],
+  }));
+  (teamStats&&teamStats.goalies||[]).forEach(r=>items.push({
+    role:"goalie", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
+    position:"G", hasPhoto: !!photoByNum[String(r.number)],
+  }));
+  items.sort((a,b)=>(parseInt(a.number,10)||999)-(parseInt(b.number,10)||999));
+  const coaches=(teamStats&&teamStats.coaches||[]).map(c=>({
+    role:"coach", number:null, name:(c.first+" "+properCase(c.last)).trim(),
+    position:c.title, hasPhoto: !!photoByCoachName[normName(c.first+" "+c.last)],
+  }));
+  return {items:items.concat(coaches), teamCode, teamStats};
+}
+
+/* ====================== FACTS ENGINE (deterministic, priority-ordered) ======================
+   Runs once when a pill is tapped; result is pre-filled into an EDITABLE
+   field with a toggle (Mat's explicit ask) — accuracy over cleverness, per
+   the brief. No qualifying fact -> "" and the toggle defaults off. */
+function tonightTallyFor(identity){
+  if(!TONIGHT_PARSE) return null;
+  const myTeamID = CODE_TEAMID[identity.team_code];
+  let g=0,a=0;
+  const nameMatches=(scraped, full)=>{
+    const x=pgKey(scraped), y=pgKey(full); if(!x||!y) return false;
+    if(x===y) return true;
+    const surn=pgKey(full.trim().split(/\s+/).pop());
+    return surn.length>=3 && x.endsWith(surn);
+  };
+  (TONIGHT_PARSE.goals||[]).forEach(ev=>{
+    if(String(ev.teamID)!==String(myTeamID)) return;
+    if(nameMatches(ev.who, identity.name)) g++;
+    (ev.a||"").split(",").map(s=>s.trim()).forEach(x=>{ if(nameMatches(x, identity.name)) a++; });
+  });
+  return (g||a) ? {g,a} : null;
+}
+
+async function computeFact(identity){
+  const league=GAME.league;
+  const teamStats = STATS_CACHE[league] && STATS_CACHE[league].teams[identity.team_code];
+  const seasonData = await getSeasonData(league);
+  const myTeamID = CODE_TEAMID[identity.team_code];
+  const oppCode = identity.team_code===GAME.awayCode ? GAME.homeCode : GAME.awayCode;
+  const oppTeamID = CODE_TEAMID[oppCode];
+  const teamName = CODE_NAME[identity.team_code] || identity.team_name;
+
+  if(identity.role==="coach"){
+    if(seasonData && myTeamID!=null){
+      const streak = seasonData.derived.streak && seasonData.derived.streak[String(myTeamID)];
+      if(streak && streak.count>=3){
+        const verb = streak.type==="W" ? "won" : streak.type==="L" ? "lost" : "picked up points in";
+        return `${teamName} have ${verb} ${streak.count} straight.`;
+      }
+      const l5 = seasonData.derived.last5 && seasonData.derived.last5[String(myTeamID)];
+      if(l5 && l5.length){
+        const w=l5.filter(g=>/W/.test(g.result)).length;
+        return `${teamName} are ${w}-${l5.length-w} in their last ${l5.length}.`;
+      }
+    }
+    return "";
+  }
+
+  if(identity.role==="goalie"){
+    const row = teamStats && (teamStats.goalies||[]).find(r=>String(r.number)===String(identity.number));
+    if(row && row.so>=1) return `${identity.name} has ${row.so} shutout${row.so>1?"s":""} this season.`;
+    if(seasonData && myTeamID!=null && oppTeamID!=null){
+      const key=[String(myTeamID),String(oppTeamID)].sort().join("|");
+      const rec = seasonData.derived.head_to_head && seasonData.derived.head_to_head[key];
+      if(rec && rec.last_meeting){
+        const gm=(seasonData.games||[]).find(x=>String(x.gameid)===String(rec.last_meeting.gameid));
+        const gRow = gm && (gm.goalies||[]).find(x=>String(x.teamID)===String(myTeamID) &&
+          pgKey(x.name).includes(pgKey(identity.name.split(" ").pop())));
+        if(gRow && gRow.sa>0){
+          const pct=(gRow.sv/gRow.sa*100).toFixed(1);
+          return `${identity.name} stopped ${pct}% of shots in the last meeting with tonight's opponent.`;
+        }
+      }
+    }
+    return "";
+  }
+
+  // ---- skaters ----
+  const tonight = tonightTallyFor(identity);
+  if(tonight){
+    if(tonight.g>=2) return `${identity.name} has scored ${tonight.g} goals tonight.`;
+    if(tonight.g+tonight.a>=2) return `${identity.name} is up to ${tonight.g}G ${tonight.a}A tonight.`;
+  }
+  if(seasonData){
+    const log = seasonData.derived.player_game_logs && seasonData.derived.player_game_logs[pgKey(identity.name)];
+    if(log && log.games && log.games.length>=3){
+      const sorted=[...log.games].sort((a,b)=>new Date(b.date)-new Date(a.date));
+      let n=0;
+      for(const gm of sorted){ if(gm.goals>0||gm.assists>0){ n++; } else break; }
+      if(n>=3) return `${identity.name} has a point in ${n} straight games.`;
+    }
+    if(myTeamID!=null && oppTeamID!=null){
+      const key=[String(myTeamID),String(oppTeamID)].sort().join("|");
+      const rec=seasonData.derived.head_to_head && seasonData.derived.head_to_head[key];
+      if(rec){
+        const myWins = String(rec.teamA)===String(myTeamID)?rec.teamA_wins:rec.teamB_wins;
+        const oppWins = String(rec.teamA)===String(oppTeamID)?rec.teamA_wins:rec.teamB_wins;
+        if(myWins!==oppWins) return `${teamName} ${myWins>oppWins?"lead":"trail"} the season series ${myWins}-${oppWins} against tonight's opponent.`;
+      }
+    }
+  }
+  if(teamStats){
+    const list = teamStats.skaters||[];
+    const me = list.find(r=>String(r.number)===String(identity.number));
+    if(me && list.length){
+      const maxPts=Math.max(...list.map(r=>r.pts));
+      if(me.pts===maxPts && maxPts>0) return `${identity.name} leads ${teamName} in scoring this season with ${me.pts} points.`;
+      const maxG=Math.max(...list.map(r=>r.g));
+      if(me.g===maxG && maxG>0) return `${identity.name} leads ${teamName} in goals this season with ${me.g}.`;
+    }
+  }
+  if(STATS_CACHE[league]){
+    const all=[];
+    Object.entries(STATS_CACHE[league].teams).forEach(([code,t])=>(t.skaters||[]).forEach(r=>all.push({...r,team_code:code})));
+    all.sort((a,b)=>b.pts-a.pts);
+    const idx=all.findIndex(r=>r.team_code===identity.team_code && String(r.number)===String(identity.number));
+    if(idx>=0 && idx<10 && all[idx].pts>0) return `${identity.name} ranks ${ordinal(idx+1)} in ${league.toUpperCase()} scoring with ${all[idx].pts} points.`;
+  }
+  if(teamStats){
+    const me=(teamStats.skaters||[]).find(r=>String(r.number)===String(identity.number));
+    if(me && me.gp>0){
+      const next=Math.ceil((me.pts+1)/10)*10;
+      const away=next-me.pts;
+      if(away>0 && away<=2) return `${identity.name} is ${away} point${away>1?"s":""} away from ${next} this season.`;
+    }
+  }
+  return "";
+}
+
+/* ====================== CONTROL CHANNEL ====================== */
+async function postControl(action, extra){
+  try{
+    const r=await fetch(`${WORKER}/control/${GAME.channelSlug}`,{
+      method:"POST", cache:"no-store", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(Object.assign({action, token:CONTROL_TOKEN}, extra||{})),
+    });
+    const j=await r.json();
+    if(j.error){ handleControlError(j); return null; }
+    setWorkerNotice(false);
+    CONTROL_STATE=j; renderControlState();
+    return j;
+  }catch(e){ handleControlError({error:"network"}); return null; }
+}
+async function pollState(){
+  if(!GAME) return;
+  try{
+    const r=await fetch(`${WORKER}/control/${GAME.channelSlug}`,{cache:"no-store"});
+    const j=await r.json();
+    if(j.error){ handleControlError(j); return; }
+    setWorkerNotice(false);
+    CONTROL_STATE=j; renderControlState();
+  }catch(e){ handleControlError({error:"network"}); }
+}
+function handleControlError(j){
+  workerBroken=true;
+  const notice=document.getElementById("notice");
+  notice.style.display="block"; notice.className="notice err";
+  notice.textContent = j.code==="NO_DO_BINDING"
+    ? "Live fire isn't available yet — the control channel worker hasn't been deployed. Pill selection and preview still work; ask Mat to run the wrangler deploy in nzihl-broadcast-assets/summary/DEPLOY.md."
+    : "Can't reach the control worker right now — pill selection and preview still work, but Fire/Clear won't do anything until it's back.";
+  document.getElementById("fireBtn").disabled=true;
+}
+function setWorkerNotice(broken){
+  if(broken===workerBroken) return;
+  workerBroken=broken;
+  if(!broken){ document.getElementById("notice").style.display="none"; }
+}
+
+/* ====================== UI ====================== */
+function pillKey(teamCode,p){ return `${teamCode}:${p.role}:${p.number!=null?p.number:p.position}`; }
+function selectedKey(){ return SELECTED ? pillKey(SELECTED.team_code, SELECTED) : null; }
+
+function renderPills(){
+  ["away","home"].forEach(side=>{
+    const code = side==="away" ? GAME.awayCode : GAME.homeCode;
+    const container = document.getElementById(side==="away"?"pillsAway":"pillsHome");
+    const data = TEAM_DATA[code];
+    container.innerHTML="";
+    const title=document.createElement("div"); title.className="groupTitle";
+    title.textContent = (CODE_NAME[code]||code) + (side==="away"?" (away)":" (home)");
+    container.appendChild(title);
+    const wrap=document.createElement("div"); wrap.className="pillWrap";
+    if(data){
+      data.items.forEach(p=>{
+        const btn=document.createElement("button");
+        const isSel = selectedKey()===pillKey(code,p);
+        btn.className="pill"+(p.hasPhoto?" hasPhoto":" noPhoto")+(p.role==="coach"?" coach":"")+(isSel?" selected":"");
+        btn.style.background = p.hasPhoto ? (CODE_INK[code]||"#555") : GREY;
+        btn.title = p.name + (p.role==="goalie"?" (G)":"") + (p.role==="coach"?(" — "+p.position):"");
+        btn.innerHTML = p.role==="coach"
+          ? esc(p.position==="Head Coach"?"HC":"AC")
+          : esc(p.number) + (p.role==="goalie"?'<span class="g">G</span>':"");
+        btn.onclick=()=>selectPlayer(code, p);
+        wrap.appendChild(btn);
+      });
+    }
+    container.appendChild(wrap);
+  });
+}
+
+function updatePreview(){
+  const frame=document.getElementById("previewFrame");
+  if(!SELECTED){ frame.src="about:blank"; return; }
+  const payload={player:SELECTED, fact:document.getElementById("factText").value,
+                 include_fact:document.getElementById("factToggle").checked};
+  frame.src = `../activity-banner/index.html?team=${encodeURIComponent(GAME.channelSlug)}&preview=${encodeURIComponent(JSON.stringify(payload))}`;
+}
+
+let previewDebounce=null;
+function schedulePreviewUpdate(){
+  clearTimeout(previewDebounce);
+  previewDebounce=setTimeout(updatePreview, 380);
+}
+
+async function selectPlayer(teamCode, p){
+  SELECTED = {team_code:teamCode, team_name:CODE_NAME[teamCode]||teamCode,
+              role:p.role, number:p.number, name:p.name, position:p.position};
+  document.getElementById("selectedLbl").textContent =
+    `${p.name}${p.role==="coach"?" — "+p.position:(p.number?" · #"+p.number:"")}`;
+  renderPills();
+  const fact = await computeFact(SELECTED);
+  document.getElementById("factText").value = fact || "";
+  document.getElementById("factToggle").checked = !!fact;
+  updatePreview();
+  document.getElementById("fireBtn").disabled = workerBroken;
+  await postControl("queue", {player:SELECTED, fact:document.getElementById("factText").value,
+    include_fact:document.getElementById("factToggle").checked});
+}
+
+function renderControlState(){
+  const fireBtn=document.getElementById("fireBtn"), statusMsg=document.getElementById("statusMsg");
+  if(CONTROL_STATE.status==="fired" && CONTROL_STATE.expires_at){
+    const remain=Math.max(0, Math.ceil((CONTROL_STATE.expires_at-Date.now())/1000));
+    fireBtn.textContent = remain+"s";
+    fireBtn.disabled=true; fireBtn.classList.add("counting");
+  } else {
+    fireBtn.textContent="FIRE";
+    fireBtn.disabled = workerBroken || !SELECTED;
+    fireBtn.classList.remove("counting");
+  }
+  const interruptedRecently = CONTROL_STATE.interrupted_at && (Date.now()-CONTROL_STATE.interrupted_at)<4000;
+  if(interruptedRecently){
+    statusMsg.textContent="Interrupted — still queued"; statusMsg.classList.add("interrupted");
+  } else if(CONTROL_STATE.status==="queued"){
+    statusMsg.textContent="Queued"; statusMsg.classList.remove("interrupted");
+  } else if(CONTROL_STATE.status==="fired"){
+    statusMsg.textContent="Live"; statusMsg.classList.remove("interrupted");
+  } else {
+    statusMsg.textContent=""; statusMsg.classList.remove("interrupted");
+  }
+}
+
+document.getElementById("fireBtn").onclick=async()=>{
+  if(!SELECTED || workerBroken) return;
+  await postControl("fire", {player:SELECTED, fact:document.getElementById("factText").value,
+    include_fact:document.getElementById("factToggle").checked});
+};
+document.getElementById("clearBtn").onclick=async()=>{
+  await postControl("clear", {});
+  SELECTED=null;
+  document.getElementById("selectedLbl").textContent="No player selected";
+  document.getElementById("factText").value="";
+  document.getElementById("factToggle").checked=false;
+  document.getElementById("fireBtn").disabled=true;
+  renderPills(); updatePreview();
+};
+document.getElementById("factText").addEventListener("input", ()=>{ schedulePreviewUpdate();
+  postControl("queue", {player:SELECTED, fact:document.getElementById("factText").value,
+    include_fact:document.getElementById("factToggle").checked}).catch(()=>{});
+});
+document.getElementById("factToggle").addEventListener("change", ()=>{ schedulePreviewUpdate();
+  postControl("queue", {player:SELECTED, fact:document.getElementById("factText").value,
+    include_fact:document.getElementById("factToggle").checked}).catch(()=>{});
+});
+
+/* ====================== INIT ====================== */
+async function start(){
+  const teamSlug = slug(Q.get("team")||"");
+  const footer=document.getElementById("footer");
+  footer.textContent = "Fires through the same control channel the Activity Banner overlay polls — no new browser source needed.";
+  if(!teamSlug){
+    document.getElementById("matchup").textContent="";
+    document.getElementById("emptyState").style.display="block";
+    document.getElementById("emptyState").textContent="Add ?team=<slug> to the URL — e.g. ?team=pure-nz-admirals";
+    return;
+  }
+  GAME = await resolveGame(teamSlug);
+  if(!GAME){
+    document.getElementById("matchup").textContent="";
+    document.getElementById("emptyState").style.display="block";
+    document.getElementById("emptyState").textContent=`No game found for "${teamSlug}" in the next while — check back closer to game day.`;
+    return;
+  }
+  GAME.channelSlug = teamSlug;   // same slug the mixer's Activity Banner source is loaded with
+  document.getElementById("matchup").textContent =
+    `${GAME.awayName} @ ${GAME.homeName}` + (GAME.venue?(" — "+GAME.venue):"") +
+    (GAME.datetime ? (" — " + new Date(GAME.datetime).toLocaleString("en-NZ",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit",timeZone:"Pacific/Auckland"})) : "");
+  document.getElementById("mainUI").style.display="block";
+
+  await Promise.all([
+    loadTeamData(GAME.league, GAME.awayCode).then(d=>TEAM_DATA[GAME.awayCode]=d),
+    loadTeamData(GAME.league, GAME.homeCode).then(d=>TEAM_DATA[GAME.homeCode]=d),
+    refreshTonightBoxscore(),
+  ]);
+  renderPills();
+
+  await pollState();   // adopt any already-queued/fired player from another device
+  if(CONTROL_STATE && CONTROL_STATE.player){
+    SELECTED = CONTROL_STATE.player;
+    document.getElementById("selectedLbl").textContent =
+      `${SELECTED.name}${SELECTED.role==="coach"?" — "+SELECTED.position:(SELECTED.number?" · #"+SELECTED.number:"")}`;
+    document.getElementById("factText").value = CONTROL_STATE.fact||"";
+    document.getElementById("factToggle").checked = !!CONTROL_STATE.include_fact;
+    renderPills(); updatePreview();
+    document.getElementById("fireBtn").disabled = workerBroken;
+  }
+
+  setInterval(pollState, 750);
+  setInterval(refreshTonightBoxscore, 15000);
+}
+start();
+</script>
+</body>
+</html>

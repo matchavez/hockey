@@ -117,6 +117,49 @@
   .pline2{font-weight:600;opacity:.85;line-height:1.2;margin-top:2px;
     white-space:nowrap;overflow:hidden;text-shadow:0 2px 8px rgba(0,0,0,.4);}
 
+  /* --- PLAYER LOWER THIRDS (added 2026-07-12) ---
+     A centered, bottom-anchored traditional broadcast lower third — deliberately
+     distinct from the full-width #bnr goal/penalty strip. Fired via the phone
+     control page (hockey/lowerthirds/) through the Cloudflare Durable Object
+     control channel, or rendered statically from a ?preview= URL param by that
+     same page's live miniature preview iframe — both paths call the SAME
+     renderL3()/buildL3Data() functions below (see the JS section), so preview
+     and broadcast can never drift.
+     Geometry: ~1500x260, centered horizontally, sitting comfortably above the
+     78px goal-banner zone (bottom:120px) so the two never visually collide
+     even during a fast handoff. Collision RULE (not just geometry): an auto
+     goal/penalty banner always interrupts/kills a live or about-to-fire L3 —
+     see pump()/pollControl(). */
+  :root{ --l3ink:#9aa3ad; --l3dark:#181c22; }
+  #l3{position:absolute;left:50%;bottom:120px;transform:translateX(-50%) translateY(16px);
+    width:1500px;height:260px;border-radius:18px;overflow:hidden;
+    display:none;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
+    opacity:0;z-index:4;
+    transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);}
+  #l3.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0);}
+  #l3.noFact{height:196px;}
+  #l3 .l3photo{flex:0 0 232px;align-self:stretch;background:#1b2029;overflow:hidden;position:relative;}
+  #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
+  #l3 .l3initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:64px;color:#4a525f;letter-spacing:.02em;}
+  #l3 .l3accent{flex:0 0 8px;align-self:stretch;background:var(--l3ink);}
+  #l3 .l3body{flex:1 1 auto;min-width:0;padding:22px 30px;display:flex;flex-direction:column;
+    justify-content:center;color:#fff;font-family:Inter,sans-serif;}
+  #l3 .l3name{font-weight:800;font-size:38px;line-height:1.12;letter-spacing:.005em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 10px rgba(0,0,0,.4);}
+  #l3 .l3meta{font-weight:600;font-size:21px;opacity:.82;margin-top:3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #l3 .l3stat{font-weight:800;font-size:25px;margin-top:14px;color:var(--l3ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #l3 .l3tonight{display:none;margin-top:9px;padding:4px 11px;border-radius:7px;
+    background:rgba(255,255,255,.16);font-weight:800;font-size:17px;letter-spacing:.02em;
+    align-self:flex-start;}
+  #l3 .l3tonight.show{display:inline-block;}
+  #l3 .l3fact{display:none;margin-top:13px;font-weight:500;font-size:19px;line-height:1.32;
+    opacity:.92;max-height:2.7em;overflow:hidden;}
+  #l3.noFact .l3fact{display:none;}
+  #l3:not(.noFact) .l3fact.has{display:block;}
+
   /* --- test controls (only with ?test=1) --- */
   /* pinned to the TOP now (was bottom:22px) so the dev panel doesn't sit on top of the
      banner, which now lives at the bottom of the frame (2026-07-06). */
@@ -155,6 +198,18 @@
       <div class="pline2" id="preLine2"></div>
     </div>
     <div class="bend"><img id="preLogoR" alt=""></div>
+  </div>
+
+  <div id="l3">
+    <div class="l3photo" id="l3photo"><img id="l3img" alt=""><div class="l3initials" id="l3initials" style="display:none"></div></div>
+    <div class="l3accent" id="l3accent"></div>
+    <div class="l3body">
+      <div class="l3name" id="l3name"></div>
+      <div class="l3meta" id="l3meta"></div>
+      <div class="l3stat" id="l3stat"></div>
+      <div class="l3tonight" id="l3tonight"></div>
+      <div class="l3fact" id="l3fact"></div>
+    </div>
   </div>
 
   <div id="test">
@@ -463,7 +518,18 @@ function showConfidenceAlert(gm){
 }
 
 const queue=[]; let busy=false;
-function enqueue(job){ queue.push(job); pump(); }
+let l3ActiveFireId=null;   // set while an L3 fire is being rendered (even before .show lands)
+function enqueue(job){
+  // Auto goal/penalty banners always interrupt a live-or-about-to-show L3
+  // (Player Lower Thirds) — see the PLAYER LOWER THIRDS section below.
+  if(typeof l3!=="undefined" && (l3ActiveFireId || l3.classList.contains("show"))){
+    if(typeof l3Token!=="undefined") l3Token++;   // abort any in-flight showL3() before it reveals
+    if(typeof hideL3==="function") hideL3();
+    l3ActiveFireId=null;
+    if(typeof reportInterrupt==="function") reportInterrupt();
+  }
+  queue.push(job); pump();
+}
 function pump(){
   if(busy||!queue.length) return; busy=true;
   const job=queue.shift();
@@ -582,6 +648,7 @@ async function tick(){
   if(!TARGET||!WORKER) return;
   CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
   let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
+  if(typeof LAST_PARSE!=="undefined") LAST_PARSE=P;   // feeds the Player Lower Thirds TONIGHT chip
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   // tag each goal with a display name (its own team)
   P.goals.forEach(g=>{ g.name = g.teamID===AWAYID?AWAYN : g.teamID===HOMEID?HOMEN : (vis(g.teamID).code||""); });
@@ -591,6 +658,245 @@ async function tick(){
   P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
   // new penalties (one at a time, queued)
   P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);firePen(p,AWAYID,HOMEID);}});
+}
+
+/* ====================== PLAYER LOWER THIRDS (added 2026-07-12) ======================
+   Fired via the Cloudflare Durable Object control channel (POST/GET
+   /control/<team-slug> on the same WORKER as the box-score proxy — see
+   nzihl-broadcast-assets/summary/worker.js) from the phone control page
+   hockey/lowerthirds/, OR rendered statically from a ?preview= URL param by
+   that same page's live miniature preview iframe. Both paths call the exact
+   same buildL3Data()/showL3() below, so preview and broadcast can never
+   drift (grep: renderL3/showL3 is defined once, in this file).
+   Collision rule: an auto goal/penalty banner ALWAYS interrupts a live or
+   about-to-fire L3 — enforced in pump() (kills a showing L3 the instant a
+   new banner job starts) and pollControl() (rejects a fire that arrives
+   while #bnr is already showing). Both report back to the control channel
+   via action:"interrupt" so the phone can show "interrupted — still queued".
+   NOT built here: the facts engine (nzihl-season-data + stats.json + tonight
+   rules, editable-field safety net) — that runs on the PHONE, once, and the
+   resulting text rides through the control channel/preview payload as-is.
+   This file only ever DISPLAYS whatever fact string it's given (or none). */
+// Same CONTROL_TOKEN as lowerthirds/index.html — shared-secret gating writes
+// only; reads are open. See worker.js's own comment for the trust model.
+const CONTROL_TOKEN = "l3-EXleXBAfHbgn7P1qHeJ81U1K";
+const STATS_URLS = {
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/stats.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/stats.json",
+};
+const PHOTO_MANIFEST_URL = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json";
+const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/";
+const CODE_LEAGUE = {ADM:"nzihl",BSW:"nzihl",CRD:"nzihl",DUN:"nzihl",MKO:"nzihl",SCS:"nzihl",
+                      AST:"nzwihl",CIN:"nzwihl",DTW:"nzwihl",WLD:"nzwihl"};
+const normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const ordinal=n=>{n=+n||0;const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+
+// Simple TTL caches — best-effort, never block a render on a slow/failed fetch.
+const _cache = {stats:{}, photos:null, standings:{}};
+async function getStats(league){
+  const hit=_cache.stats[league];
+  if(hit && Date.now()-hit.t<5*60*1000) return hit.data;
+  try{ const data=await getJSON(STATS_URLS[league]); _cache.stats[league]={data,t:Date.now()}; return data; }
+  catch(e){ return hit?hit.data:null; }
+}
+async function getPhotoManifest(){
+  if(_cache.photos && Date.now()-_cache.photos.t<5*60*1000) return _cache.photos.data;
+  try{ const data=await getJSON(PHOTO_MANIFEST_URL); _cache.photos={data,t:Date.now()}; return data; }
+  catch(e){ return _cache.photos?_cache.photos.data:null; }
+}
+async function standingsRowFor(league, code){
+  const hit=_cache.standings[league];
+  let rows = (hit && Date.now()-hit.t<5*60*1000) ? hit.data : null;
+  if(!rows){
+    const m = MANIFESTS.find(x=>x.league===league); if(!m) return null;
+    try{
+      const u=`${SCRAPE_HOST}/leagues/standings.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`;
+      const doc=new DOMParser().parseFromString(await getText(u),"text/html");
+      const tbl=doc.querySelector("table");
+      if(tbl){
+        rows=[...tbl.querySelectorAll("tr")].slice(1).map((r,i)=>{
+          const c=[...r.children].map(x=>x.textContent.replace(/\s+/g," ").trim());
+          return {k:normName(c[0]), pos:i+1, gp:+c[1]||0, w:+c[2]||0, l:+c[3]||0, otw:+c[4]||0, otl:+c[5]||0, pts:+c[6]||0};
+        }).filter(r=>r.k);
+        _cache.standings[league]={data:rows,t:Date.now()};
+      }
+    }catch(e){ rows = hit?hit.data:null; }
+  }
+  if(!rows) return null;
+  const teamName = (TEAM_DISPLAY_NAMES[code]||code);
+  const q=normName(teamName);
+  return rows.find(r=>r.k.includes(q)) || null;
+}
+// Full display names, needed only to match standings.cfm's concatenated
+// "TeamNameTLA" cell text (same technique as ticker/index.html's standOf()).
+const TEAM_DISPLAY_NAMES = {
+  ADM:"Pure NZ Admirals", BSW:"Botany Swarm", CRD:"Canterbury Red Devils",
+  DUN:"Dunedin Thunder", MKO:"Auckland Mako", SCS:"SkyCity Stampede",
+  AST:"Auckland Steel", CIN:"Canterbury Inferno", DTW:"Dunedin Thunder Women", WLD:"Wakatipu Wild",
+};
+// teamID -> TLA, needed to match tonight's box-score goal/pen rows (which
+// carry teamID, not a short code) against a player identity's team_code.
+const TEAMID_CODE = Object.fromEntries(Object.entries(REG).map(([id,v])=>[id,v.code]));
+
+// Tonight's per-player G/A tally from the box score tick() is already polling
+// every 12s (LAST_PARSE, set at the end of tick()). Omits the chip entirely
+// if the player has no goals/assists yet tonight (no "0G 0A" clutter).
+let LAST_PARSE = null;
+function tonightChipFor(identity){
+  if(!LAST_PARSE || identity.role==="coach") return null;
+  const wantCode = identity.team_code, wantSurname = surnameUC(identity.name);
+  let g=0,a=0;
+  (LAST_PARSE.goals||[]).forEach(ev=>{
+    const evCode = TEAMID_CODE[ev.teamID];
+    if(evCode!==wantCode) return;
+    if(surnameUC(ev.who)===wantSurname) g++;
+    const asts = (ev.a||"").split(",").map(x=>surnameUC(x.trim())).filter(Boolean);
+    if(asts.includes(wantSurname)) a++;
+  });
+  if(!g && !a) return null;
+  const parts=[]; if(g) parts.push(g+"G"); if(a) parts.push(a+"A");
+  return "TONIGHT: "+parts.join(" ");
+}
+
+async function buildL3Data(identity){
+  const league = CODE_LEAGUE[identity.team_code] || "nzihl";
+  const [stats, manifest] = await Promise.all([getStats(league), getPhotoManifest()]);
+  const teamStats = stats && stats.teams && stats.teams[identity.team_code];
+  const teamPeople = (manifest && manifest.leagues && manifest.leagues[league] &&
+                       manifest.leagues[league].teams[identity.team_code] &&
+                       manifest.leagues[league].teams[identity.team_code].people) || {};
+  let statLine=null, photo=null, tonight=null;
+  if(identity.role==="coach"){
+    const row = await standingsRowFor(league, identity.team_code);
+    if(row) statLine = `${row.w}-${row.l}-${row.otw}-${row.otl} record · ${ordinal(row.pos)} in ${league.toUpperCase()}`;
+    const person = Object.values(teamPeople).find(p=>p.role==="coach" && normName(p.name)===normName(identity.name));
+    if(person && person.photo) photo = PHOTO_BASE+person.photo;
+  } else {
+    const list = identity.role==="goalie" ? (teamStats&&teamStats.goalies||[]) : (teamStats&&teamStats.skaters||[]);
+    const row = list.find(r=>String(r.number)===String(identity.number));
+    if(row){
+      statLine = identity.role==="goalie"
+        ? `${row.gp} GP · ${row.gaa} GAA · ${row.sv_pct} SV% · ${row.so} SO`
+        : `${row.gp} GP · ${row.g} G · ${row.a} A · ${row.pts} PTS · ${row.pim} PIM`;
+    }
+    // Photo warehouse tags BOTH skaters and goalies role:"player" (goalies are
+    // distinguished only by position:"G") — match by number regardless of
+    // identity.role being "player" or "goalie".
+    const person = Object.values(teamPeople).find(p=>p.role==="player" && String(p.number)===String(identity.number));
+    if(person && person.photo) photo = PHOTO_BASE+person.photo;
+    tonight = tonightChipFor(identity);
+  }
+  return {statLine, photo, tonight};
+}
+
+function initialsOf(name){
+  const parts=String(name||"").trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return "";
+  const first=parts[0][0]||"", last=parts[parts.length-1][0]||"";
+  return (first+last).toUpperCase();
+}
+
+const l3=document.getElementById("l3"), l3photo=document.getElementById("l3photo"),
+      l3img=document.getElementById("l3img"), l3initials=document.getElementById("l3initials"),
+      l3accent=document.getElementById("l3accent"), l3name=document.getElementById("l3name"),
+      l3meta=document.getElementById("l3meta"), l3stat=document.getElementById("l3stat"),
+      l3tonight=document.getElementById("l3tonight"), l3fact=document.getElementById("l3fact");
+let l3HideTimer=null, l3Token=0;
+
+function hideL3(){
+  if(l3HideTimer){ clearTimeout(l3HideTimer); l3HideTimer=null; }
+  l3.classList.remove("show");
+  l3ActiveFireId=null;
+}
+
+// The ONE render path both live control-channel fires AND ?preview= use.
+// identity: {team_code, team_name, role, number, name, position}
+// opts: {sticky:boolean, holdMs:number}
+async function showL3(identity, fact, includeFact, opts){
+  opts = opts || {};
+  const myToken = ++l3Token;
+  const v = vis(Object.keys(REG).find(id=>REG[id].code===identity.team_code)) || DEFV;
+  document.documentElement.style.setProperty("--l3ink", v.ink);
+  document.documentElement.style.setProperty("--l3dark", v.dark);
+  l3accent.style.background = v.ink;
+
+  const data = await buildL3Data(identity);
+  if(myToken!==l3Token) return;   // superseded while awaiting stats/photo fetches
+
+  l3name.textContent = properCase(identity.name||"").toUpperCase() || (identity.name||"");
+  const metaBits=[];
+  if(identity.role==="coach"){ metaBits.push(identity.position||"Coach"); }
+  else { if(identity.number) metaBits.push("#"+identity.number); metaBits.push(identity.position||(identity.role==="goalie"?"G":"")); }
+  l3meta.textContent = metaBits.filter(Boolean).join(" · ");
+  l3stat.textContent = data.statLine || "";
+  if(data.tonight){ l3tonight.textContent=data.tonight; l3tonight.classList.add("show"); }
+  else { l3tonight.classList.remove("show"); l3tonight.textContent=""; }
+
+  const factText = (fact||"").trim();
+  const showFact = !!includeFact && !!factText;
+  l3.classList.toggle("noFact", !showFact);
+  l3fact.classList.toggle("has", showFact);
+  l3fact.textContent = showFact ? factText : "";
+
+  const finishPhoto = ()=>{
+    if(myToken!==l3Token) return;
+    l3HideTimer && clearTimeout(l3HideTimer);
+    l3.classList.add("show");
+    if(!opts.sticky){
+      const holdMs = typeof opts.holdMs==="number" ? opts.holdMs : 10000;
+      l3HideTimer = setTimeout(hideL3, Math.max(0, holdMs));
+    }
+  };
+  if(data.photo){
+    loadImage(data.photo, 1800).then(img=>{
+      if(myToken!==l3Token) return;
+      if(img){ l3img.src=img.src; l3img.style.display=""; l3initials.style.display="none"; }
+      else { l3img.removeAttribute("src"); l3img.style.display="none";
+             l3initials.style.display="flex"; l3initials.textContent=initialsOf(identity.name); }
+      finishPhoto();
+    });
+  } else {
+    l3img.removeAttribute("src"); l3img.style.display="none";
+    l3initials.style.display="flex"; l3initials.textContent=initialsOf(identity.name);
+    finishPhoto();
+  }
+}
+
+// ---- control-channel polling (live pages only, never in ?preview= mode) ----
+let l3LastFireId=null, l3PollBusy=false;
+let TEAM_SLUG = null;   // set once in start(); default matches resolveTarget()'s own fallback
+async function reportInterrupt(){
+  if(!TEAM_SLUG) return;
+  try{
+    await fetch(`${WORKER}/control/${TEAM_SLUG}`,{
+      method:"POST", cache:"no-store",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({action:"interrupt", token:CONTROL_TOKEN}),
+    });
+  }catch(e){ /* best-effort */ }
+}
+function bannerBusy(){ return bnr.classList.contains("show") || busy; }
+async function pollControl(){
+  if(l3PollBusy) return; l3PollBusy=true;
+  try{
+    if(!TEAM_SLUG) return;
+    let st;
+    try{ const r=await fetch(`${WORKER}/control/${TEAM_SLUG}`,{cache:"no-store"}); st=await r.json(); }
+    catch(e){ return; }
+    if(!st || st.error) return;   // not deployed yet (NO_DO_BINDING) or transient — degrade silently
+    if(st.status==="fired" && st.fire_id && st.fire_id!==l3LastFireId){
+      l3LastFireId = st.fire_id;
+      if(bannerBusy()){
+        reportInterrupt();
+      } else if(st.player){
+        l3ActiveFireId = st.fire_id;
+        const holdMs = st.expires_at ? (st.expires_at-Date.now()) : 10000;
+        showL3(st.player, st.fact, st.include_fact, {sticky:false, holdMs});
+      }
+    } else if(st.status!=="fired"){
+      l3LastFireId=null;
+    }
+  } finally { l3PollBusy=false; }
 }
 
 /* ====================== TEST: 10-TEAM BANNER SHOWCASE ======================
@@ -645,18 +951,34 @@ addEventListener("resize",fitWindow);
 
 async function start(){
   fitWindow();
+  TEAM_SLUG = slug(Q.get("team")||"canterbury-red-devils");
   if(TESTMODE){ document.getElementById("test").style.display="flex";
     document.getElementById("diag").style.display="block";
     buildTestButtons();
     document.getElementById("tAll").onclick=playAll; }
   TARGET=await resolveTarget();
   const diag=document.getElementById("diag");
-  const teamSlug = slug(Q.get("team")||"canterbury-red-devils");
-  if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+teamSlug+" · "+(TARGET?("game "+TARGET.gid):"no-game"); }
+  if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+TEAM_SLUG+" · "+(TARGET?("game "+TARGET.gid):"no-game"); }
   showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started
   if(TARGET&&WORKER){ await tick();
     const t0=Date.now();
     const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }
+
+  // ---- Player Lower Thirds ----
+  const PREVIEW = Q.get("preview");
+  if(PREVIEW){
+    // Static preview mode (loaded in an iframe by hockey/lowerthirds/): render
+    // once from the URL param, sticky (no auto-hide), no control-channel
+    // polling/writes at all. The phone updates the preview by reloading this
+    // iframe with a fresh ?preview= value on every pill tap / fact edit.
+    try{
+      const payload = JSON.parse(decodeURIComponent(PREVIEW));
+      if(payload && payload.player) showL3(payload.player, payload.fact, payload.include_fact, {sticky:true});
+    }catch(e){ /* malformed preview payload — show nothing rather than error on screen */ }
+  } else if(WORKER){
+    pollControl();
+    setInterval(pollControl, 750);
+  }
 }
 start();
 </script>
