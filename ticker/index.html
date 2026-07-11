@@ -41,6 +41,10 @@
   #swrap{flex:1 1 auto;position:relative;overflow:hidden;}
   #track{position:absolute;left:0;top:0;height:100%;display:inline-flex;align-items:center;
     white-space:nowrap;will-change:transform;}
+  /* 2026-07-11: crawl motion is native CSS (compositor thread), not a JS rAF loop — see the
+     MARQUEE ENGINE comment below for why (Mat: ticker looked "jumpy" on the live stream). */
+  @keyframes tickEntry{from{transform:translateX(var(--entryFrom,0px));}to{transform:translateX(0);}}
+  @keyframes tickCrawl{from{transform:translateX(0);}to{transform:translateX(calc(-1 * var(--unitW,0px)));}}
   .scoreit{display:inline-flex;align-items:center;}   /* startup: score line alone, centered + held */
   .item{display:inline-flex;align-items:center;}
   /* fixed square boxes for every logo so track width is stable before images load */
@@ -681,24 +685,61 @@ function buildItems(events){
 }
 
 /* ====================== MARQUEE ENGINE ====================== */
+// 2026-07-11 (Mat: the ticker looked "jumpy" on the live stream): the crawl used to be a JS
+// rAF loop writing style.transform every frame, with a wall-clock time base so the AVERAGE
+// speed stayed correct even when rAF throttled to ~1fps in occluded/backgrounded Chrome windows
+// (documented below, caught live 2026-07-07) — exactly the state the capture-source browser
+// window is often in on a broadcast rig (minimized, on a non-active display, behind the YoloBox
+// capture surface). When that happened the 250ms setInterval fallback became the effective
+// driver: only 4 position updates/second, each one visibly hopping ~30px (at 120px/s) — correct
+// on average, but jumpy to the eye, and worse specifically during capture rather than in a
+// focused preview tab. Fix: the crawl and entry-slide are now native CSS @keyframes animations.
+// The compositor thread runs those independently of main-thread JS/backgrounding throttling, so
+// it stays smooth regardless of tab visibility or focus. JS now only manages CONTENT (widths,
+// splicing new events) and start/stop state transitions — no per-frame position math at all.
 const tick=document.getElementById("tick"), track=document.getElementById("track");
-let items=[], dirty=true, unitW=0, offset=0, running=false, visible=false;
-let traveled=0, lastT=0, cycles=0;   // wall-clock-driven: position stays correct even if frames throttle
+let items=[], dirty=true, unitW=0, visible=false;
 let SW=0;                            // scroll-area width (right of the fixed "Recap:" label)
 // Startup (Mat 2026-07-07): the score line appears ALONE, CENTERED, holds 7s, then the crawl
 // begins (score slides left, the recap feed follows in from the right).
 const HOLD_MS=7000;
-let ENTRY=0, holdUntil=0, holding=false;
+let ENTRY=0, holdTimer=0, holding=false;
 function enterHold(){
   if(!items.length){holding=false;return;}
+  clearTimeout(holdTimer);
+  track.style.animation="none";
   track.innerHTML=`<span class="item"><span class="scoreit">${items[0]}</span></span>`;
   SW=document.getElementById("swrap").clientWidth;
   const w0=track.querySelector(".scoreit").offsetWidth;
   ENTRY=Math.max(0,(SW-w0)/2);
-  traveled=0; cycles=0; dirty=true;          // full strip re-rendered when the hold ends
-  holdUntil=performance.now()+HOLD_MS; holding=true;
-  offset=ENTRY; track.style.transform="translateX("+ENTRY+"px)";
+  dirty=true;                      // full strip re-rendered when the hold ends
+  holding=true;
+  track.style.transform="translateX("+ENTRY+"px)";   // static — no animation while held
+  holdTimer=setTimeout(endHold,HOLD_MS);
 }
+function endHold(){
+  holding=false;
+  rebuild();
+  if(ENTRY>0.5) beginEntry(); else beginCrawl();   // skip the entry stage if there's no distance to cover
+}
+function beginEntry(){
+  track.style.animation="none"; track.style.transform="";
+  void track.offsetWidth;                          // force reflow so the animation restarts clean
+  track.style.setProperty("--entryFrom",ENTRY+"px");
+  track.style.animation=`tickEntry ${(ENTRY/SPEED).toFixed(3)}s linear 1`;
+  track.addEventListener("animationend",beginCrawl,{once:true});
+}
+function beginCrawl(){
+  if(unitW<1)rebuild();
+  track.style.animation="none"; track.style.transform="";
+  void track.offsetWidth;                          // same reflow trick — every seam restarts clean
+  track.style.setProperty("--unitW",unitW+"px");
+  track.style.animation=`tickCrawl ${(unitW/SPEED).toFixed(3)}s linear infinite`;
+}
+// Native loop-boundary event — fires once per full unit scrolled, for free, at full compositor
+// accuracy. Replaces the old per-frame `cycles` counter entirely. Nothing happens if the data
+// hasn't changed: the same infinite CSS animation just keeps looping untouched by JS.
+track.addEventListener("animationiteration",()=>{ if(dirty&&!holding) beginCrawl(); });
 function placeTick(){
   tick.style.left=TICK.x+"px"; tick.style.top=TICK.y+"px";
   tick.style.width=TICK.w+"px"; tick.style.height=TICK.h+"px";
@@ -717,47 +758,14 @@ function rebuild(){
   track.innerHTML=new Array(copies).fill(unit).join("");
   dirty=false;
 }
-// Position is a pure function of elapsed wall-clock time, NOT accumulated frame deltas —
-// rAF throttles to ~1fps in occluded/hidden windows (caught live 2026-07-07), and some capture
-// devices throttle too. Time-based travel means any frame rate shows the CORRECT position;
-// the 250ms interval fallback keeps it moving even when rAF stalls entirely.
-function step(now){
-  if(!running)return;
-  now=(now==null||now<=0)?performance.now():now;
-  if(!lastT)lastT=now;
-  // rAF timestamps lag performance.now() by a few ms; NEVER move lastT backwards or the
-  // overlap gets double-counted when rAF + interval interleave (measured 1.22x, 2026-07-07)
-  if(holding){
-    if(now<holdUntil){ lastT=now; return; }        // score line parked centre — clock doesn't accrue
-    holding=false; rebuild(); traveled=0; cycles=0; lastT=now;   // hold over: full strip, crawl begins
-  }
-  const d=now-lastT; if(d>0){ traveled+=d/1000*SPEED; lastT=now; }
-  if(unitW>0){
-    if(traveled<ENTRY){ offset=ENTRY-traveled; }   // entry: score slides left from centre; feed follows from the right
-    else{
-      const t2=traveled-ENTRY;
-      const c=Math.floor(t2/unitW);
-      if(c!==cycles){ cycles=c; if(dirty){ rebuild(); traveled=ENTRY; cycles=0; } }  // splice new events at the seam
-      offset=-((traveled-ENTRY)%unitW);
-    }
-  }
-  track.style.transform="translateX("+offset+"px)";
-}
-function raf(ts){ if(!running)return; step(ts); requestAnimationFrame(raf); }
-function startTicker(){
-  if(running)return; running=true;
-  if(dirty)rebuild();
-  requestAnimationFrame(raf);
-  setInterval(()=>step(),250);   // fallback cadence when rAF is throttled
-}
-function showTicker(){ if(visible)return; visible=true; tick.classList.add("on"); startTicker(); updDiag(); }
+function showTicker(){ if(visible)return; visible=true; tick.classList.add("on"); updDiag(); }
 function setItems(list){
   items=list; dirty=true;
   if(!visible||unitW<1||!hadContent){ rebuild(); enterHold(); }   // fresh start: score centred + 7s hold, then crawl
-  // else: rebuild happens seamlessly at the next loop boundary
+  // else: rebuild + restart happens seamlessly at the next animationiteration (the loop seam)
 }
 const FONTS=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
-FONTS.then(()=>{ if(items.length){ dirty=true; if(holding)enterHold(); else if(!visible){rebuild();traveled=0;cycles=0;} } });   // re-measure the centred hold once Inter lands
+FONTS.then(()=>{ if(items.length){ dirty=true; if(holding)enterHold(); else if(!visible){rebuild();} } });   // re-measure the centred hold once Inter lands
 
 /* ====================== LIVE DETECTION ====================== */
 let TARGET=null, lastSig="";
@@ -883,8 +891,11 @@ async function start(){
     diag.style.display="block";
     document.getElementById("tGoal").onclick=pushTestGoal;
     document.getElementById("tPen").onclick=pushTestPen;
-    document.getElementById("tSlow").onclick=()=>{SPEED=Math.max(20,SPEED-20);updDiag();};
-    document.getElementById("tFast").onclick=()=>{SPEED+=20;updDiag();};
+    // CSS animation duration is fixed per-iteration, so a speed change needs an explicit
+    // restart to take effect (test-mode only — resets to the top of a unit, imperceptible
+    // since units repeat identical content; never happens on the live broadcast path).
+    document.getElementById("tSlow").onclick=()=>{SPEED=Math.max(20,SPEED-20);updDiag();if(!holding)beginCrawl();};
+    document.getElementById("tFast").onclick=()=>{SPEED+=20;updDiag();if(!holding)beginCrawl();};
   }
 
   if(TESTMODE&&!Q.get("g")&&!Q.get("gameid")){
