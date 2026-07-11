@@ -140,35 +140,52 @@
      and a fuller Scoring-Leaders-style stat row (bold value + small unit
      label pairs) instead of a single "13 GP · 6 G · 11 A" text line. */
   #l3{position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(16px);
-    width:1000px;height:174px;border-radius:14px;overflow:hidden;
+    width:1000px;height:180px;border-radius:14px;overflow:hidden;
     display:none;align-items:stretch;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
     opacity:0;z-index:4;
     transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);}
   #l3.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0);}
-  #l3.noFact{height:130px;}
+  #l3.noFact{height:135px;}
   #l3 .l3photowrap{flex:0 0 140px;align-self:stretch;display:flex;align-items:center;justify-content:center;
     background:rgba(255,255,255,.03);}
   #l3 .l3photo{width:108px;height:108px;border-radius:50%;overflow:hidden;position:relative;
     background:#1b2029;border:3px solid var(--l3ink);box-shadow:0 6px 16px rgba(0,0,0,.45);flex:none;}
   #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
+  /* No-photo fallback is now a SECOND choice, not the default: prefer the team
+     crest (so a missing headshot still balances the crest already on the right
+     side, per Mat 2026-07-12) and only fall back to initials if the team has
+     no registered logo at all (DEFV). Mirrors #l3 .l3initials' centering. */
+  #l3 .l3photologo{position:absolute;inset:0;display:none;align-items:center;justify-content:center;}
+  #l3 .l3photologo.show{display:flex;}
+  #l3 .l3photologo img{max-width:62px;max-height:62px;object-fit:contain;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));}
   #l3 .l3initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-weight:800;font-size:36px;color:#4a525f;letter-spacing:.02em;}
   #l3 .l3accent{flex:0 0 5px;align-self:stretch;background:var(--l3ink);}
   #l3 .l3body{flex:1 1 auto;min-width:0;padding:14px 22px;display:flex;flex-direction:column;
-    justify-content:center;gap:5px;color:#fff;font-family:Inter,sans-serif;}
-  #l3 .l3name{font-weight:800;font-size:25px;line-height:1.14;letter-spacing:.005em;
+    justify-content:center;gap:7px;color:#fff;font-family:Inter,sans-serif;}
+  /* Line 1: jersey # + position + name, matching scoringleaders/index.html's
+     .pline/.jnum pattern exactly -- jersey number smaller+bold+team-ink
+     coloured, position same size as the name but also ink-coloured, name
+     itself white. Built as one innerHTML string in showL3() (l3name), no
+     separate meta line anymore. */
+  #l3 .l3name{font-weight:800;font-size:26px;line-height:1.15;letter-spacing:.005em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 10px rgba(0,0,0,.4);}
-  #l3 .l3meta{font-weight:600;font-size:14px;opacity:.8;
+  #l3 .l3name .jnum{font-size:.72em;font-weight:800;color:var(--l3ink);}
+  #l3 .l3name .pos{color:var(--l3ink);}
+  /* Line 2: stat row, same weight/size family as line 1 (Scoring Leaders keeps
+     its line1/line2 at the same base size -- only the unit labels shrink). */
+  #l3 .l3stat{font-weight:800;font-size:26px;color:#fff;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #l3 .l3stat{font-weight:800;font-size:20px;color:#fff;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #l3 .l3stat .unit{font-weight:400;font-size:.58em;opacity:.65;}
+  #l3 .l3stat .unit{font-weight:400;font-size:.56em;opacity:.65;}
   #l3 .l3tonight{display:none;margin-top:1px;padding:3px 9px;border-radius:6px;
     background:rgba(255,255,255,.16);font-weight:800;font-size:13px;letter-spacing:.02em;
     align-self:flex-start;}
   #l3 .l3tonight.show{display:inline-block;}
-  #l3 .l3fact{display:none;font-weight:500;font-size:14px;line-height:1.3;
-    opacity:.92;max-height:2.7em;overflow:hidden;}
+  /* Line 3: fact, matching scoringleaders/index.html's .pline.descr treatment
+     (italic, bold, light grey) rather than the old plain/regular-weight text. */
+  #l3 .l3fact{display:none;font-weight:700;font-style:italic;font-size:17px;line-height:1.25;
+    color:#c9cdd6;max-height:2.6em;overflow:hidden;}
   #l3.noFact .l3fact{display:none;}
   #l3:not(.noFact) .l3fact.has{display:block;}
   #l3 .l3logowrap{flex:0 0 140px;align-self:stretch;display:flex;align-items:center;justify-content:center;
@@ -219,12 +236,15 @@
 
   <div id="l3">
     <div class="l3photowrap">
-      <div class="l3photo" id="l3photo"><img id="l3img" alt=""><div class="l3initials" id="l3initials" style="display:none"></div></div>
+      <div class="l3photo" id="l3photo">
+        <img id="l3img" alt="">
+        <div class="l3photologo" id="l3photologo" style="display:none"><img id="l3photologoImg" alt=""></div>
+        <div class="l3initials" id="l3initials" style="display:none"></div>
+      </div>
     </div>
     <div class="l3accent" id="l3accent"></div>
     <div class="l3body">
       <div class="l3name" id="l3name"></div>
-      <div class="l3meta" id="l3meta"></div>
       <div class="l3stat" id="l3stat"></div>
       <div class="l3tonight" id="l3tonight"></div>
       <div class="l3fact" id="l3fact"></div>
@@ -823,9 +843,11 @@ function initialsOf(name){
 }
 
 const l3=document.getElementById("l3"), l3photo=document.getElementById("l3photo"),
-      l3img=document.getElementById("l3img"), l3initials=document.getElementById("l3initials"),
+      l3img=document.getElementById("l3img"),
+      l3photologo=document.getElementById("l3photologo"), l3photologoImg=document.getElementById("l3photologoImg"),
+      l3initials=document.getElementById("l3initials"),
       l3accent=document.getElementById("l3accent"), l3name=document.getElementById("l3name"),
-      l3meta=document.getElementById("l3meta"), l3stat=document.getElementById("l3stat"),
+      l3stat=document.getElementById("l3stat"),
       l3tonight=document.getElementById("l3tonight"), l3fact=document.getElementById("l3fact"),
       l3logo=document.getElementById("l3logo");
 let l3HideTimer=null, l3Token=0;
@@ -850,27 +872,23 @@ async function showL3(identity, fact, includeFact, opts){
   const data = await buildL3Data(identity);
   if(myToken!==l3Token) return;   // superseded while awaiting stats/photo fetches
 
-  l3name.textContent = properCase(identity.name||"").toUpperCase() || (identity.name||"");
-  const metaBits=[];
-  if(identity.role==="coach"){ metaBits.push(identity.position||"Coach"); }
-  else { if(identity.number) metaBits.push("#"+identity.number); metaBits.push(identity.position||(identity.role==="goalie"?"G":"")); }
-  l3meta.textContent = metaBits.filter(Boolean).join(" · ");
+  // Line 1: jersey # + position + name, one line, matching
+  // scoringleaders/index.html's .pline/.jnum pattern -- jersey number smaller
+  // and team-ink-coloured, position also ink-coloured (same size as name),
+  // name itself white. Coaches have no jersey number. Replaces the old
+  // separate l3name + l3meta lines (Mat, 2026-07-12).
+  const nameParts=[];
+  if(identity.role!=="coach" && identity.number) nameParts.push(`<span class="jnum">${identity.number}</span>`);
+  const posText = identity.role==="coach" ? (identity.position||"Coach")
+                                           : (identity.position||(identity.role==="goalie"?"G":""));
+  if(posText) nameParts.push(`<span class="pos">${posText}</span>`);
+  nameParts.push(properCase(identity.name||"").toUpperCase() || (identity.name||""));
+  l3name.innerHTML = nameParts.join(" ");
+
   l3stat.innerHTML = (data.statParts||[])
     .map(p=>`${p.val} <span class="unit">${p.unit}</span>`).join("\u00A0\u00A0");
   if(data.tonight){ l3tonight.textContent=data.tonight; l3tonight.classList.add("show"); }
   else { l3tonight.classList.remove("show"); l3tonight.textContent=""; }
-
-  // Team logo end panel (right side, balances the framed headshot on the left) —
-  // same LOGO base + REG[..].logo filename #bnr's crest ends already use.
-  if(v.logo){
-    loadImage(LOGO+encodeURIComponent(v.logo), 1800).then(img=>{
-      if(myToken!==l3Token) return;
-      if(img){ l3logo.src=img.src; l3logo.classList.add("show"); }
-      else { l3logo.removeAttribute("src"); l3logo.classList.remove("show"); }
-    });
-  } else {
-    l3logo.removeAttribute("src"); l3logo.classList.remove("show");
-  }
 
   const factText = (fact||"").trim();
   const showFact = !!includeFact && !!factText;
@@ -878,6 +896,26 @@ async function showL3(identity, fact, includeFact, opts){
   l3fact.classList.toggle("has", showFact);
   l3fact.textContent = showFact ? factText : "";
 
+  // Team crest -- used both for the always-on right-side end panel AND as the
+  // LEFT-side photo-circle fallback, so a player with no headshot shows the
+  // crest on BOTH sides (balanced) instead of a crest vs. bare initials
+  // (Mat, 2026-07-12). Fetched once, reused for both slots.
+  const logoP = loadImage(v.logo ? LOGO+encodeURIComponent(v.logo) : null, 1800);
+  logoP.then(img=>{
+    if(myToken!==l3Token) return;
+    if(img){ l3logo.src=img.src; l3logo.classList.add("show"); }
+    else { l3logo.removeAttribute("src"); l3logo.classList.remove("show"); }
+  });
+
+  const showPhotoState = (mode, img)=>{
+    // mode: "photo" | "logo" | "initials" -- in priority order.
+    l3img.style.display = mode==="photo" ? "" : "none";
+    if(mode!=="photo") l3img.removeAttribute("src");
+    l3photologo.classList.toggle("show", mode==="logo");
+    if(mode==="logo") l3photologoImg.src = img.src; else l3photologoImg.removeAttribute("src");
+    l3initials.style.display = mode==="initials" ? "flex" : "none";
+    if(mode==="initials") l3initials.textContent = initialsOf(identity.name);
+  };
   const finishPhoto = ()=>{
     if(myToken!==l3Token) return;
     l3HideTimer && clearTimeout(l3HideTimer);
@@ -887,19 +925,14 @@ async function showL3(identity, fact, includeFact, opts){
       l3HideTimer = setTimeout(hideL3, Math.max(0, holdMs));
     }
   };
-  if(data.photo){
-    loadImage(data.photo, 1800).then(img=>{
-      if(myToken!==l3Token) return;
-      if(img){ l3img.src=img.src; l3img.style.display=""; l3initials.style.display="none"; }
-      else { l3img.removeAttribute("src"); l3img.style.display="none";
-             l3initials.style.display="flex"; l3initials.textContent=initialsOf(identity.name); }
-      finishPhoto();
-    });
-  } else {
-    l3img.removeAttribute("src"); l3img.style.display="none";
-    l3initials.style.display="flex"; l3initials.textContent=initialsOf(identity.name);
+  const photoP = data.photo ? loadImage(data.photo, 1800) : Promise.resolve(null);
+  Promise.all([photoP, logoP]).then(([photoImg, logoImg])=>{
+    if(myToken!==l3Token) return;
+    if(photoImg) showPhotoState("photo", photoImg);
+    else if(logoImg) showPhotoState("logo", logoImg);
+    else showPhotoState("initials");
     finishPhoto();
-  }
+  });
 }
 
 // ---- control-channel polling (live pages only, never in ?preview= mode) ----
@@ -986,7 +1019,21 @@ function buildTestButtons(){
 function playAll(){ ACTIVE_TEST_TEAMS.forEach(t=>{ fireTest(t,"goal",2400); fireTest(t,"pen",2400); }); }   // cycle the active team set: goal then penalty
 
 /* ====================== INIT ====================== */
-function fitWindow(){document.getElementById("stage").style.transform="scale("+Math.min(innerWidth/1920,innerHeight/1080)+")";}
+// Keeps the frame's BOTTOM-CENTRE locked to the window's bottom-centre as the
+// window is resized/narrowed (Mat, 2026-07-12) -- important now that the
+// Player L3 is itself bottom-centre-anchored inside the frame. The old
+// version only scaled from a fixed top-left origin, so on any window whose
+// aspect ratio wasn't exactly 16:9 the frame (and the L3 inside it) visibly
+// drifted left/up instead of staying centred -- this only ever showed up in
+// desktop-preview windows (a real 1920x1080 YoloBox capture is unaffected),
+// but it's what made the L3 look off-centre while testing narrower widths.
+function fitWindow(){
+  const stage=document.getElementById("stage");
+  const scale=Math.min(innerWidth/1920, innerHeight/1080);
+  const left=(innerWidth-1920*scale)/2;   // always horizontally centred
+  const top=innerHeight-1080*scale;       // always bottom-anchored (letterbox lands on top only)
+  stage.style.transform=`translate(${left}px,${top}px) scale(${scale})`;
+}
 addEventListener("resize",fitWindow);
 
 async function start(){
