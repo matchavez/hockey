@@ -297,9 +297,17 @@ off the auto-computed fact line, then Fire.
   back over the control channel — the channel itself has no domain logic, it's a dumb relay.
 - **Control channel:** a Cloudflare Worker Durable Object (`nzihl-broadcast-assets`'s
   `summary/worker.js`, route `/control/<slug>`), ~750ms polling, shared-secret token on
-  writes. **Requires a worker deploy Mat runs manually** — until then the phone page and
-  `preflight/`'s "Player L3 control channel" check both degrade to a clear "not deployed yet"
-  state rather than erroring.
+  writes. **Deployed 2026-07-12** — full fire round trip (queue → fire → live overlay render →
+  auto-hide → clear) verified live.
+- **Geometry (redesigned 2026-07-12):** ~1000×174 (noFact 130), flush against the same bottom
+  edge as `#bnr` (`bottom:0`) — safe because the collision rule above already guarantees the
+  two never render at once. Circular headshot with a team-colour border ring on the left,
+  a bold-value/small-unit-label stat row (matching `scoringleaders/`'s visual language)
+  in the middle, a team-logo end panel balancing the headshot on the right.
+- **Password gate:** the page itself is behind a simple client-side password prompt (persisted
+  in `localStorage` so a producer's phone doesn't re-prompt every reload). Same trust model as
+  the `CONTROL_TOKEN` already embedded in the page's source — a deterrent against casual
+  visitors on a static GitHub Pages file, not real security.
 
 ## summary/ and box/
 
