@@ -20,13 +20,14 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | `league/` | **League Page**: league-only aggregate view (standings, this weekend's fixtures, clubs directory, rosters, brand) — no ?league= shows a league picker | `?league=` |
 | `ticker/` | **Ticker Page**: scorebug clip + top-right verbose scrolling game ticker (pregame / live / FINAL aware) | `?team=` `?g=` `?test=1` `?ad=` `?tk=` `?speed=` `?bs=` `?bug=` |
 | `scorebug/` | Singular scorebug clip + goal/penalty banner (bottom of frame) | `?team=` `?g=` `?test=1` `?bs=` `?bug=` |
-| `activity-banner/` | Transparent 1920×1080, goal/penalty banner ONLY (no scorebug), flush bottom | `?team=` `?g=` `?test=1` |
+| `activity-banner/` | Transparent 1920×1080, goal/penalty banner ONLY (no scorebug), flush bottom. Also renders Player Lower Thirds (headshot+stats+fact) fired remotely from `lowerthirds/` — same page, no new browser source | `?team=` `?g=` `?test=1` `?preview=` |
 | `summary/` | Live Game Summary graphic (1840×1000-style card) | `?team=` `?g=` `?w=1` `?bg=opaque` |
 | `scoringleaders/` | **Team Scoring Leaders**: each side's top-3 point scorers, live stats + a season-form descriptor line (1840×1000-style card, same visual family as `summary/`) | `?team=` `?g=` `?w=1` `?bg=opaque` |
 | `scoringleaders/ab-test.html` | **Design-experiment page, NOT part of the deployed rotation** — not linked from the portal or anywhere else, direct-URL only. Stacks multiple full-size variants of the Team Scoring Leaders pill construction (mirrored vs symmetric vs centred-text, labelled A/B/C) on one page so Mat can compare before a decision lands in `scoringleaders/index.html`. Same convention as the old `summary/translucent-test.html`. Safe to delete once a variant is picked and promoted — ask before deleting. | `?team=` `?g=` `?w=1` |
 | `box/` | Auto-refreshing box-score iframe card with team logos | `?g=` `?w=1` `?s=<secs>` (refresh, default 35, min 8) |
 | `preflight/` | **Broadcast Pre-Flight** (producer tool, not an overlay): worker round-trip, manifest freshness (GitHub commits API), leaders/standings/schedule reach, per-club game resolution + BUGMAP status + box-score probe + FINAL status, copy-ready overlay URLs with per-club `?bs=`/`?tk=` tuning persisted in localStorage | — |
 | `warehouse/` | **Data Warehouse** (producer tool, not an overlay): browses the full season game archive (`nzihl-season-data`'s `nzihl.json`/`nzwihl.json` — completed games w/ streak chips + searchable/filterable table + box-score links, plus remaining fixtures) and the full player+coach photo library (`nzihl-player-photos`'s `manifest.json` — every rostered person, grouped by team, sorted by jersey #, real thumbnails or initials placeholders, missing-photo counts) on one page. Both fetched live client-side, nothing copied in. | — |
+| `lowerthirds/` | **Player Lower Thirds** (producer tool, not an overlay): phone control page — tap a tonight's-roster jersey pill, preview (shares the `activity-banner/?preview=` renderer), edit/toggle an auto-computed fact, Fire through a Cloudflare Worker Durable Object control channel to the `activity-banner/` already on air | `?team=` |
 | `assets/fonts/` | InterVariable (+Italic) woff2 — the 2026 house font | — |
 
 Common params across live pages: `?team=<slug>` picks the club's live/next game from the roster
@@ -272,6 +273,33 @@ Polling: box score 12s, leaders/FINAL-check every 5th poll, auto-stop 3h15m (`RU
   172, 390, 500). Left white gap = raise cropX.
 - `?test=1`: per-club G/P demo buttons (`&team=<slug>` filters to one club); the CRD demo
   deliberately fires sibling scorers (Ollie/Leo Ruski-Jones) to exercise initials.
+
+## lowerthirds/ — Player Lower Thirds (phone control page)
+
+Not an overlay itself — a phone-friendly producer tool that fires a traditional lower third
+(headshot, season stats, an interesting fact) through the `activity-banner/` overlay already
+loaded in the mixer. `?team=<slug>` shows tonight's roster as tappable jersey-number pills
+(team-primary colour if a photo exists in the `nzihl-player-photos` manifest, grey/initials
+frame otherwise; goalies marked; HC/AC coach pills at the end). Tap a pill to select, see a
+live preview (a scaled `activity-banner/?preview=...` iframe — the exact same rendering path
+`activity-banner/` uses live, so preview and broadcast can never drift apart), edit or toggle
+off the auto-computed fact line, then Fire.
+
+- **Data:** season stat line from `stats.json` (emitted nightly by `nzihl-broadcast-rosters` /
+  `nzwihl-broadcast-rosters`); tonight's game from `boxscores.json` (falls back to
+  `nzihl-season-data`'s `upcoming` field); photo from `nzihl-player-photos`' manifest; facts
+  engine checks tonight's-multi-point → active streak → H2H series → leads-team →
+  league-top10 → milestone-watch (first qualifying rule wins), sourced from
+  `nzihl-season-data`'s per-player game logs / head-to-head / streak data.
+- **Collision rule:** a goal/penalty auto-banner interrupts a live player L3 instantly (the
+  player returns to queued on the phone, one tap re-fires); firing while an auto-banner is
+  live is rejected. `activity-banner/`'s own `enqueue()` detects this locally and reports it
+  back over the control channel — the channel itself has no domain logic, it's a dumb relay.
+- **Control channel:** a Cloudflare Worker Durable Object (`nzihl-broadcast-assets`'s
+  `summary/worker.js`, route `/control/<slug>`), ~750ms polling, shared-secret token on
+  writes. **Requires a worker deploy Mat runs manually** — until then the phone page and
+  `preflight/`'s "Player L3 control channel" check both degrade to a clear "not deployed yet"
+  state rather than erroring.
 
 ## summary/ and box/
 
