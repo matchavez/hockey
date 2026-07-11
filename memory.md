@@ -200,6 +200,23 @@ card itself, and tightened header/factBox/groupTitle spacing so the whole page r
 "preview graphic + queued/fire header + fact box + pills" per Mat's ask. Verified live:
 selecting a player, clearing, and page-load state adoption all work with no console errors.
 
+**Bug fix, 2026-07-12 (Mat: "Toby Schuck isn't working"):** `activity-banner/index.html`'s
+`?preview=` handler double-decoded the param -- `Q.get("preview")` (URLSearchParams) already
+URI-decodes once, but the code then called `decodeURIComponent()` on it AGAIN. That's harmless
+for plain text but throws `URIError: URI malformed` for any fact/name containing a literal "%"
+not followed by two hex digits -- which is exactly what a goalie's auto-suggested SV% fact
+looks like ("Toby Schuck stopped 73.3% of shots..."). The error was caught by an existing
+`catch(e){ /* show nothing */ }` with no logging, so it failed completely silently: blank
+preview, no console error, looked like the player was just broken. Root-caused by calling
+`showL3()` directly in the Chrome console (worked fine) vs. going through the real `?preview=`
+URL (failed), then bisecting down to the decode step. Fixed to `JSON.parse(PREVIEW)` (single
+decode, matching what `lowerthirds/index.html`'s `updatePreview()` actually sends), with the
+old double-decode kept only as a fallback if the single-parse throws, for safety. Verified live
+both via a direct `?preview=` URL and via the real phone-page pill-tap flow for Toby Schuck
+(DUN #58) -- photo, stats (9 GP · 4.13 GAA · .864 SV% · 0 SO), and the %-containing fact all
+render correctly now. This bug would have hit ANY player (not just Schuck) whose name or
+computed fact happened to contain a bare "%" -- goalie SV% facts are the most likely trigger.
+
 See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
 previously said "not built yet" -- update that memory too if revisiting).
