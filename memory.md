@@ -176,6 +176,14 @@ Every piece of this project is now fully live, nothing left pending.
   and noFact states (245x245 / 180x180 via computed style), no-photo
   logo-both-sides fallback still balanced at the new size.
 
+**Sixth pass, same day:** name/position no longer the same size -- `.l3name`'s base
+font-size now only drives `.jnum`/`.pos`, while the actual name text is wrapped in its own
+`.nametext` span at `1.25em` (~25% bigger than jersey/position, not equal, per Mat's explicit
+"only ~25% bigger"). `.pos` also got `margin-right:.22em` for breathing room before the name
+(was a single plain space). Body padding (buffer between photo/logo and the text) bumped
+34px->51px (1.5x, "half-again as much space" per Mat), panel widened 1320->1360 to compensate
+so the text column doesn't lose room. Verified live via `?preview=`.
+
 See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
 previously said "not built yet" -- update that memory too if revisiting).
