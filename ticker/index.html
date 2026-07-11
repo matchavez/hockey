@@ -834,9 +834,24 @@ async function tickPoll(){
     AWAYTOT=P.away.tot||0; HOMETOT=P.home.tot||0;
     SOGA=P.sogA||[]; SOGH=P.sogH||[];
     GLS=P.goalies||[];
-    // how far has the game progressed? shots-paren entries appear per period as it's played,
-    // and any event in a later period also moves the marker
-    PERSDONE=Math.max(1,SOGA.length,SOGH.length,...lastEv.map(e=>PNUM[e.per]||0));
+    // how far has the game progressed, for the period-divider feed? Used to assume SOGA/SOGH
+    // .length told us this (shots-paren entries "appear per period as it's played") — WRONG:
+    // caught 2026-07-11 on Wakatipu Wild @ Canterbury Inferno (gameid 2520019), where "END OF
+    // THE SECOND PERIOD" rendered during the REAL first intermission. That game had zero goals
+    // AND zero penalties in period 1 all game, so the event-period arm couldn't have caused it —
+    // the only way PERSDONE reads 3 that early is if esportsdesk's SOG cell is a FIXED 3-column
+    // layout ("10 (10-0-0)"), zero-padded for periods not yet played, from kickoff. So .length
+    // is effectively always 3 for a non-OT game, regardless of real progress — and a "periods
+    // with a nonzero shot count" variant doesn't fix it either: shots for period 1 stay nonzero
+    // and unchanging for the whole intermission, so nothing in the SOG data can ever distinguish
+    // "still playing period 1" from "period 1 just ended" — only the NEXT period producing an
+    // actual event can. So SOG is dropped from this computation entirely: PERSDONE is now purely
+    // "the latest period any goal/penalty has been recorded in." This can occasionally show an
+    // END-OF-PERIOD divider a few minutes late (if the next period opens with no whistles for a
+    // while), but it can never show one early — for a live broadcast graphic, late-but-correct
+    // beats early-but-wrong. (SOGA/SOGH are kept for the Shots-N-N text ON the divider itself,
+    // just no longer used to decide WHEN a divider fires.)
+    PERSDONE=Math.max(1,...lastEv.map(e=>PNUM[e.per]||0));
   }
   const all=lastEv.concat(extras);
   const sig=AWAYTOT+"-"+HOMETOT+"~P"+PERSDONE+"~S"+SOGA.join(".")+"/"+SOGH.join(".")
@@ -916,11 +931,16 @@ async function start(){
     await tickPoll();
     if(!items.length) setItems(buildItems([]));   // score line loops until the first event
     if(!TESTMODE&&!lastEv.length&&!pregameKicked){ pregameKicked=true; fetchStandings(); findLastMeeting(); }
-    if(!TESTMODE&&PERSDONE>=3)fetchFinal();
+    // NOTE 2026-07-11: this used to gate on PERSDONE>=3 — fine while PERSDONE was (incorrectly)
+    // reading ~3 from kickoff, but now that PERSDONE is the conservative event-driven value
+    // above, a scoreless/penalty-free third period would never reach 3 and FINAL would never
+    // get checked. fetchFinal() already self-guards (returns instantly once ISFINAL, or if
+    // there's no TARGET), so just call it — worst case is one harmless extra ~60s fetch/game.
+    if(!TESTMODE)fetchFinal();
     const t0=Date.now(); let n=0;
     const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;}
       if(++n%5===0){ fetchLeaders();   // leaders refresh ~every 60s, box score every 12s
-        if(!TESTMODE&&PERSDONE>=3&&!ISFINAL)fetchFinal(); }
+        if(!TESTMODE&&!ISFINAL)fetchFinal(); }
       tickPoll(); },POLL_MS);
   } else if(!items.length){ setItems(buildItems([])); }
 }
