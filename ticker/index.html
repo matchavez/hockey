@@ -751,6 +751,16 @@ function beginCrawl(){
   track.style.setProperty("--unitW",unitW+"px");
   restartAnim(`tickCrawl ${(unitW/SPEED).toFixed(3)}s linear infinite`);
 }
+// 2026-07-11 — SEPARATE finding while investigating the "bumps" (present in the ticker since
+// the very first CSS-animation fix, not introduced by today's change): starting or restarting
+// a named CSS animation while the tab is genuinely `document.hidden` (occluded/minimized — NOT
+// merely unfocused-but-visible, which is unaffected) can silently fail to actually progress —
+// computed style reports animationPlayState "running" the whole time, but the position never
+// moves, until the tab becomes visible again. Confirmed live on both this branch and the
+// currently-shipped main. Cheap, safe insurance: if the page regains visibility and isn't in
+// the hold phase, force a resync. If the crawl was already fine this is a harmless no-op
+// restart at the current unitW; if it was stuck, this is what actually wakes it up.
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&!holding&&unitW>0) beginCrawl(); });
 // Native loop-boundary event — fires once per full unit scrolled, for free, at full compositor
 // accuracy. Replaces the old per-frame `cycles` counter entirely. Nothing happens if the data
 // hasn't changed: the same infinite CSS animation just keeps looping untouched by JS. When it
