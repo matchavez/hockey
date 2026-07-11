@@ -151,6 +151,31 @@ reload.
 
 Every piece of this project is now fully live, nothing left pending.
 
+**Fourth + fifth passes (same day, two more rounds of Mat's feedback):**
+- **Fourth: circular framing removed.** Went back to a rectangular photo (no
+  `border-radius:50%`); the team-ink accent bar that used to sit as a thin
+  5px divider between photo and body was removed as a separate element --
+  it's now literally the photo's own border (`border:6px solid var(--l3ink)`
+  directly on `.l3photo`, `box-sizing:border-box`), i.e. the bar was
+  "extended" into a frame around the portrait rather than sitting beside it.
+  Card also scaled up (1000x180/135 -> 1200x245/180) since the smaller round-2
+  size left visible empty vertical space in the box.
+- **Fifth: photo compressed into a SQUARE.** The rectangular photo from the
+  fourth pass used `align-self:stretch` (full card height) with a fixed
+  190px width -- tall and visibly elongated. Changed to
+  `flex:0 0 auto;align-self:stretch;aspect-ratio:1/1` so the width is
+  DERIVED from whatever height the card currently has (245 full / 180
+  noFact) instead of a separate fixed number -- always a true square in
+  both states, no extra JS. Applied the same to `.l3logowrap` on the right
+  so the two ends stay visually balanced (both square, both sized off the
+  card's live height). Card widened again (1200->1320) to give the body
+  text room now that the square end-caps are wider than the old 190px
+  rectangles. Text sizes bumped again in the same pass (name/stat
+  26->32->38px, fact 17->22->24px) to keep pace with the bigger card.
+  Re-verified live: square photo confirmed exactly matching in both full
+  and noFact states (245x245 / 180x180 via computed style), no-photo
+  logo-both-sides fallback still balanced at the new size.
+
 See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
 previously said "not built yet" -- update that memory too if revisiting).
