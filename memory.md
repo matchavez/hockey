@@ -66,12 +66,13 @@ apart.
 **Control channel:** `nzihl-broadcast-assets`'s `summary/worker.js` grew a
 `/control/<slug>` route backed by a Durable Object (`ControlChannel`,
 SQLite-backed, Free-plan compatible) -- see that repo's memory.md for the
-API shape. **Not deployed as of 2026-07-12** -- Mat's manual step per his
-explicit ask ("I execute the worker deploy"), prepared in
-`nzihl-broadcast-assets/summary/DEPLOY.md`. Until deployed, the phone page
-and `preflight/`'s new "Player L3 control channel" check both degrade
-gracefully (amber "NOT DEPLOYED YET", not a hard error) rather than
-crashing on the 501 `NO_DO_BINDING` response.
+API shape. **DEPLOYED by Mat 2026-07-12.** Full round trip verified live:
+queued+fired a real player via curl, watched it render on the actual
+`activity-banner/?team=pure-nz-admirals` page in Chrome (real photo/stats/fact),
+confirmed the 10s auto-hide, confirmed self-heal to `queued` (not `idle`)
+per the design, confirmed manual `clear` resets to `idle`. `preflight/`'s
+"Player L3 control channel" check now reads green/live instead of the
+amber "not deployed" fallback state.
 
 **Consumers wired:** portal `index.html` got a "Player Lower Thirds" card
 (`#lowerthirds`, evergreen per-team Open/Copy URLs, both leagues, Mako
@@ -85,9 +86,10 @@ button.
 today's actual boxscores.json entry; real photo+stats+fact render in
 preview; no-fact/toggle-off layout shrinks with no empty gap; a no-photo
 player falls back to initials and still fires; a test goal banner instantly
-kills a live L3 (collision rule confirmed). NOT yet tested: the full
-control-channel fire round trip end-to-end, since that requires the worker
-deploy Mat hasn't run yet.
+kills a live L3 (collision rule confirmed); AND, after Mat's worker deploy,
+the full control-channel fire round trip end-to-end (queue -> fire -> live
+overlay render -> auto-hide -> self-heal to queued -> clear). Every piece
+of this project is now fully live, nothing left pending.
 
 See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
