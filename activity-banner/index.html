@@ -1049,6 +1049,13 @@ addEventListener("resize",fitWindow);
 async function start(){
   fitWindow();
   TEAM_SLUG = slug(Q.get("team")||"canterbury-red-devils");
+  // Player Lower Thirds preview mode (loaded in the tiny iframe by
+  // hockey/lowerthirds/): resolved up front now, not just below, so the
+  // pre-game confidence alert can be skipped for it too (Mat, 2026-07-12 --
+  // it was popping up over the L3 preview on every pill tap/refresh, which
+  // is confusing/distracting in that tiny context; producers already see it
+  // fine on the real full-size broadcast source).
+  const PREVIEW = Q.get("preview");
   if(TESTMODE){ document.getElementById("test").style.display="flex";
     document.getElementById("diag").style.display="block";
     buildTestButtons();
@@ -1056,13 +1063,12 @@ async function start(){
   TARGET=await resolveTarget();
   const diag=document.getElementById("diag");
   if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+TEAM_SLUG+" · "+(TARGET?("game "+TARGET.gid):"no-game"); }
-  showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started
+  if(!PREVIEW) showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started
   if(TARGET&&WORKER){ await tick();
     const t0=Date.now();
     const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }
 
   // ---- Player Lower Thirds ----
-  const PREVIEW = Q.get("preview");
   if(PREVIEW){
     // Static preview mode (loaded in an iframe by hockey/lowerthirds/): render
     // once from the URL param, sticky (no auto-hide), no control-channel
