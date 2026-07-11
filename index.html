@@ -314,6 +314,7 @@
     <a href="#summaryslugs">Summary URLs</a>
     <a href="#leadersslugs">Leaders URLs</a>
     <a href="#bannerslugs">Banner URLs</a>
+    <a href="#lowerthirds">Player L3s</a>
     <a href="#rosters">Rosters</a>
     <a href="#photos">Photos</a>
     <a href="#warehouse">Warehouse</a>
@@ -422,6 +423,15 @@
     <div id="banner-nzihl" class="grid g3"></div>
     <div class="league-label blue">NZWIHL</div>
     <div id="banner-nzwihl" class="grid g3"></div>
+  </section>
+
+  <!-- PLAYER LOWER THIRDS -->
+  <section id="lowerthirds">
+    <div class="sec-head"><span class="sec-txt"><h2>Player Lower Thirds <span class="chip blue">Evergreen URL</span></h2><span class="sub">Phone control page — tap a player, edit the fact, fire a stat+photo lower third through the Activity Banner already on air · static per-team URL</span></span></div>
+    <div class="league-label">NZIHL</div>
+    <div id="l3-nzihl" class="grid g3"></div>
+    <div class="league-label blue">NZWIHL</div>
+    <div id="l3-nzwihl" class="grid g3"></div>
   </section>
 
   <!-- ROSTERS -->
@@ -672,6 +682,22 @@ function bannerCard(t){
 // Mako left out (no 2026 games) — 9 teams, matching the Game Summary slug list.
 document.getElementById('banner-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(bannerCard).join('');
 document.getElementById('banner-nzwihl').innerHTML = NZWIHL.map(bannerCard).join('');
+
+// Player Lower Thirds per-team static URLs ("Player Lower Thirds") — the
+// phone control page, same slug used by both this page and its matching
+// Activity Banner instance (the control channel is keyed by that slug).
+function l3Card(t){
+  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const path = `lowerthirds/?team=${sl}`;
+  const full = `https://matchavez.com/hockey/${path}`;
+  return `<div class="team">${idw(t)}<span class="acts">
+    <a class="pill ext" title="Open the phone control page" target="_blank" rel="noopener" href="${path}">Open</a>
+    <a class="pill cp" title="Copy the static URL — send to the phone firing lower thirds" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
+}
+// Mako left out (no 2026 games) — same 9-team list as Activity Banner (this
+// feature fires THROUGH that overlay, so it only makes sense for the same set).
+document.getElementById('l3-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(l3Card).join('');
+document.getElementById('l3-nzwihl').innerHTML = NZWIHL.map(l3Card).join('');
 
 // Games/rosters older than this many days (past their date) are treated as
 // stale and hidden from the portal's "current" sections, rather than lingering

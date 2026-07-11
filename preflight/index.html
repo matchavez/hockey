@@ -140,6 +140,38 @@ async function checkManifest(m){
     setCard(d,n?cls:"warn",(j.games||[]).length+" games · "+n+" with gameid",when);
   }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
 }
+// Player Lower Thirds: stats.json freshness per league (same repos, same
+// "pipeline ran Xh ago" check as the boxscores.json manifest above).
+async function checkStatsJson(m){
+  const d=card("c-stats-"+m.league,m.league.toUpperCase()+" stats.json");
+  const url=`https://raw.githubusercontent.com/matchavez/${m.repo}/main/stats.json`;
+  try{
+    const j=await getJSON(url);
+    const nTeams=Object.keys(j.teams||{}).length;
+    let when="", cls="ok";
+    try{const c=await getJSON(`https://api.github.com/repos/matchavez/${m.repo}/commits?path=stats.json&per_page=1`);
+      const ts=new Date(c[0].commit.committer.date), h=(Date.now()-ts)/36e5;
+      when="pipeline ran "+(h<1?Math.round(h*60)+" min":Math.round(h)+" h")+" ago";
+      if(h>36)cls="warn";
+    }catch(e){when="(commit time unavailable)";}
+    setCard(d,nTeams?cls:"warn",nTeams+" teams scraped",when);
+  }catch(e){setCard(d,"bad","FAILED — no stats.json yet?",String(e.message||e));}
+}
+// Player Lower Thirds control channel — GET is enough to prove the Durable
+// Object binding is deployed (a fresh/idle instance still returns 200 +
+// {status:"idle",...}; NO_DO_BINDING/501 means Mat hasn't run wrangler
+// deploy yet, see nzihl-broadcast-assets/summary/DEPLOY.md).
+async function checkControlChannel(){
+  const d=card("c-control","Player L3 control channel");
+  try{const t0=performance.now();
+    const r=await fetch(`${WORKER}/control/preflight-check`,{cache:"no-store"});
+    const j=await r.json();
+    const ms=Math.round(performance.now()-t0);
+    if(j&&j.code==="NO_DO_BINDING"){ setCard(d,"warn","NOT DEPLOYED YET","see summary/DEPLOY.md"); return; }
+    if(j&&j.error){ setCard(d,"bad","FAILED",String(j.error)); return; }
+    setCard(d,ms<4000?"ok":"warn","OK · "+ms+" ms","Durable Object responding");
+  }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
+}
 async function checkSource(id,nm,u,probe){
   const d=card(id,nm);
   try{const h=await shimText(u); const r=probe(h);
@@ -255,6 +287,7 @@ function buildBoard(){
     wrap.appendChild(copyBtn("Ticker",()=>BASE+`ticker/?team=${t.slug}`+tune()));
     wrap.appendChild(copyBtn("Scorebug",()=>BASE+`scorebug/?team=${t.slug}`+(bs.value.trim()?"&bs="+bs.value.replace(/^bs=/,"").trim():"")));
     wrap.appendChild(copyBtn("Banner",()=>BASE+`activity-banner/?team=${t.slug}`));
+    wrap.appendChild(copyBtn("Player L3",()=>BASE+`lowerthirds/?team=${t.slug}`));
     wrap.appendChild(copyBtn("Summary",()=>BASE+`summary/?team=${t.slug}`));
     if(r)wrap.appendChild(copyBtn("Box",()=>BASE+`box/?g=${r.gid}`+(r.m.league==="nzwihl"?"&w=1":"")));
     c8.appendChild(wrap);
@@ -267,8 +300,9 @@ function buildBoard(){
 async function run(){
   sys.innerHTML=""; MDATA={};
   document.getElementById("now").textContent=new Date().toLocaleString("en-NZ");
-  checkWorker(); checkSources();
+  checkWorker(); checkSources(); checkControlChannel();
   await Promise.all(MANIFESTS.map(checkManifest));
+  await Promise.all(MANIFESTS.map(checkStatsJson));
   buildBoard();
 }
 document.getElementById("rerun").onclick=run;
