@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Data Warehouse — NZIHL / NZWIHL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Browse the full NZIHL/NZWIHL season game archive and the player+coach photo warehouse.">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+:root{--bg:#0d0f13;--card:#14171d;--line:#242a33;--txt:#dfe4ea;--dim:#8a93a0;
+      --ok:#36d399;--warn:#f5b942;--bad:#ef5b5b;--acc:#7db2ff;--acc2:#f7be11;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font:400 15px/1.5 Inter,-apple-system,"Segoe UI",sans-serif;
+     padding:28px 30px 70px;-webkit-font-smoothing:antialiased;}
+a{color:var(--acc);}
+h1{font-size:24px;font-weight:800;letter-spacing:.01em;}
+h1 small{color:var(--dim);font-weight:500;font-size:14px;margin-left:10px;display:block;margin-top:4px;}
+h2{font-size:19px;font-weight:800;margin:38px 0 4px;display:flex;align-items:center;gap:10px;}
+h2 .n{font-size:12px;font-weight:700;color:var(--dim);background:var(--card);border:1px solid var(--line);
+      border-radius:20px;padding:3px 10px;}
+h3{font-size:13px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;
+   margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+h3 img{width:20px;height:20px;object-fit:contain;}
+.sub{color:var(--dim);font-size:13.5px;margin:2px 0 14px;}
+#top-nav{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 6px;}
+#top-nav a{font-size:12.5px;border:1px solid var(--line);background:var(--card);padding:5px 12px;
+           border-radius:20px;text-decoration:none;color:var(--txt);}
+#top-nav a:hover{border-color:var(--acc);}
+.back{font-size:12.5px;color:var(--dim);text-decoration:none;}
+.back:hover{color:var(--acc);}
+.league-block{margin-bottom:10px;}
+.league-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;padding:3px 10px;
+            border-radius:20px;margin-bottom:2px;}
+.league-tag.nzihl{background:rgba(247,190,17,.13);color:var(--acc2);}
+.league-tag.nzwihl{background:rgba(125,178,255,.13);color:var(--acc);}
+.streaks{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px;}
+.streak-chip{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);
+             border-radius:20px;padding:5px 12px 5px 6px;font-size:12.5px;font-weight:600;}
+.streak-chip img{width:20px;height:20px;object-fit:contain;}
+.streak-chip .w{color:var(--ok);} .streak-chip .l{color:var(--bad);}
+.streak-chip .otw,.streak-chip .otl{color:var(--warn);}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px;align-items:center;}
+input.search,select.teamfilter{font:500 13px Inter,sans-serif;color:var(--txt);background:#0e1116;
+     border:1px solid var(--line);border-radius:8px;padding:7px 11px;}
+input.search{width:220px;}
+input.search::placeholder{color:#525a66;}
+.count{font-size:12px;color:var(--dim);}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+      border-radius:12px;overflow:hidden;margin-bottom:10px;}
+th{font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;
+   text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13.5px;}
+tr:last-child td{border-bottom:0;}
+tr.hidden{display:none;}
+.matchup{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.matchup img{width:20px;height:20px;object-fit:contain;flex:none;}
+.matchup .sc{font-weight:700;}
+.matchup .at{color:var(--dim);font-weight:500;padding:0 2px;}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:7px;padding:2px 8px;
+      letter-spacing:.03em;white-space:nowrap;}
+.chip.ok{background:rgba(54,211,153,.12);color:var(--ok);}
+.chip.warn{background:rgba(245,185,66,.13);color:var(--warn);}
+.chip.dim{background:rgba(138,147,160,.12);color:var(--dim);}
+.boxlink{font-size:12px;white-space:nowrap;}
+.empty-note{color:var(--dim);font-size:13px;padding:14px;background:var(--card);border:1px solid var(--line);
+            border-radius:12px;}
+.err-note{color:var(--bad);font-size:13px;padding:14px;background:rgba(239,91,91,.08);
+          border:1px solid rgba(239,91,91,.3);border-radius:12px;}
+.team-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+           margin:24px 0 10px;}
+.team-head .id{display:flex;align-items:center;gap:9px;}
+.team-head img{width:28px;height:28px;object-fit:contain;}
+.team-head .nm{font-weight:800;font-size:15px;}
+.team-head .code{color:var(--dim);font-weight:600;font-size:12px;margin-left:6px;}
+.missing-badge{font-size:11px;padding:3px 9px;border-radius:20px;background:rgba(239,91,91,.13);
+               color:var(--bad);border:1px solid rgba(239,91,91,.3);}
+.missing-badge.zero{background:rgba(54,211,153,.12);color:var(--ok);border-color:rgba(54,211,153,.3);}
+.roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:11px;margin-bottom:8px;}
+.person{text-align:center;}
+.thumb{width:100%;aspect-ratio:3/4;border-radius:9px;object-fit:cover;background:#1b1f27;display:block;
+       border:1px solid var(--line);}
+.thumb.placeholder{display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
+                   color:var(--dim);}
+.pname{font-size:11.5px;margin-top:5px;line-height:1.25;}
+.pnum{color:var(--dim);font-size:10.5px;}
+.inactive{opacity:.4;}
+#foot{margin-top:34px;color:var(--dim);font-size:12.5px;line-height:1.6;}
+#foot a{color:var(--acc);}
+@media (max-width:640px){
+  body{padding:20px 16px 60px;}
+  .roster-grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));}
+}
+</style>
+</head>
+<body>
+
+<a class="back" href="../">← matchavez.com/hockey</a>
+<h1>Data Warehouse<small>Full season game archive + player/coach photo library — sourced live from the <a href="https://github.com/matchavez/nzihl-season-data" target="_blank" rel="noopener">nzihl-season-data</a> and <a href="https://github.com/matchavez/nzihl-player-photos" target="_blank" rel="noopener">nzihl-player-photos</a> repos.</small></h1>
+
+<div id="top-nav">
+  <a href="#games">Game Data</a>
+  <a href="#games-nzihl">NZIHL Games</a>
+  <a href="#games-nzwihl">NZWIHL Games</a>
+  <a href="#photos">Player Photos</a>
+  <a href="#photos-nzihl">NZIHL Photos</a>
+  <a href="#photos-nzwihl">NZWIHL Photos</a>
+</div>
+
+<h2 id="games">Game Data Warehouse <span class="n" id="games-count-total"></span></h2>
+<p class="sub">Every completed box score + the rest of the season's known fixtures, rebuilt nightly. Click a completed game to open its box score.</p>
+<div id="games-root"><p class="empty-note">Loading season data…</p></div>
+
+<h2 id="photos">Player Photo Warehouse <span class="n" id="photos-count-total"></span></h2>
+<p class="sub">Every rostered player &amp; coach, grouped by team, sorted by jersey number. Missing-photo counts double as a chase-list.</p>
+<div id="photos-root"><p class="empty-note">Loading photo manifest…</p></div>
+
+<div id="foot">
+  Game data: <a href="https://github.com/matchavez/nzihl-season-data" target="_blank" rel="noopener">matchavez/nzihl-season-data</a> (nightly).
+  Photos: <a href="https://github.com/matchavez/nzihl-player-photos" target="_blank" rel="noopener">matchavez/nzihl-player-photos</a> (weekly) —
+  also browsable on its own <a href="https://matchavez.com/nzihl-player-photos/" target="_blank" rel="noopener">standalone gallery</a>.
+  This page just fetches both repos' committed JSON/images live client-side; nothing is copied or cached here.
+</div>
+
+<script>
+const LOGO_BASE = "https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+const PHOTO_BASE = "https://matchavez.com/nzihl-player-photos/";
+const logoUrl = file => file ? LOGO_BASE + encodeURIComponent(file) : "";
+
+// Canonical 10-club registry (short_code -> display name + logo file), same
+// source values as team/index.html + activity-banner's REG table.
+const TEAMS = {
+  nzihl: [
+    {code:"ADM", nm:"Pure NZ Admirals", logo:"Pure-NZ-Admirals-2000x2000.png"},
+    {code:"BSW", nm:"Botany Swarm", logo:"Botany Swarm 2000x2000.png"},
+    {code:"CRD", nm:"Canterbury Red Devils", logo:"Red Devils 2000x2000r.png"},
+    {code:"DUN", nm:"Dunedin Thunder", logo:"Dunedin_Thunder.png"},
+    {code:"MKO", nm:"Auckland Mako", logo:"Auckland Mako 2000x2000.png"},
+    {code:"SCS", nm:"SkyCity Stampede", logo:"Skycity Stampede 2000x2000.png"},
+  ],
+  nzwihl: [
+    {code:"AST", nm:"Auckland Steel", logo:"Auckland-Steel-White.png"},
+    {code:"CIN", nm:"Canterbury Inferno", logo:"Inferno-White.png"},
+    {code:"DTW", nm:"Dunedin Thunder Women", logo:"thunder-women-white.png"},
+    {code:"WLD", nm:"Wakatipu Wild", logo:"Wakatipu-wild-white.png"},
+  ],
+};
+[...TEAMS.nzihl, ...TEAMS.nzwihl].forEach(t => {}); // (kept flat lookups below)
+const teamByCode = {};
+const teamByName = {};
+[...TEAMS.nzihl, ...TEAMS.nzwihl].forEach(t => { teamByCode[t.code] = t; teamByName[t.nm] = t; });
+
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// Matches the standalone photo gallery's convention (first-name initial +
+// surname-string initial, splitting only on the FIRST space) so a
+// multi-word surname like "De Jonge" shows "BD" here too, not "BJ".
+const initials = name => {
+  const s = String(name||"").trim();
+  const i = s.indexOf(" ");
+  const first = i === -1 ? s : s.slice(0, i);
+  const rest = i === -1 ? "" : s.slice(i + 1);
+  return ((first[0]||"") + (rest[0]||"")).toUpperCase() || "?";
+};
+
+/* ============================== GAMES ============================== */
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtDate = iso => { if(!iso) return "—"; const d = new Date(iso + "T00:00:00"); return `${String(d.getDate()).padStart(2,"0")} ${MON[d.getMonth()]}`; };
+const fmtTime = hhmm => { if(!hhmm) return ""; const [h,m] = hhmm.split(":").map(Number);
+  const h12 = ((h + 11) % 12) + 1; return `${h12}:${String(m).padStart(2,"0")}${h >= 12 ? "pm" : "am"}`; };
+
+function finalChip(finalType){
+  if(finalType === "OT") return `<span class="chip warn">FINAL/OT</span>`;
+  if(finalType === "SO") return `<span class="chip warn">FINAL/SO</span>`;
+  return `<span class="chip ok">FINAL</span>`;
+}
+
+function teamCell(t){
+  // Completed games carry a `code`; upcoming (schedule-only) entries only
+  // carry a `name` -- fall back to a name lookup so upcoming fixtures still
+  // get a logo + short code instead of the bare full name.
+  const reg = teamByCode[t.code] || teamByName[t.name];
+  const img = reg ? `<img src="${logoUrl(reg.logo)}" alt="">` : "";
+  const label = reg ? reg.code : (t.code || t.name || "?");
+  return `${img}<span>${esc(label)}</span>`;
+}
+
+function streakStrip(derived, leagueKey){
+  const streak = (derived && derived.streak) || {};
+  const codeByTeamId = leagueCodeMaps[leagueKey] || {};
+  const chips = Object.keys(streak).map(teamId => {
+    const code = codeByTeamId[teamId];
+    const reg = code ? teamByCode[code] : null;
+    if(!reg) return "";
+    const s = streak[teamId];
+    const cls = s.type === "W" ? "w" : s.type === "L" ? "l" : (s.type||"").toLowerCase();
+    return `<div class="streak-chip"><img src="${logoUrl(reg.logo)}" alt="">${reg.code} <span class="${cls}">${esc(s.type)}${s.count}</span></div>`;
+  }).filter(Boolean).join("");
+  return chips ? `<div class="streaks">${chips}</div>` : "";
+}
+
+const leagueCodeMaps = {}; // leagueKey -> {teamId: code}, built while rendering games
+
+function renderGamesLeague(leagueKey, leagueLabel, season, boxHref){
+  const games = (season && season.games) || [];
+  const upcoming = (season && season.upcoming) || [];
+  const derived = season && season.derived;
+
+  const codeByTeamId = {};
+  games.forEach(g => ["away","home"].forEach(side => { const t = g[side]; if(t && t.teamID != null) codeByTeamId[t.teamID] = t.code; }));
+  leagueCodeMaps[leagueKey] = codeByTeamId;
+
+  const played = [...games].sort((a,b) => (b.date||"").localeCompare(a.date||"") || b.gameid - a.gameid);
+  const upc = [...upcoming].sort((a,b) => (a.date||"").localeCompare(b.date||"") || (a.time||"").localeCompare(b.time||""));
+
+  const teamOptions = TEAMS[leagueKey].map(t => `<option value="${t.code}">${esc(t.nm)}</option>`).join("");
+
+  const playedRows = played.map(g => {
+    const gid = g.gameid;
+    const href = `${boxHref}?g=${gid}${leagueKey==="nzwihl" ? "&w=1" : ""}`;
+    return `<tr data-teams="${esc(g.away.code)} ${esc(g.home.code)}">
+      <td>${fmtDate(g.date)}</td>
+      <td><div class="matchup">${teamCell(g.away)} <span class="sc">${g.away.total}</span><span class="at">@</span><span class="sc">${g.home.total}</span> ${teamCell(g.home)}</div></td>
+      <td>${finalChip(g.finalType)}</td>
+      <td class="boxlink"><a href="${href}" target="_blank" rel="noopener">Box score →</a></td>
+    </tr>`;
+  }).join("");
+
+  const upcRows = upc.map(g => {
+    const ac = (teamByCode[g.away.code] || teamByName[g.away.name] || {}).code || "";
+    const hc = (teamByCode[g.home.code] || teamByName[g.home.name] || {}).code || "";
+    return `<tr data-teams="${esc(ac)} ${esc(hc)}">
+      <td>${fmtDate(g.date)}</td>
+      <td>${fmtTime(g.time)}</td>
+      <td><div class="matchup">${teamCell(g.away)} <span class="at">@</span> ${teamCell(g.home)}</div></td>
+    </tr>`;
+  }).join("");
+
+  return `
+  <div class="league-block">
+    <div class="league-tag ${leagueKey}">${leagueLabel}</div>
+    ${streakStrip(derived, leagueKey)}
+
+    <h3 id="games-${leagueKey}">Completed games <span class="count">(${played.length})</span></h3>
+    <div class="controls">
+      <input class="search" data-scope="played-${leagueKey}" placeholder="Search date or team code…">
+      <select class="teamfilter" data-scope="played-${leagueKey}"><option value="">All teams</option>${teamOptions}</select>
+    </div>
+    ${played.length ? `<table id="played-${leagueKey}"><thead><tr><th>Date</th><th>Matchup</th><th>Result</th><th></th></tr></thead><tbody>${playedRows}</tbody></table>`
+                     : `<p class="empty-note">No completed games recorded yet.</p>`}
+
+    <h3>Upcoming fixtures <span class="count">(${upc.length})</span></h3>
+    ${upc.length ? `<table id="upcoming-${leagueKey}"><thead><tr><th>Date</th><th>Time</th><th>Matchup</th></tr></thead><tbody>${upcRows}</tbody></table>`
+                 : `<p class="empty-note">No further fixtures listed yet.</p>`}
+  </div>`;
+}
+
+function wireGameFilters(){
+  document.querySelectorAll('input.search[data-scope]').forEach(input => {
+    input.addEventListener('input', () => applyGameFilter(input.dataset.scope));
+  });
+  document.querySelectorAll('select.teamfilter[data-scope]').forEach(sel => {
+    sel.addEventListener('change', () => applyGameFilter(sel.dataset.scope));
+  });
+}
+function applyGameFilter(scope){
+  const q = (document.querySelector(`input.search[data-scope="${scope}"]`)?.value || "").trim().toLowerCase();
+  const team = document.querySelector(`select.teamfilter[data-scope="${scope}"]`)?.value || "";
+  const table = document.getElementById(scope);
+  if(!table) return;
+  let shown = 0;
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const teams = (tr.dataset.teams || "").toLowerCase();
+    const text = tr.textContent.toLowerCase();
+    const matchesQ = !q || text.includes(q);
+    const matchesTeam = !team || teams.includes(team.toLowerCase());
+    const show = matchesQ && matchesTeam;
+    tr.classList.toggle('hidden', !show);
+    if(show) shown++;
+  });
+}
+
+async function loadGames(){
+  const root = document.getElementById('games-root');
+  try{
+    const [nzihlRes, nzwihlRes] = await Promise.all([
+      fetch("https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzihl.json", {cache:"no-store"}),
+      fetch("https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzwihl.json", {cache:"no-store"}),
+    ]);
+    if(!nzihlRes.ok || !nzwihlRes.ok) throw new Error(`HTTP ${nzihlRes.status}/${nzwihlRes.status}`);
+    const [nzihl, nzwihl] = await Promise.all([nzihlRes.json(), nzwihlRes.json()]);
+
+    document.getElementById('games-count-total').textContent =
+      `${(nzihl.games||[]).length + (nzwihl.games||[]).length} completed · ${(nzihl.upcoming||[]).length + (nzwihl.upcoming||[]).length} upcoming`;
+
+    root.innerHTML =
+      `<div id="games-nzihl">${renderGamesLeague("nzihl", "NZIHL", nzihl, "../box/")}</div>` +
+      `<div id="games-nzwihl">${renderGamesLeague("nzwihl", "NZWIHL", nzwihl, "../box/")}</div>`;
+    wireGameFilters();
+  }catch(e){
+    root.innerHTML = `<p class="err-note">Couldn't load season data (${esc(e.message)}). The nzihl-season-data repo may be mid-rebuild — try reloading in a minute.</p>`;
+  }
+}
+
+/* ============================== PHOTOS ============================== */
+function jerseySortKey(p){
+  const n = parseInt(p.number, 10);
+  return Number.isFinite(n) ? n : 9999;
+}
+function roleSortKey(p){
+  if(p.role !== "coach") return 0;
+  return (p.position||"").toLowerCase() === "head coach" ? 1 : 2;
+}
+
+function personCard(p){
+  const active = p.active !== false;
+  const sub = p.number ? `#${esc(p.number)}` : esc((p.position||"").toUpperCase());
+  const img = p.photo
+    ? `<img class="thumb" loading="lazy" src="${PHOTO_BASE}${esc(p.photo)}" alt="${esc(p.name)}">`
+    : `<div class="thumb placeholder">${esc(initials(p.name))}</div>`;
+  return `<div class="person${active ? "" : " inactive"}">${img}
+    <div class="pname">${esc(p.name)}${active ? "" : " <span style='color:var(--bad)'>(inactive)</span>"}</div>
+    <div class="pnum">${sub}</div></div>`;
+}
+
+function renderPhotoTeam(leagueKey, teamMeta, teamData){
+  const people = Object.values((teamData && teamData.people) || {});
+  people.sort((a,b) => roleSortKey(a)-roleSortKey(b) || jerseySortKey(a)-jerseySortKey(b) || a.name.localeCompare(b.name));
+  const activePeople = people.filter(p => p.active !== false);
+  const missing = activePeople.filter(p => !p.photo).length;
+  const badgeCls = missing === 0 ? "missing-badge zero" : "missing-badge";
+
+  if(teamData && teamData.no_team_id){
+    return `<div class="team-head"><div class="id"><img src="${logoUrl(teamMeta.logo)}" alt=""><span class="nm">${esc(teamMeta.nm)}<span class="code">${teamMeta.code}</span></span></div></div>
+    <p class="empty-note">Not fielding a team this season — no roster to scrape yet.</p>`;
+  }
+
+  return `<div class="team-head">
+      <div class="id"><img src="${logoUrl(teamMeta.logo)}" alt=""><span class="nm">${esc(teamMeta.nm)}<span class="code">${teamMeta.code}</span></span></div>
+      <span class="${badgeCls}">${missing} missing photo${missing!==1?"s":""} · ${activePeople.length} total</span>
+    </div>
+    ${people.length ? `<div class="roster-grid">${people.map(personCard).join("")}</div>` : `<p class="empty-note">No roster data.</p>`}`;
+}
+
+function renderPhotoLeague(leagueKey, leagueLabel, leagueBlock){
+  const teamsByCode = (leagueBlock && leagueBlock.teams) || {};
+  const sections = TEAMS[leagueKey].map(meta => renderPhotoTeam(leagueKey, meta, teamsByCode[meta.code])).join("");
+  return `<div class="league-block">
+    <div class="league-tag ${leagueKey}">${leagueLabel}</div>
+    ${sections}
+  </div>`;
+}
+
+async function loadPhotos(){
+  const root = document.getElementById('photos-root');
+  try{
+    const res = await fetch("https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json", {cache:"no-store"});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const manifest = await res.json();
+    const leagues = manifest.leagues || {};
+
+    let totalActive = 0, totalMissing = 0;
+    Object.values(leagues).forEach(lb => Object.values(lb.teams||{}).forEach(tb => {
+      Object.values(tb.people||{}).forEach(p => { if(p.active !== false){ totalActive++; if(!p.photo) totalMissing++; } });
+    }));
+    document.getElementById('photos-count-total').textContent = `${totalActive} active · ${totalMissing} missing photo`;
+
+    root.innerHTML =
+      `<div id="photos-nzihl">${renderPhotoLeague("nzihl", "NZIHL", leagues.nzihl)}</div>` +
+      `<div id="photos-nzwihl">${renderPhotoLeague("nzwihl", "NZWIHL", leagues.nzwihl)}</div>`;
+  }catch(e){
+    root.innerHTML = `<p class="err-note">Couldn't load the photo manifest (${esc(e.message)}). Try reloading in a minute.</p>`;
+  }
+}
+
+loadGames();
+loadPhotos();
+</script>
+</body>
+</html>
