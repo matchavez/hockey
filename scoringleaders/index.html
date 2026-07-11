@@ -319,7 +319,14 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
   if(pid in PHOTO_FALLBACK_CACHE) return PHOTO_FALLBACK_CACHE[pid];
   let result = null;
   try{
-    const url = `https://www.nzihl.com/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
+    // NZIHL and NZWIHL are separate site instances on the esportsdesk platform —
+    // hitting the wrong one 302s to a generic clear.cfm page instead of the real
+    // profile (caught live 2026-07-11: every NZWIHL fallback lookup was silently
+    // failing this way, even though the players genuinely have photos uploaded —
+    // e.g. Canterbury Inferno's Cameron Tobin/Bridie Gibbings/Gabrielle Guerin all
+    // resolve fine once pointed at the right host). leagueid 35501 = NZWIHL.
+    const host = String(lid)==="35501" ? "www.nzwihl.com" : "www.nzihl.com";
+    const url = `https://${host}/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
     const html = await getText(url);
     const m = html.match(/largeHeadshot[^"]*"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
     if(m){
