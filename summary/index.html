@@ -30,7 +30,14 @@ if (new URLSearchParams(location.search).get('bg') === 'opaque') {
   html.bg-opaque .divider{background:rgba(42,42,42,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
   html.bg-opaque .col.penalties{background:rgba(20,20,20,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
   #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
-  #stage{width:1840px;height:1000px;flex:0 0 auto;position:relative;color:var(--fg);background:var(--bg);overflow:hidden;display:flex;flex-direction:column;}
+  #stage{width:1840px;height:1000px;flex:0 0 auto;position:relative;color:var(--fg);background:var(--bg);overflow:hidden;display:flex;flex-direction:column;
+    opacity:0;transition:opacity .35s ease;}
+  /* Nothing renders — no stage, no "Loading…" text, no setup-error text — until the
+     first box score has actually loaded and rendered. Matches activity-banner's
+     philosophy (which shows literally nothing until it has a real event to display);
+     production diagnostics belong on the pre-flight page, not as on-air text.
+     (Mat, 2026-07-11) */
+  #stage.ready{opacity:1;}
   #wash{position:absolute;left:0;top:0;width:100%;height:230px;z-index:0;pointer-events:none;filter:blur(48px);opacity:.6;clip-path:inset(0);}
   /* live "scraping" indicator — hidden + still by default; only pulses while a box-score fetch is in flight (see tick()) */
   .livedot{position:absolute;top:16px;left:22px;z-index:6;width:14px;height:14px;border-radius:50%;background:#5fe39a;box-shadow:0 0 0 0 rgba(95,227,154,.6);opacity:0;transition:opacity .2s ease;}
@@ -662,6 +669,7 @@ async function tick(){
     VENUE = TARGET.venue || vis(P.home.teamID).venue || "";
     LEAGUE_NAME = TARGET.leagueName;
     hideMsg(); render(P); renderedOnce=true; fitWindow();
+    document.getElementById("stage").classList.add("ready"); // reveal only once real content is on screen
   }catch(e){ if(!renderedOnce) showMsg("Couldn’t load the live box score — retrying…"); }
   finally{ if(dot){ const wait=Math.max(0,900-(Date.now()-t0)); setTimeout(()=>dot.classList.remove("scraping"),wait); } } // ensure ≥1 visible pulse, then OFF until next poll
 }
