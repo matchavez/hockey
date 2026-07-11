@@ -458,24 +458,24 @@ if(!team){
 
   // Schedule/results widget — right column of the Standings section
   // (standings image left, this narrower widget right), below the header
-  // fold. Completed games come from the nzihl-season-data archive
-  // (nzihl.json/nzwihl.json — full season, rebuilt nightly); upcoming
-  // fixtures come from the same boxscores.json manifest the roster card
-  // reads (rolling ~11-day lookahead), so it only ever shows fixtures we
-  // actually know about yet. No max-height/scroll on the body — it just
-  // grows to fit the whole season.
+  // fold. BOTH completed and upcoming games come from the nzihl-season-data
+  // archive (nzihl.json/nzwihl.json — full season, rebuilt nightly): `games`
+  // for what's been played, `upcoming` for the rest of the season's known
+  // fixtures (schedules.cfm, no lookahead cap — deliberately NOT the same
+  // as nzihl-broadcast-rosters' boxscores.json, which is windowed to ~11
+  // days for its own purpose). One fetch covers the whole widget. No
+  // max-height/scroll on the body — it just grows to fit the whole season.
   (async function loadSchedule(){
     const hd = document.getElementById('sched-hd');
     const body = document.getElementById('sched-body');
     const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const fmtDate = iso => { const d = new Date(iso + "T00:00:00"); return `${String(d.getDate()).padStart(2,"0")} ${MON[d.getMonth()]}`; };
+    const fmtTime = hhmm => { const [h,m] = hhmm.split(":").map(Number);
+      const h12 = ((h + 11) % 12) + 1; return `${h12}:${String(m).padStart(2,"0")}${h >= 12 ? "pm" : "am"}`; };
     const ordinal = n => { const s=["th","st","nd","rd"], v=n%100; return `${n}${s[(v-20)%10]||s[v]||s[0]}`; };
     try{
       const leagueFile = team.league === "NZIHL" ? "nzihl.json" : "nzwihl.json";
-      const [seasonRes, bsRes] = await Promise.all([
-        fetch(`https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/${leagueFile}`, {cache:"no-store"}),
-        fetch(`https://raw.githubusercontent.com/matchavez/${team.roster}/main/boxscores.json`, {cache:"no-store"}).catch(()=>null),
-      ]);
+      const seasonRes = await fetch(`https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/${leagueFile}`, {cache:"no-store"});
       if(!seasonRes.ok) throw new Error(String(seasonRes.status));
       const season = await seasonRes.json();
       const games = season.games || [];
@@ -488,12 +488,11 @@ if(!team){
       const ALIASES = { "Canterbury Red Devils": ["Red Devils"], "Dunedin Thunder Women": ["Dunedin Thunder"] };
       const accepted = new Set([team.nm, ...(ALIASES[team.nm] || [])]);
 
-      const codeByTeamId = {}, nameToCode = {};
+      const codeByTeamId = {};
       let teamID = null;
       games.forEach(g => ["away","home"].forEach(side=>{
         const t = g[side];
         if(t.teamID != null) codeByTeamId[t.teamID] = t.code;
-        nameToCode[t.name] = t.code;
         if(teamID == null && accepted.has(t.name)) teamID = t.teamID;
       }));
 
@@ -547,25 +546,25 @@ if(!team){
           : "Form";
       }
 
-      // Upcoming fixtures, from the same rolling manifest the roster card
-      // reads — only ever shows what's inside that lookahead window.
+      // Upcoming fixtures — the rest of the season's known games, not just
+      // a short lookahead window. Matched by teamID (same as played games,
+      // same codeByTeamId lookup), so this doesn't need the name-string
+      // matching/alias workaround at all.
       let upcomingRows = [];
-      if(bsRes && bsRes.ok){
-        const bs = await bsRes.json();
-        upcomingRows = (bs.games || [])
-          .filter(g => (g.away === team.nm || g.home === team.nm) && !playedIds.has(g.gameid))
-          .sort((a,b) => (a.datetime||"").localeCompare(b.datetime||""))
+      if(teamID != null){
+        upcomingRows = (season.upcoming || [])
+          .filter(g => (g.away.teamID === teamID || g.home.teamID === teamID) && !playedIds.has(g.gameid))
+          .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time))
           .map(g=>{
-            const isAway = g.away === team.nm;
-            const ac = nameToCode[g.away] || g.away_code, hc = nameToCode[g.home] || g.home_code;
+            const isAway = g.away.teamID === teamID;
+            const ac = codeByTeamId[g.away.teamID] || "???", hc = codeByTeamId[g.home.teamID] || "???";
             const matchup = isAway ? `${ac} @${hc}` : `${ac} - ${hc}`;
-            const time = (g.time || "").replace(/\s+/g,"").toLowerCase();
-            return { date: fmtDate(g.date), matchup, tag: time, future: true };
+            return { date: fmtDate(g.date), matchup, tag: fmtTime(g.time), future: true };
           });
       }
 
       if(teamID == null && !hd.innerHTML.trim()){
-        hd.textContent = upcomingRows.length ? "Upcoming" : "No games yet this season";
+        hd.textContent = "No games yet this season";
       }
 
       const rows = [...playedRows, ...upcomingRows];
