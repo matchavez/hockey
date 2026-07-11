@@ -38,9 +38,13 @@
 html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
   font-family:Inter,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;
   min-height:100%;}
-body{padding:14px 14px 40px;max-width:720px;margin:0 auto;}
-h1{font-size:19px;font-weight:800;margin:2px 0 2px;letter-spacing:.01em;}
-.matchup{font-size:14px;color:var(--dim);font-weight:600;margin-bottom:12px;}
+body{padding:9px 14px 32px;max-width:720px;margin:0 auto;}
+/* Compacted 2026-07-12 (Mat): the preview graphic + queued indicator + fire
+   button are the primary thing on this page -- everything above/around it
+   (header, matchup line, control row, fact editor) tightened up so they
+   take less room and don't compete with it. */
+h1{font-size:14px;font-weight:800;margin:0;letter-spacing:.01em;opacity:.75;}
+.matchup{font-size:12px;color:var(--dim);font-weight:600;margin-bottom:7px;}
 .notice{background:#2a1f10;border:1px solid #6b4a12;color:#f5c26b;border-radius:10px;
   padding:10px 13px;font-size:13px;font-weight:600;margin-bottom:12px;line-height:1.4;}
 .notice.err{background:#2a1414;border-color:#6b2020;color:#f79a9a;}
@@ -48,7 +52,7 @@ h1{font-size:19px;font-weight:800;margin:2px 0 2px;letter-spacing:.01em;}
   padding:32px 20px;text-align:center;color:var(--dim);font-size:15px;font-weight:600;}
 
 .previewWrap{position:relative;border-radius:14px;overflow:hidden;background:#000;
-  border:1px solid var(--line);margin-bottom:10px;}
+  border:1px solid var(--line);margin-bottom:8px;}
 .previewFrameHolder{position:relative;width:100%;aspect-ratio:16/9;background:
   repeating-conic-gradient(#15181d 0% 25%, #191d24 0% 50%) 50% / 22px 22px;}
 #previewFrame{position:absolute;inset:0;width:100%;height:100%;border:0;}
@@ -62,16 +66,18 @@ h1{font-size:19px;font-weight:800;margin:2px 0 2px;letter-spacing:.01em;}
 .statusMsg{pointer-events:auto;align-self:flex-start;font:700 12px Inter,sans-serif;
   color:#fff;background:rgba(0,0,0,.55);border-radius:8px;padding:6px 10px;min-height:14px;}
 .statusMsg.interrupted{background:rgba(239,91,91,.85);}
+/* Clear moved INTO the preview card itself, tiny + tucked in the corner --
+   the card is meant to be just graphic + queued indicator + fire button,
+   so this is deliberately minimal/secondary, not a fourth equal control.
+   The old separate controlRow row (with a redundant "player name" label
+   that just repeated what the preview graphic already shows) is gone. */
+#clearBtn{position:absolute;left:8px;bottom:8px;font:700 12px Inter,sans-serif;
+  color:#f79a9a;background:rgba(0,0,0,.55);border:none;border-radius:8px;
+  padding:6px 11px;cursor:pointer;}
+#clearBtn:active{background:rgba(0,0,0,.75);}
 
-.controlRow{display:flex;gap:10px;margin-bottom:14px;}
-#clearBtn{flex:0 0 auto;font:800 14px Inter,sans-serif;letter-spacing:.02em;color:#f79a9a;
-  background:#1c1414;border:1px solid #4a2222;border-radius:10px;padding:11px 18px;cursor:pointer;}
-#clearBtn:active{background:#2a1a1a;}
-.selectedLbl{flex:1 1 auto;align-self:center;font-size:13px;color:var(--dim);font-weight:600;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-
-.factBox{background:var(--card);border:1px solid var(--line);border-radius:14px;
-  padding:12px 14px;margin-bottom:16px;}
+.factBox{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px;margin-bottom:12px;}
 .toggleRow{display:flex;align-items:center;gap:10px;margin-bottom:8px;user-select:none;
   cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .toggleRow input{display:none;}
@@ -82,12 +88,12 @@ h1{font-size:19px;font-weight:800;margin:2px 0 2px;letter-spacing:.01em;}
 .toggleRow input:checked + .swatch{background:var(--ok);}
 .toggleRow input:checked + .swatch::after{transform:translateX(19px);background:#0d0f13;}
 .toggleRow span.lbl{font-size:14px;font-weight:700;}
-#factText{width:100%;min-height:64px;resize:vertical;background:#0e1116;border:1px solid var(--line);
-  border-radius:9px;color:var(--txt);font:500 14px/1.4 Inter,sans-serif;padding:10px 11px;}
+#factText{width:100%;min-height:50px;resize:vertical;background:#0e1116;border:1px solid var(--line);
+  border-radius:9px;color:var(--txt);font:500 14px/1.4 Inter,sans-serif;padding:9px 11px;}
 #factText::placeholder{color:#525a66;}
 
-.groupTitle{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
-  color:var(--dim);margin:14px 2px 8px;}
+.groupTitle{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--dim);margin:10px 2px 6px;}
 .pillWrap{display:flex;flex-wrap:wrap;gap:8px;}
 .pill{position:relative;border:2px solid transparent;border-radius:11px;min-width:52px;height:52px;
   padding:0 10px;display:flex;align-items:center;justify-content:center;gap:3px;
@@ -126,11 +132,7 @@ footer{margin-top:26px;font-size:12px;color:#525a66;text-align:center;line-heigh
       <div class="statusMsg" id="statusMsg"></div>
       <button id="fireBtn" disabled>FIRE</button>
     </div>
-  </div>
-
-  <div class="controlRow">
-    <button id="clearBtn">CLEAR</button>
-    <div class="selectedLbl" id="selectedLbl">No player selected</div>
+    <button id="clearBtn">Clear</button>
   </div>
 
   <div class="factBox">
@@ -569,8 +571,6 @@ function schedulePreviewUpdate(){
 async function selectPlayer(teamCode, p){
   SELECTED = {team_code:teamCode, team_name:CODE_NAME[teamCode]||teamCode,
               role:p.role, number:p.number, name:p.name, position:p.position};
-  document.getElementById("selectedLbl").textContent =
-    `${p.name}${p.role==="coach"?" — "+p.position:(p.number?" · #"+p.number:"")}`;
   renderPills();
   const fact = await computeFact(SELECTED);
   document.getElementById("factText").value = fact || "";
@@ -612,7 +612,6 @@ document.getElementById("fireBtn").onclick=async()=>{
 document.getElementById("clearBtn").onclick=async()=>{
   await postControl("clear", {});
   SELECTED=null;
-  document.getElementById("selectedLbl").textContent="No player selected";
   document.getElementById("factText").value="";
   document.getElementById("factToggle").checked=false;
   document.getElementById("fireBtn").disabled=true;
@@ -661,8 +660,6 @@ async function start(){
   await pollState();   // adopt any already-queued/fired player from another device
   if(CONTROL_STATE && CONTROL_STATE.player){
     SELECTED = CONTROL_STATE.player;
-    document.getElementById("selectedLbl").textContent =
-      `${SELECTED.name}${SELECTED.role==="coach"?" — "+SELECTED.position:(SELECTED.number?" · #"+SELECTED.number:"")}`;
     document.getElementById("factText").value = CONTROL_STATE.fact||"";
     document.getElementById("factToggle").checked = !!CONTROL_STATE.include_fact;
     renderPills(); updatePreview();
