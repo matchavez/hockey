@@ -330,15 +330,6 @@ function parse(html){
 
 // ---- render (v9 visuals) ----------------------------------------------
 let LEAGUE_NAME="New Zealand Ice Hockey League", VENUE="";
-// NZWIHL headshot circles are OFF for the remainder of the 2026 season (Mat,
-// 2026-07-11): spot-checked 47 real NZWIHL players across 3 of 4 teams against
-// the shotURL() CDN path and only got 2 hits, both goalies — every skater came
-// back a placeholder-looking initials badge instead of a real photo. NZIHL is
-// left completely untouched (its photo coverage — plus the profile-page
-// fallback above — is real). Revisit at the start of the 2027 season or
-// sooner if NZWIHL uploads photos to esportsdesk — just delete the
-// IS_NZWIHL checks below (goalEl() and start()).
-let IS_NZWIHL=false;
 function teamObj(p){const v=vis(p.teamID);return {teamID:p.teamID,name:p.name,code:v.code||p.code,ink:v.ink,dark:v.dark,logo:v.logo,sog:p.sog,pp:p.pp,pim:p.pim,line:p.line,tot:p.tot};}
 function washVectors(a,h){document.getElementById("wash").style.background=
   `linear-gradient(90deg, ${a.dark} 0%, ${a.dark} 6%, transparent 42%),`+
@@ -371,7 +362,14 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
   if(pid in PHOTO_FALLBACK_CACHE) return PHOTO_FALLBACK_CACHE[pid];
   let result=null;
   try{
-    const url=`https://www.nzihl.com/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
+    // NZIHL and NZWIHL are separate site instances on the esportsdesk platform —
+    // hitting the wrong one 302s to a generic clear.cfm page instead of the real
+    // profile (caught live 2026-07-11: every NZWIHL fallback lookup was silently
+    // failing this way, even though the players genuinely have photos uploaded —
+    // e.g. Canterbury Inferno's Cameron Tobin/Bridie Gibbings/Gabrielle Guerin all
+    // resolve fine once pointed at the right host). leagueid 35501 = NZWIHL.
+    const host=String(lid)==="35501"?"www.nzwihl.com":"www.nzihl.com";
+    const url=`https://${host}/leagues/rosters_profile.cfm?clientID=${cid}&leagueID=${lid}&teamID=${teamID}&playerID=${pid}&printPage=0`;
     const html=await getText(url);
     const m=html.match(/largeHeadshot[^"]*"[^>]*background-image\s*:\s*url\(([^)]+)\)/i);
     if(m){
@@ -427,16 +425,14 @@ function resolvePlayerPhotoCached(who, pid, teamID, cid, lid){
 function goalEl(x,ink){const el=document.createElement("div");el.className="goal";
   const dispName=initSurname(properCase(x.who));
   el.innerHTML=`<span class="accent" style="background:${ink}"></span>
-    ${IS_NZWIHL?"":'<span class="shot"><span class="ini">'+ini(x.who)+'</span></span>'}
+    <span class="shot"><span class="ini">${ini(x.who)}</span></span>
     <span class="gmain"><div class="gname"><span class="no">${x.no}</span><span class="nmt">${dispName}</span></div>
       <div class="gsub"><span class="gast">${fmtAssist(x.a)}</span>${x.tag?`<span class="gtag">${x.tag}</span>`:""}<span class="gtime">${x.t}</span></div></span>`;
-  if(!IS_NZWIHL){
-    const shot=el.querySelector(".shot");
-    resolvePlayerPhotoCached(x.who, x.pid, x.teamID, CID, LID).then(img=>{
-      if(!img) return; // no photo anywhere — keep the initials placeholder
-      shot.innerHTML="";shot.appendChild(img);shot.style.boxShadow=`0 0 0 2px ${ink}`;
-    });
-  }
+  const shot=el.querySelector(".shot");
+  resolvePlayerPhotoCached(x.who, x.pid, x.teamID, CID, LID).then(img=>{
+    if(!img) return; // no photo anywhere — keep the initials placeholder
+    shot.innerHTML="";shot.appendChild(img);shot.style.boxShadow=`0 0 0 2px ${ink}`;
+  });
   el.querySelector(".nmt").dataset.full=dispName;return el;}
 function penEl(x,ink){const el=document.createElement("div");el.className="pen";
   const dispName=initSurname(properCase(x.who)), dispInf=properCase(x.inf);
@@ -678,7 +674,6 @@ async function start(){
   TARGET=await resolve();
   if(!TARGET) return;
   CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
-  IS_NZWIHL=TARGET.m.league==="nzwihl";
   await tick();
   const t0=Date.now();
   const iv=setInterval(()=>{ if(Date.now()-t0>3.25*3600*1000){clearInterval(iv);return;} tick(); }, 15000);
