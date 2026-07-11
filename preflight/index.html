@@ -163,14 +163,26 @@ async function checkStatsJson(m){
 // deploy yet, see nzihl-broadcast-assets/summary/DEPLOY.md).
 async function checkControlChannel(){
   const d=card("c-control","Player L3 control channel");
-  try{const t0=performance.now();
-    const r=await fetch(`${WORKER}/control/preflight-check`,{cache:"no-store"});
-    const j=await r.json();
-    const ms=Math.round(performance.now()-t0);
-    if(j&&j.code==="NO_DO_BINDING"){ setCard(d,"warn","NOT DEPLOYED YET","see summary/DEPLOY.md"); return; }
-    if(j&&j.error){ setCard(d,"bad","FAILED",String(j.error)); return; }
-    setCard(d,ms<4000?"ok":"warn","OK · "+ms+" ms","Durable Object responding");
-  }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
+  let r, text;
+  try{
+    var t0=performance.now();
+    r=await fetch(`${WORKER}/control/preflight-check`,{cache:"no-store"});
+    text=await r.text();
+  }catch(e){ setCard(d,"bad","FAILED — network","Can't reach the worker at all: "+String(e.message||e)); return; }
+  const ms=Math.round(performance.now()-t0);
+  let j=null;
+  try{ j=JSON.parse(text); }catch(e){ /* not JSON — see below */ }
+  if(j&&j.code==="NO_DO_BINDING"){ setCard(d,"warn","NOT DEPLOYED YET","see summary/DEPLOY.md"); return; }
+  if(j&&j.error){ setCard(d,"bad","FAILED",String(j.error)); return; }
+  if(!j){
+    // Worker responded but not with our JSON shape — almost always means the
+    // OLD (pre-control-channel) worker.js is still what's deployed, which
+    // returns a plain-text "missing ?url" error for any path it doesn't
+    // recognize. Same practical meaning as NO_DO_BINDING: not deployed yet.
+    setCard(d,"warn","NOT DEPLOYED YET","currently-live worker doesn't recognize /control/ — see summary/DEPLOY.md");
+    return;
+  }
+  setCard(d,ms<4000?"ok":"warn","OK · "+ms+" ms","Durable Object responding");
 }
 async function checkSource(id,nm,u,probe){
   const d=card(id,nm);
