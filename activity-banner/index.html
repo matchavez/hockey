@@ -1075,7 +1075,19 @@ async function start(){
     // polling/writes at all. The phone updates the preview by reloading this
     // iframe with a fresh ?preview= value on every pill tap / fact edit.
     try{
-      const payload = JSON.parse(decodeURIComponent(PREVIEW));
+      // Q.get() (URLSearchParams) already URI-decodes the param once, and
+      // updatePreview() in lowerthirds/index.html only encodeURIComponent's
+      // it once when building the iframe src -- so PREVIEW here is already
+      // plain JSON text. A second decodeURIComponent() used to be applied
+      // on top of that, which threw "URI malformed" (silently swallowed by
+      // this catch) for any fact/name containing a literal "%" not followed
+      // by two hex digits -- e.g. a goalie SV% fact like "stopped 73.3% of
+      // shots" -- so the preview just stayed blank with no visible error.
+      // Fixed 2026-07-12 (Mat: "Toby Schuck isn't working"). Falls back to
+      // the old double-decode only if single-parse fails, for safety.
+      let payload;
+      try{ payload = JSON.parse(PREVIEW); }
+      catch(e2){ payload = JSON.parse(decodeURIComponent(PREVIEW)); }
       if(payload && payload.player) showL3(payload.player, payload.fact, payload.include_fact, {sticky:true});
     }catch(e){ /* malformed preview payload — show nothing rather than error on screen */ }
   } else if(WORKER){
