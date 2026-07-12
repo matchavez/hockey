@@ -107,31 +107,41 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         <!-- neutral-zone faceoff dots (just centre-side of the blue line) -->
         <circle cx="330" cy="262" r="10" fill="#C8102E" opacity=".9"/>
         <circle cx="1510" cy="262" r="10" fill="#C8102E" opacity=".9"/>
-        <!-- end-zone faceoff circles (per Mat's reference diagram 2026-07-13:
-             hash marks CROSS the circle boundary at top+bottom, and the dot
-             gets its bracket-style restraining lines either side) -->
+        <!-- end-zone faceoff circles (per Mat's corrected reference 2026-07-13:
+             edge hash marks on the LEFT/RIGHT of each circle (facing the side
+             boards), vertical restraining lines above/below the dot with
+             horizontal crossbars at the dot-side ends, striped faceoff dot) -->
         <g stroke="#C8102E" stroke-width="6" fill="none" opacity=".9">
           <circle cx="330" cy="606" r="158"/>
           <circle cx="1510" cy="606" r="158"/>
         </g>
-        <circle cx="330" cy="606" r="10" fill="#C8102E" opacity=".9"/>
-        <circle cx="1510" cy="606" r="10" fill="#C8102E" opacity=".9"/>
         <g stroke="#C8102E" stroke-width="6" opacity=".9" fill="none">
-          <!-- left circle: edge hash marks straddling the boundary, top + bottom -->
-          <line x1="308" y1="432" x2="308" y2="462"/><line x1="352" y1="432" x2="352" y2="462"/>
-          <line x1="308" y1="750" x2="308" y2="780"/><line x1="352" y1="750" x2="352" y2="780"/>
-          <!-- left circle: dot brackets -->
-          <line x1="300" y1="576" x2="300" y2="636"/><line x1="360" y1="576" x2="360" y2="636"/>
-          <line x1="300" y1="588" x2="284" y2="588"/><line x1="300" y1="624" x2="284" y2="624"/>
-          <line x1="360" y1="588" x2="376" y2="588"/><line x1="360" y1="624" x2="376" y2="624"/>
-          <!-- right circle: edge hash marks -->
-          <line x1="1488" y1="432" x2="1488" y2="462"/><line x1="1532" y1="432" x2="1532" y2="462"/>
-          <line x1="1488" y1="750" x2="1488" y2="780"/><line x1="1532" y1="750" x2="1532" y2="780"/>
-          <!-- right circle: dot brackets -->
-          <line x1="1480" y1="576" x2="1480" y2="636"/><line x1="1540" y1="576" x2="1540" y2="636"/>
-          <line x1="1480" y1="588" x2="1464" y2="588"/><line x1="1480" y1="624" x2="1464" y2="624"/>
-          <line x1="1540" y1="588" x2="1556" y2="588"/><line x1="1540" y1="624" x2="1556" y2="624"/>
+          <!-- left circle: side-board hash marks (9 + 3 o'clock, straddling the boundary) -->
+          <line x1="150" y1="584" x2="178" y2="584"/><line x1="150" y1="628" x2="178" y2="628"/>
+          <line x1="482" y1="584" x2="510" y2="584"/><line x1="482" y1="628" x2="510" y2="628"/>
+          <!-- left circle: dot restraining lines, above -->
+          <line x1="316" y1="546" x2="316" y2="585"/><line x1="344" y1="546" x2="344" y2="585"/>
+          <line x1="290" y1="585" x2="316" y2="585"/><line x1="344" y1="585" x2="370" y2="585"/>
+          <!-- left circle: dot restraining lines, below -->
+          <line x1="316" y1="627" x2="316" y2="666"/><line x1="344" y1="627" x2="344" y2="666"/>
+          <line x1="290" y1="627" x2="316" y2="627"/><line x1="344" y1="627" x2="370" y2="627"/>
+          <!-- right circle: side-board hash marks -->
+          <line x1="1330" y1="584" x2="1358" y2="584"/><line x1="1330" y1="628" x2="1358" y2="628"/>
+          <line x1="1662" y1="584" x2="1690" y2="584"/><line x1="1662" y1="628" x2="1690" y2="628"/>
+          <!-- right circle: dot restraining lines, above -->
+          <line x1="1496" y1="546" x2="1496" y2="585"/><line x1="1524" y1="546" x2="1524" y2="585"/>
+          <line x1="1470" y1="585" x2="1496" y2="585"/><line x1="1524" y1="585" x2="1550" y2="585"/>
+          <!-- right circle: dot restraining lines, below -->
+          <line x1="1496" y1="627" x2="1496" y2="666"/><line x1="1524" y1="627" x2="1524" y2="666"/>
+          <line x1="1470" y1="627" x2="1496" y2="627"/><line x1="1524" y1="627" x2="1550" y2="627"/>
         </g>
+        <!-- striped faceoff dots (red with an ice-coloured horizontal band) -->
+        <clipPath id="dotL"><circle cx="330" cy="606" r="13"/></clipPath>
+        <clipPath id="dotR"><circle cx="1510" cy="606" r="13"/></clipPath>
+        <circle cx="330" cy="606" r="13" fill="#C8102E" opacity=".9"/>
+        <rect x="315" y="602" width="30" height="8" fill="#f1f5f9" clip-path="url(#dotL)"/>
+        <circle cx="1510" cy="606" r="13" fill="#C8102E" opacity=".9"/>
+        <rect x="1495" y="602" width="30" height="8" fill="#f1f5f9" clip-path="url(#dotR)"/>
         <!-- goal crease (bulges up toward centre ice) + goal line -->
         <path d="M 810 836 A 110 110 0 0 1 1030 836 Z" fill="#7FB6E6" fill-opacity=".45" stroke="#C8102E" stroke-width="6"/>
         <rect x="0" y="836" width="1840" height="7" fill="#C8102E"/>
