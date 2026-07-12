@@ -476,6 +476,25 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
   PHOTO_FALLBACK_CACHE[pid]=result;
   return result;
 }
+// Player photo warehouse (nzihl-player-photos) — tried FIRST, before the naive
+// esportsdesk guess/fallback below. Headshots don't change mid-game and the
+// warehouse's Pages/CDN is faster/more reliable than esportsdesk. Uses the SAME
+// getPhotoManifest()/PHOTO_BASE/TEAMID_CODE/CODE_LEAGUE the Player L3 feature
+// already defines further down this file (safe to reference here — this function
+// is only ever invoked async, well after the whole script has finished its
+// initial top-to-bottom run, same pattern buildL3Data()/tonightChipFor() rely on).
+// 2026-07-12 estate-wide photo-warehouse migration.
+async function warehousePhotoFor(teamID, no){
+  if(!teamID || !no) return null;
+  const code = TEAMID_CODE[teamID]; if(!code) return null;
+  const league = CODE_LEAGUE[code] || "nzihl";
+  const manifest = await getPhotoManifest(); if(!manifest) return null;
+  const teamPeople = (manifest.leagues && manifest.leagues[league] &&
+                       manifest.leagues[league].teams[code] &&
+                       manifest.leagues[league].teams[code].people) || {};
+  const person = Object.values(teamPeople).find(p=>p.role==="player" && String(p.number)===String(no));
+  return (person && person.photo) ? PHOTO_BASE+person.photo : null;
+}
 // Overall budget for resolving a goal-scorer photo, guess + fallback combined (widened
 // from the base 1500ms asset timeout, per Mat 2026-07-11, specifically so the fallback's
 // extra network round trip has a real chance to land before the banner reveals with no
@@ -483,19 +502,32 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
 // goes to the fallback lookup + its own image load. Still never blocks forever on a miss.
 const PHOTO_TOTAL_TIMEOUT_MS = 2800;
 const PHOTO_GUESS_TIMEOUT_MS = 900;
-function resolvePlayerPhoto(who, pid, teamID, cid, lid){
+function resolvePlayerPhoto(who, pid, teamID, cid, lid, no){
   return new Promise(res=>{
     let done=false;
     const finish=img=>{ if(done) return; done=true; res(img); };
     const overall=setTimeout(()=>finish(null), PHOTO_TOTAL_TIMEOUT_MS);
-    loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
-      if(done) return;
-      if(img){ clearTimeout(overall); finish(img); return; }
-      if(!pid){ clearTimeout(overall); finish(null); return; }
-      resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+    function liveFallbackChain(){
+      loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
         if(done) return;
-        if(!url){ clearTimeout(overall); finish(null); return; }
-        loadImage(url, 1200).then(img2=>{ clearTimeout(overall); finish(img2); });
+        if(img){ clearTimeout(overall); finish(img); return; }
+        if(!pid){ clearTimeout(overall); finish(null); return; }
+        resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+          if(done) return;
+          if(!url){ clearTimeout(overall); finish(null); return; }
+          loadImage(url, 1200).then(img2=>{ clearTimeout(overall); finish(img2); });
+        });
+      });
+    }
+    // Warehouse first (manifest.json, matched by team+jersey#), then the
+    // naive-guess+profile-fallback chain, then null (caller shows initials).
+    warehousePhotoFor(teamID, no).then(whUrl=>{
+      if(done) return;
+      if(!whUrl){ liveFallbackChain(); return; }
+      loadImage(whUrl, 1200).then(img=>{
+        if(done) return;
+        if(img){ clearTimeout(overall); finish(img); return; }
+        liveFallbackChain();
       });
     });
   });
@@ -610,7 +642,7 @@ function pump(){
   const logoFile = job.logoFile || vis(job.eventID).logo;
   const logoSrc = logoFile ? LOGO+encodeURIComponent(logoFile) : null;
   const logoP = loadImage(logoSrc);
-  const photoP = job.photoWho ? resolvePlayerPhoto(job.photoWho, job.photoPid, job.eventID, CID, LID) : Promise.resolve(null);
+  const photoP = job.photoWho ? resolvePlayerPhoto(job.photoWho, job.photoPid, job.eventID, CID, LID, job.photoNo) : Promise.resolve(null);
   const gsp = btxt.querySelector(".gsp");   // goalHTML() bakes this in right before the team name; absent for penalties
 
   bnr.classList.remove("hide");
@@ -640,7 +672,7 @@ function pump(){
 function fireGoal(g, awayID, homeID, awayName, homeName){
   const v=vis(g.teamID);
   enqueue({html:goalHTML({...g,awayID,homeID,awayName,homeName}, awayName, homeName),
-    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL, photoWho:g.who, photoPid:g.pid});
+    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL, photoWho:g.who, photoPid:g.pid, photoNo:g.no});
 }
 function firePen(p, awayID, homeID){
   const v=vis(p.teamID);

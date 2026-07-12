@@ -359,6 +359,32 @@ function loadImage(src, timeoutMs){
 // here after Mat flagged this page (gameid 2519943, Thunder @ Admirals) showing almost
 // no photos — the fix already existed in activity-banner/scoringleaders but was never
 // extended to summary.html, which was still on the naive shotURL()-only guess.
+// Player photo warehouse (nzihl-player-photos) — tried FIRST, before the naive
+// esportsdesk guess/fallback below. Headshots don't change mid-game and the
+// warehouse's Pages/CDN is faster/more reliable than esportsdesk.
+// 2026-07-12 estate-wide photo-warehouse migration.
+const PHOTO_MANIFEST_URL = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json";
+const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/";
+const CODE_LEAGUE = {ADM:"nzihl",BSW:"nzihl",CRD:"nzihl",DUN:"nzihl",MKO:"nzihl",SCS:"nzihl",
+                      AST:"nzwihl",CIN:"nzwihl",DTW:"nzwihl",WLD:"nzwihl"};
+const TEAMID_CODE = Object.fromEntries(Object.entries(REG).map(([id,v])=>[id,v.code]));
+let _photoManifestCache=null, _photoManifestT=0;
+async function getPhotoManifest(){
+  if(_photoManifestCache && Date.now()-_photoManifestT<5*60*1000) return _photoManifestCache;
+  try{ const data=await getJSON(PHOTO_MANIFEST_URL); _photoManifestCache=data; _photoManifestT=Date.now(); return data; }
+  catch(e){ return _photoManifestCache; }
+}
+async function warehousePhotoFor(teamID, no){
+  if(!teamID || !no) return null;
+  const code = TEAMID_CODE[teamID]; if(!code) return null;
+  const league = CODE_LEAGUE[code] || "nzihl";
+  const manifest = await getPhotoManifest(); if(!manifest) return null;
+  const teamPeople = (manifest.leagues && manifest.leagues[league] &&
+                       manifest.leagues[league].teams[code] &&
+                       manifest.leagues[league].teams[code].people) || {};
+  const person = Object.values(teamPeople).find(p=>p.role==="player" && String(p.number)===String(no));
+  return (person && person.photo) ? PHOTO_BASE+person.photo : null;
+}
 const PHOTO_FALLBACK_CACHE={};
 async function resolvePhotoFallback(pid, teamID, cid, lid){
   if(!pid||!teamID||!cid||!lid) return null;
@@ -384,19 +410,30 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
   return result;
 }
 const PHOTO_TOTAL_TIMEOUT_MS=2800, PHOTO_GUESS_TIMEOUT_MS=900;
-function resolvePlayerPhoto(who, pid, teamID, cid, lid){
+function resolvePlayerPhoto(who, pid, teamID, cid, lid, no){
   return new Promise(res=>{
     let done=false;
     const finish=img=>{ if(done) return; done=true; res(img); };
     const overall=setTimeout(()=>finish(null), PHOTO_TOTAL_TIMEOUT_MS);
-    loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
-      if(done) return;
-      if(img){ clearTimeout(overall); finish(img); return; }
-      if(!pid){ clearTimeout(overall); finish(null); return; }
-      resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+    function liveFallbackChain(){
+      loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
         if(done) return;
-        if(!url){ clearTimeout(overall); finish(null); return; }
-        loadImage(url, 1200).then(img2=>{ clearTimeout(overall); finish(img2); });
+        if(img){ clearTimeout(overall); finish(img); return; }
+        if(!pid){ clearTimeout(overall); finish(null); return; }
+        resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+          if(done) return;
+          if(!url){ clearTimeout(overall); finish(null); return; }
+          loadImage(url, 1200).then(img2=>{ clearTimeout(overall); finish(img2); });
+        });
+      });
+    }
+    warehousePhotoFor(teamID, no).then(whUrl=>{
+      if(done) return;
+      if(!whUrl){ liveFallbackChain(); return; }
+      loadImage(whUrl, 1200).then(img=>{
+        if(done) return;
+        if(img){ clearTimeout(overall); finish(img); return; }
+        liveFallbackChain();
       });
     });
   });
@@ -413,14 +450,14 @@ function resolvePlayerPhoto(who, pid, teamID, cid, lid){
 // was firing 3 simultaneous fallback lookups per tick, and every unresolved player
 // was re-guessing every 15s for the whole game.)
 const RESOLVED_PHOTO_CACHE={};
-function resolvePlayerPhotoCached(who, pid, teamID, cid, lid){
+function resolvePlayerPhotoCached(who, pid, teamID, cid, lid, no){
   const key=pid||("who:"+who);
   if(key in RESOLVED_PHOTO_CACHE){
     const src=RESOLVED_PHOTO_CACHE[key];
     if(!src) return Promise.resolve(null);
     return loadImage(src, 1500); // browser image-caches the actual bytes; this just re-attaches
   }
-  return resolvePlayerPhoto(who, pid, teamID, cid, lid).then(img=>{
+  return resolvePlayerPhoto(who, pid, teamID, cid, lid, no).then(img=>{
     RESOLVED_PHOTO_CACHE[key]=img?img.src:false;
     return img;
   });
@@ -432,7 +469,7 @@ function goalEl(x,ink){const el=document.createElement("div");el.className="goal
     <span class="gmain"><div class="gname"><span class="no">${x.no}</span><span class="nmt">${dispName}</span></div>
       <div class="gsub"><span class="gast">${fmtAssist(x.a)}</span>${x.tag?`<span class="gtag">${x.tag}</span>`:""}<span class="gtime">${x.t}</span></div></span>`;
   const shot=el.querySelector(".shot");
-  resolvePlayerPhotoCached(x.who, x.pid, x.teamID, CID, LID).then(img=>{
+  resolvePlayerPhotoCached(x.who, x.pid, x.teamID, CID, LID, x.no).then(img=>{
     if(!img) return; // no photo anywhere — keep the initials placeholder
     shot.innerHTML="";shot.appendChild(img);shot.style.boxShadow=`0 0 0 2px ${ink}`;
   });

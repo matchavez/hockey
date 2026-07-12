@@ -313,6 +313,32 @@ function loadImage(src, timeoutMs){
 }
 const LOGO_TIMEOUT_MS = 1500;
 
+// Player photo warehouse (nzihl-player-photos) — tried FIRST, before the naive
+// esportsdesk guess/fallback below. Headshots don't change mid-game and the
+// warehouse's Pages/CDN is faster/more reliable than esportsdesk.
+// 2026-07-12 estate-wide photo-warehouse migration.
+const PHOTO_MANIFEST_URL = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json";
+const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/";
+const CODE_LEAGUE = {ADM:"nzihl",BSW:"nzihl",CRD:"nzihl",DUN:"nzihl",MKO:"nzihl",SCS:"nzihl",
+                      AST:"nzwihl",CIN:"nzwihl",DTW:"nzwihl",WLD:"nzwihl"};
+const TEAMID_CODE = Object.fromEntries(Object.entries(REG).map(([id,v])=>[id,v.code]));
+let _photoManifestCache=null, _photoManifestT=0;
+async function getPhotoManifest(){
+  if(_photoManifestCache && Date.now()-_photoManifestT<5*60*1000) return _photoManifestCache;
+  try{ const data=await getJSON(PHOTO_MANIFEST_URL); _photoManifestCache=data; _photoManifestT=Date.now(); return data; }
+  catch(e){ return _photoManifestCache; }
+}
+async function warehousePhotoFor(teamID, no){
+  if(!teamID || !no) return null;
+  const code = TEAMID_CODE[teamID]; if(!code) return null;
+  const league = CODE_LEAGUE[code] || "nzihl";
+  const manifest = await getPhotoManifest(); if(!manifest) return null;
+  const teamPeople = (manifest.leagues && manifest.leagues[league] &&
+                       manifest.leagues[league].teams[code] &&
+                       manifest.leagues[league].teams[code].people) || {};
+  const person = Object.values(teamPeople).find(p=>p.role==="player" && String(p.number)===String(no));
+  return (person && person.photo) ? PHOTO_BASE+person.photo : null;
+}
 // Cache of resolved fallback photo URLs per playerID — url string on success,
 // false when we've confirmed there's genuinely no photo. Avoids re-hitting
 // nzihl.com every 5-minute tick for the same player.
@@ -348,19 +374,30 @@ async function resolvePhotoFallback(pid, teamID, cid, lid){
 // the Activity Banner, so nothing ever pops in over the broadcast).
 const PHOTO_GUESS_TIMEOUT_MS = 1200;
 const PHOTO_TOTAL_TIMEOUT_MS = 4000;
-function resolvePlayerPhoto(who, pid, teamID, cid, lid){
+function resolvePlayerPhoto(who, pid, teamID, cid, lid, no){
   return new Promise(res=>{
     let done=false;
     const finish=img=>{ if(done) return; done=true; res(img); };
     const overall=setTimeout(()=>finish(null), PHOTO_TOTAL_TIMEOUT_MS);
-    loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
-      if(done) return;
-      if(img){ clearTimeout(overall); finish(img); return; }
-      if(!pid){ clearTimeout(overall); finish(null); return; }
-      resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+    function liveFallbackChain(){
+      loadImage(shotURL(who), PHOTO_GUESS_TIMEOUT_MS).then(img=>{
         if(done) return;
-        if(!url){ clearTimeout(overall); finish(null); return; }
-        loadImage(url, 1500).then(img2=>{ clearTimeout(overall); finish(img2); });
+        if(img){ clearTimeout(overall); finish(img); return; }
+        if(!pid){ clearTimeout(overall); finish(null); return; }
+        resolvePhotoFallback(pid, teamID, cid, lid).then(url=>{
+          if(done) return;
+          if(!url){ clearTimeout(overall); finish(null); return; }
+          loadImage(url, 1500).then(img2=>{ clearTimeout(overall); finish(img2); });
+        });
+      });
+    }
+    warehousePhotoFor(teamID, no).then(whUrl=>{
+      if(done) return;
+      if(!whUrl){ liveFallbackChain(); return; }
+      loadImage(whUrl, 1500).then(img=>{
+        if(done) return;
+        if(img){ clearTimeout(overall); finish(img); return; }
+        liveFallbackChain();
       });
     });
   });
@@ -379,8 +416,8 @@ async function preloadAssets(awayTop, homeTop, awayID, homeID, cid, lid){
     loadImage(logoASrc, LOGO_TIMEOUT_MS), loadImage(logoBSrc, LOGO_TIMEOUT_MS)
   ]);
   await Promise.all([
-    ...awayTop.map(p => resolvePlayerPhoto(p.name, p.pid, awayID, cid, lid).then(img => { p._photoImg = img; })),
-    ...homeTop.map(p => resolvePlayerPhoto(p.name, p.pid, homeID, cid, lid).then(img => { p._photoImg = img; })),
+    ...awayTop.map(p => resolvePlayerPhoto(p.name, p.pid, awayID, cid, lid, p.jersey).then(img => { p._photoImg = img; })),
+    ...homeTop.map(p => resolvePlayerPhoto(p.name, p.pid, homeID, cid, lid, p.jersey).then(img => { p._photoImg = img; })),
   ]);
   return {logoAImg, logoBImg};
 }
