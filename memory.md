@@ -239,6 +239,27 @@ Guerin (#10) still rendered correctly. Production setups needing both a persiste
 AND Player L3s should run `scorebug/?team=<slug>` (as before) PLUS
 `activity-banner/?team=<slug>&nobanner=1` as a second layered source.
 
+**`scorebug-l3/index.html`, 2026-07-12 (Mat changed his mind — can't run two layered
+browser sources):** instead of `activity-banner/?nobanner=1` as a second source, built a full
+standalone COPY of `scorebug/index.html` with Player L3 support ported in directly, at a new
+URL (`scorebug-l3/`), leaving the original `scorebug/index.html` completely untouched as a
+same-day fallback in case anything goes wrong. Ported straight from `activity-banner/`'s
+current (already-verified) L3 implementation: the `#l3` CSS/HTML, `CONTROL_TOKEN`/
+`STATS_URLS`/`PHOTO_MANIFEST_URL`/`PHOTO_BASE`/`CODE_LEAGUE`/`TEAM_DISPLAY_NAMES`/
+`TEAMID_CODE`, `getStats`/`getPhotoManifest`/`standingsRowFor` (needed adding `SCRAPE_HOST`,
+which scorebug/ didn't have), `buildL3Data`/`showL3`/`initialsOf`/`hideL3`, and
+`pollControl`/`reportInterrupt`/`bannerBusy`. Also added the L3-interrupt guard to `enqueue()`
+and an `if(typeof LAST_PARSE!=="undefined") LAST_PARSE=P;` line to `tick()` (feeds the L3
+TONIGHT chip) — both verbatim from activity-banner. Hooked `TEAM_SLUG` + `pollControl()` +
+`setInterval` into `start()`. No `NOBANNER` flag needed here (unlike the `?nobanner=1` approach)
+since this is a single unified source, not a layer. `node --check` clean, no duplicate
+identifiers. Verified live for Canterbury Inferno: scoreboard (INF vs WLD) and pregame banner
+render exactly as before, and firing Jessie Strain (#19) through the real phone-page FIRE
+button rendered the L3 correctly at the bottom while the scoreboard stayed visible at top.
+Production recipe for teams needing this: `scorebug-l3/?team=<slug>` as the single source
+(replaces `scorebug/?team=<slug>` — same Singular scoreboard, same banner, now also L3s).
+`scorebug/index.html` itself was NOT modified.
+
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
 
