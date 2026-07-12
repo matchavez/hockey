@@ -187,6 +187,28 @@ async function checkControlChannel(){
   }
   setCard(d,ms<4000?"ok":"warn","OK · "+ms+" ms","Durable Object responding");
 }
+// Starting Lineup persistent state — same Durable Object, /lineup/ route
+// (added 2026-07-13). Non-JSON ("missing ?url") means the worker predates
+// the /lineup/ route: needs `wrangler deploy` from summary/ (no migration).
+async function checkLineupChannel(){
+  const d=card("c-lineup","Starting Lineup channel");
+  let r, text;
+  try{
+    var t0=performance.now();
+    r=await fetch(`${WORKER}/lineup/preflight-check`,{cache:"no-store"});
+    text=await r.text();
+  }catch(e){ setCard(d,"bad","FAILED — network","Can't reach the worker at all: "+String(e.message||e)); return; }
+  const ms=Math.round(performance.now()-t0);
+  let j=null;
+  try{ j=JSON.parse(text); }catch(e){ /* not JSON — old worker */ }
+  if(j&&j.code==="NO_DO_BINDING"){ setCard(d,"warn","NOT DEPLOYED YET","see summary/DEPLOY.md"); return; }
+  if(j&&j.error){ setCard(d,"bad","FAILED",String(j.error)); return; }
+  if(!j||!("slots" in j)){
+    setCard(d,"warn","NEEDS WORKER REDEPLOY","live worker doesn't recognize /lineup/ — wrangler deploy from summary/ (no migration needed)");
+    return;
+  }
+  setCard(d,ms<4000?"ok":"warn","OK · "+ms+" ms","persistent lineup state responding");
+}
 async function checkSource(id,nm,u,probe){
   const d=card(id,nm);
   try{const h=await shimText(u); const r=probe(h);
@@ -303,6 +325,7 @@ function buildBoard(){
     wrap.appendChild(copyBtn("Scorebug",()=>BASE+`scorebug/?team=${t.slug}`+(bs.value.trim()?"&bs="+bs.value.replace(/^bs=/,"").trim():"")));
     wrap.appendChild(copyBtn("Banner",()=>BASE+`activity-banner/?team=${t.slug}`));
     wrap.appendChild(copyBtn("Player L3",()=>BASE+`lowerthirds/?team=${t.slug}`));
+    wrap.appendChild(copyBtn("Lineup",()=>BASE+`startinglineup/?team=${t.slug}`));
     wrap.appendChild(copyBtn("Summary",()=>BASE+`summary/?team=${t.slug}`));
     // 2026-07-12: box/index.html retired -- link straight to the live esportsdesk box score instead.
     if(r)wrap.appendChild(copyBtn("Box",()=>boxURL(r.m, r.gid)));
@@ -316,7 +339,7 @@ function buildBoard(){
 async function run(){
   sys.innerHTML=""; MDATA={};
   document.getElementById("now").textContent=new Date().toLocaleString("en-NZ");
-  checkWorker(); checkSources(); checkControlChannel();
+  checkWorker(); checkSources(); checkControlChannel(); checkLineupChannel();
   await Promise.all(MANIFESTS.map(checkManifest));
   await Promise.all(MANIFESTS.map(checkStatsJson));
   buildBoard();

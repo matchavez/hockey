@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta charset="utf-8">
+<title>NZIHL — Starting Lineup Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../../assets/fonts/InterVariable.woff2') format('woff2');}
+/* ============================================================
+   NZIHL / NZWIHL — Starting Lineup CONTROL page (director's picker).
+   URL: hockey/startinglineup/control/[?team=<slug>]
+   Phone-first. One team at a time; six slot buttons (LF CF RF LD RD GK),
+   tap a slot then tap a jersey number — that player is the starter in
+   that slot until changed. State persists in the Cloudflare worker's
+   /lineup/<slug> endpoint (evergreen, no game dependency), rendered by
+   the display page at hockey/startinglineup/?team=<slug>, which the
+   preview iframe below embeds directly (?preview= mode) so preview and
+   broadcast can never drift apart.
+   ============================================================ */
+:root{--bg:#0d0f13;--card:#14171d;--card2:#191d24;--line:#242a33;--txt:#dfe4ea;--dim:#8a93a0;
+  --ok:#36d399;--warn:#f5b942;--bad:#ef5b5b;--acc:#7db2ff;}
+*{box-sizing:border-box;}
+#gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;
+  align-items:center;justify-content:center;}
+.gateBox{width:260px;text-align:center;}
+.gateTitle{font-size:19px;font-weight:800;margin-bottom:4px;}
+.gateSub{font-size:13px;color:var(--dim);margin-bottom:14px;}
+#gatePw{width:100%;font:600 16px Inter,sans-serif;background:var(--card);border:1px solid var(--line);
+  color:var(--txt);border-radius:10px;padding:12px 14px;text-align:center;margin-bottom:10px;}
+#gateBtn{width:100%;font:800 15px Inter,sans-serif;color:#0d0f13;background:var(--ok);
+  border:none;border-radius:10px;padding:12px;cursor:pointer;}
+.gateErr{color:var(--bad);font-size:12px;font-weight:700;margin-top:10px;display:none;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+  font-family:Inter,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;min-height:100%;}
+body{padding:9px 14px 32px;max-width:720px;margin:0 auto;}
+h1{font-size:14px;font-weight:800;margin:0;letter-spacing:.01em;opacity:.75;}
+.teamLine{font-size:16px;font-weight:800;margin:2px 0 8px;}
+.notice{background:#2a1f10;border:1px solid #6b4a12;color:#f5c26b;border-radius:10px;
+  padding:10px 13px;font-size:13px;font-weight:600;margin-bottom:12px;line-height:1.4;display:none;}
+.notice.err{background:#2a1414;border-color:#6b2020;color:#f79a9a;}
+
+.previewWrap{position:relative;border-radius:14px;overflow:hidden;background:#000;
+  border:1px solid var(--line);margin-bottom:10px;}
+.previewFrameHolder{position:relative;width:100%;aspect-ratio:16/9;background:
+  repeating-conic-gradient(#15181d 0% 25%, #191d24 0% 50%) 50% / 22px 22px;}
+#previewFrame{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none;}
+#clearAllBtn{position:absolute;left:8px;bottom:8px;font:700 12px Inter,sans-serif;
+  color:#f79a9a;background:rgba(0,0,0,.55);border:none;border-radius:8px;
+  padding:6px 11px;cursor:pointer;}
+#clearAllBtn:active{background:rgba(0,0,0,.75);}
+.savedMsg{position:absolute;right:8px;bottom:8px;font:700 12px Inter,sans-serif;color:#fff;
+  background:rgba(0,0,0,.55);border-radius:8px;padding:6px 10px;opacity:0;transition:opacity .2s;}
+.savedMsg.on{opacity:1;}
+.savedMsg.saving{color:var(--warn);}
+.savedMsg.err{color:var(--bad);}
+
+/* ------- slot table (2 cols x 6 rows) ------- */
+.slotTable{display:flex;flex-direction:column;gap:7px;margin-bottom:12px;}
+.slotRow{display:flex;gap:8px;align-items:stretch;}
+.slotBtn{flex:0 0 64px;font:800 17px Inter,sans-serif;color:#fff;background:var(--card2);
+  border:2px solid var(--line);border-radius:11px;padding:10px 0;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;}
+.slotBtn.active{border-color:var(--acc);background:#1b2740;}
+.slotVal{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;background:var(--card);
+  border:1px solid var(--line);border-radius:11px;padding:6px 10px;font-weight:700;font-size:15px;}
+.slotVal .num{font-weight:800;flex:0 0 auto;}
+.slotVal .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.slotVal .nm.unset{color:#525a66;font-weight:600;}
+.slotX{flex:0 0 auto;font:800 13px Inter,sans-serif;color:#f79a9a;background:transparent;
+  border:none;padding:4px 7px;cursor:pointer;}
+
+/* ------- pill grid ------- */
+.groupTitle{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--dim);margin:10px 2px 6px;}
+.pillWrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.pill{position:relative;border:2px solid transparent;border-radius:11px;min-width:52px;height:31px;
+  padding:0 10px;display:flex;align-items:center;justify-content:center;gap:3px;
+  font:800 17px Inter,sans-serif;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);}
+.pill .g{font:800 10px Inter,sans-serif;background:rgba(255,255,255,.28);border-radius:5px;
+  padding:1px 4px;margin-left:1px;}
+.pill.inLineup{border-color:#fff;}
+.pill.noPhoto{color:#c7cdd6;}
+#pickerHint{font-size:13px;color:var(--dim);font-weight:600;margin-bottom:14px;}
+
+/* ------- team switcher ------- */
+.switcher{border-top:1px solid var(--line);margin-top:16px;padding-top:12px;}
+.teamBtnWrap{display:flex;flex-wrap:wrap;gap:8px;}
+.teamBtn{font:700 13px Inter,sans-serif;color:var(--txt);background:var(--card2);
+  border:2px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;}
+.teamBtn.current{border-color:var(--acc);background:#1b2740;}
+footer{margin-top:26px;font-size:12px;color:#525a66;text-align:center;line-height:1.6;}
+</style>
+</head>
+<body>
+<div id="gate">
+  <div class="gateBox">
+    <div class="gateTitle">Starting Lineup</div>
+    <div class="gateSub">Enter password</div>
+    <input type="password" id="gatePw" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="gateBtn">Unlock</button>
+    <div class="gateErr" id="gateErr">Wrong password</div>
+  </div>
+</div>
+
+<h1>Starting Lineup</h1>
+<div class="teamLine" id="teamLine">Loading…</div>
+<div id="notice" class="notice"></div>
+
+<div class="previewWrap">
+  <div class="previewFrameHolder"><iframe id="previewFrame" src="about:blank" title="Starting lineup preview"></iframe></div>
+  <button id="clearAllBtn">Clear all</button>
+  <div class="savedMsg" id="savedMsg"></div>
+</div>
+
+<div class="slotTable" id="slotTable"></div>
+
+<div id="pickerHint">Tap a position button, then tap a jersey number.</div>
+<div id="picker" style="display:none">
+  <div class="groupTitle" id="pickerTitle"></div>
+  <div class="pillWrap" id="pillWrap"></div>
+</div>
+
+<div class="switcher">
+  <div class="groupTitle">Switch team</div>
+  <div class="teamBtnWrap" id="teamBtns"></div>
+</div>
+
+<footer>Starters persist until changed — evergreen, not tied to any game.<br>
+Broadcast source: <span id="displayUrl" style="user-select:all"></span></footer>
+
+<script>
+/* ====================== CONFIG ====================== */
+let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";
+const CONTROL_TOKEN = "l3-EXleXBAfHbgn7P1qHeJ81U1K";   // same trust model as the L3 pages
+const PHOTO_MANIFEST_URL = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json";
+const STATS_URLS = {
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/stats.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/stats.json",
+};
+// slug-keyed registry — mirrors ../index.html's TEAMS (kept in sync manually)
+const TEAMS = {
+ "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      ink:"#F7BE11"},
+ "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          ink:"#F7AF28"},
+ "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", ink:"#E5242B"},
+ "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       ink:"#1E9E63"},
+ "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      ink:"#FAC805"},
+ "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        ink:"#9FB6C8"},
+ "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    ink:"#E0564E"},
+ "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", ink:"#1E9E63"},
+ "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         ink:"#FAC805"},
+};
+const SLOTS = ["LF","CF","RF","LD","RD","GK"];
+const GREY = "#1b2029";
+const LAST_TEAM_KEY = "sl_last_team";
+
+/* ====================== HELPERS ====================== */
+const Q = new URLSearchParams(location.search);
+if(Q.get("worker")) WORKER = Q.get("worker");
+const esc = s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const slugify = s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+function properCase(s){s=String(s||"");if(!s)return s;
+  const letters=s.replace(/[^a-zA-Z]/g,"");if(!letters)return s;
+  const allUpper=letters===letters.toUpperCase()&&letters!==letters.toLowerCase();
+  const allLower=letters===letters.toLowerCase()&&letters!==letters.toUpperCase();
+  if(!allUpper&&!allLower)return s;
+  return s.toLowerCase().replace(/(^|[\s\-'.(])([a-z])/g,(m,p1,p2)=>p1+p2.toUpperCase());}
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
+
+/* ====================== STATE ====================== */
+let TEAM_SLUG = slugify(Q.get("team")||"") || localStorage.getItem(LAST_TEAM_KEY) || "pure-nz-admirals";
+if(!TEAMS[TEAM_SLUG]) TEAM_SLUG = "pure-nz-admirals";
+const T = TEAMS[TEAM_SLUG];
+let ROSTER = [];              // [{number,name,position,role,photo}]
+let LINEUP = {slots:{}, updated_at:null};
+let ACTIVE_SLOT = null;
+let workerBroken = false;
+
+/* ====================== DATA ====================== */
+async function loadRoster(){
+  const [stats, manifest] = await Promise.all([
+    getJSON(STATS_URLS[T.league]).catch(()=>null),
+    getJSON(PHOTO_MANIFEST_URL).catch(()=>null),
+  ]);
+  const teamStats = stats && stats.teams && stats.teams[T.code];
+  const teamPeople = (manifest && manifest.leagues && manifest.leagues[T.league] &&
+    manifest.leagues[T.league].teams[T.code] && manifest.leagues[T.league].teams[T.code].people) || {};
+  const photoByNum = {};
+  Object.values(teamPeople).forEach(p=>{
+    if(p.role==="player" && p.number!=null) photoByNum[String(p.number)] = p.photo || null;
+  });
+  const items = [];
+  (teamStats && teamStats.skaters || []).forEach(r=>items.push({
+    role:"player", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
+    position:r.position, photo: photoByNum[String(r.number)] || null,
+  }));
+  (teamStats && teamStats.goalies || []).forEach(r=>items.push({
+    role:"goalie", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
+    position:"G", photo: photoByNum[String(r.number)] || null,
+  }));
+  items.sort((a,b)=>(parseInt(a.number,10)||999)-(parseInt(b.number,10)||999));
+  ROSTER = items;
+}
+
+/* ====================== WORKER ====================== */
+function setSaved(state, msg){
+  const el = document.getElementById("savedMsg");
+  el.className = "savedMsg on" + (state==="saving"?" saving":state==="err"?" err":"");
+  el.textContent = msg;
+  if(state==="ok") setTimeout(()=>{ el.className="savedMsg"; }, 1600);
+}
+function workerNotice(kind){
+  const n = document.getElementById("notice");
+  if(!kind){ n.style.display="none"; workerBroken=false; return; }
+  workerBroken = true;
+  n.style.display="block"; n.className="notice err";
+  n.textContent = kind==="notdeployed"
+    ? "The lineup endpoint isn't live yet — the worker needs a redeploy (wrangler deploy in nzihl-broadcast-assets/summary/). Picks below only update the preview; they won't persist or reach the broadcast graphic until it's redeployed."
+    : "Can't reach the control worker — picks only update the preview until it's back.";
+}
+async function fetchLineup(){
+  try{
+    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store"});
+    const txt = await r.text();
+    let j; try{ j = JSON.parse(txt); }catch(e){ workerNotice("notdeployed"); return; }
+    if(j.error){ workerNotice(j.code==="NO_DO_BINDING"?"notdeployed":"net"); return; }
+    workerNotice(null);
+    LINEUP = j;
+  }catch(e){ workerNotice("net"); }
+}
+async function saveSlot(slot, player){
+  // optimistic local update either way — preview follows instantly
+  if(player) LINEUP.slots[slot] = player; else delete LINEUP.slots[slot];
+  renderTable(); renderPills(); updatePreview();
+  if(workerBroken){ setSaved("err","preview only"); return; }
+  setSaved("saving","saving…");
+  try{
+    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`,{
+      method:"POST", cache:"no-store", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"set_slot", token:CONTROL_TOKEN, slot, player}),
+    });
+    const txt = await r.text();
+    let j; try{ j = JSON.parse(txt); }catch(e){ workerNotice("notdeployed"); setSaved("err","preview only"); return; }
+    if(j.error){ setSaved("err","save failed"); return; }
+    LINEUP = j; setSaved("ok","saved");
+  }catch(e){ workerNotice("net"); setSaved("err","offline"); }
+}
+async function clearAll(){
+  LINEUP.slots = {};
+  renderTable(); renderPills(); updatePreview();
+  if(workerBroken) return;
+  try{
+    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`,{
+      method:"POST", cache:"no-store", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"clear", token:CONTROL_TOKEN}),
+    });
+    const j = JSON.parse(await r.text());
+    if(!j.error){ LINEUP = j; setSaved("ok","cleared"); }
+  }catch(e){ /* preview already updated */ }
+}
+
+/* ====================== UI ====================== */
+function updatePreview(){
+  const payload = {slots: LINEUP.slots};
+  document.getElementById("previewFrame").src =
+    `../index.html?team=${encodeURIComponent(TEAM_SLUG)}&preview=${encodeURIComponent(JSON.stringify(payload))}`;
+}
+function renderTable(){
+  const tbl = document.getElementById("slotTable");
+  tbl.innerHTML = "";
+  SLOTS.forEach(slot=>{
+    const p = LINEUP.slots[slot] || null;
+    const row = document.createElement("div"); row.className = "slotRow";
+    const btn = document.createElement("button");
+    btn.className = "slotBtn" + (ACTIVE_SLOT===slot ? " active" : "");
+    btn.textContent = slot;
+    btn.onclick = ()=>{ ACTIVE_SLOT = (ACTIVE_SLOT===slot ? null : slot); renderTable(); renderPicker(); };
+    const val = document.createElement("div"); val.className = "slotVal";
+    if(p){
+      val.innerHTML = `<span class="num" style="color:${T.ink}">#${esc(p.number)}</span>
+        <span class="nm">${esc(p.name)}</span>`;
+      const x = document.createElement("button"); x.className = "slotX"; x.textContent = "✕";
+      x.title = "Clear " + slot;
+      x.onclick = (e)=>{ e.stopPropagation(); saveSlot(slot, null); };
+      val.appendChild(x);
+    } else {
+      val.innerHTML = `<span class="nm unset">— tap ${slot} to pick</span>`;
+    }
+    val.onclick = ()=>{ ACTIVE_SLOT = slot; renderTable(); renderPicker(); };
+    row.appendChild(btn); row.appendChild(val); tbl.appendChild(row);
+  });
+}
+function renderPicker(){
+  const picker = document.getElementById("picker"), hint = document.getElementById("pickerHint");
+  if(!ACTIVE_SLOT){ picker.style.display="none"; hint.style.display="block"; return; }
+  picker.style.display="block"; hint.style.display="none";
+  document.getElementById("pickerTitle").textContent = `Pick ${ACTIVE_SLOT} — ${T.name}`;
+  renderPills();
+}
+function renderPills(){
+  const wrap = document.getElementById("pillWrap");
+  wrap.innerHTML = "";
+  const inLineup = {};
+  Object.entries(LINEUP.slots).forEach(([s,p])=>{ if(p) inLineup[String(p.number)] = s; });
+  ROSTER.forEach(p=>{
+    const btn = document.createElement("button");
+    const used = inLineup[String(p.number)];
+    btn.className = "pill" + (p.photo?"":" noPhoto") + (used?" inLineup":"");
+    btn.style.background = p.photo ? T.ink : GREY;
+    btn.title = p.name + (p.role==="goalie"?" (G)":"") + (used?` — currently ${used}`:"");
+    btn.innerHTML = esc(p.number) + (p.role==="goalie"?'<span class="g">G</span>':"");
+    btn.onclick = ()=>{
+      if(!ACTIVE_SLOT) return;
+      saveSlot(ACTIVE_SLOT, {number:p.number, name:p.name, position:p.position, photo:p.photo});
+      ACTIVE_SLOT = null;
+      renderTable(); renderPicker();
+    };
+    wrap.appendChild(btn);
+  });
+}
+function renderSwitcher(){
+  const wrap = document.getElementById("teamBtns");
+  wrap.innerHTML = "";
+  Object.entries(TEAMS).forEach(([s,t])=>{
+    const b = document.createElement("button");
+    b.className = "teamBtn" + (s===TEAM_SLUG?" current":"");
+    b.textContent = t.name;
+    b.onclick = ()=>{ localStorage.setItem(LAST_TEAM_KEY, s); location.search = "?team="+s; };
+    wrap.appendChild(b);
+  });
+}
+
+/* ====================== INIT ====================== */
+async function start(){
+  localStorage.setItem(LAST_TEAM_KEY, TEAM_SLUG);
+  document.getElementById("teamLine").textContent = T.name + " — starting six";
+  document.getElementById("displayUrl").textContent =
+    location.origin + location.pathname.replace(/control\/?(index\.html)?$/,"") + "?team=" + TEAM_SLUG;
+  renderSwitcher();
+  await Promise.all([loadRoster(), fetchLineup()]);
+  renderTable(); renderPicker(); updatePreview();
+}
+/* ====================== PASSWORD GATE (shared key with the L3 page) ====================== */
+const GATE_PASSWORD = "domigan";
+const GATE_KEY = "l3_gate_ok";
+function unlockGate(){ document.getElementById("gate").style.display="none"; start(); }
+if(localStorage.getItem(GATE_KEY)==="1"){ unlockGate(); }
+else{
+  const gateBtn=document.getElementById("gateBtn"), gatePw=document.getElementById("gatePw"),
+        gateErr=document.getElementById("gateErr");
+  function tryUnlock(){
+    if((gatePw.value||"").trim().toLowerCase()===GATE_PASSWORD){
+      localStorage.setItem(GATE_KEY,"1"); unlockGate();
+    } else { gateErr.style.display="block"; gatePw.value=""; gatePw.focus(); }
+  }
+  gateBtn.addEventListener("click", tryUnlock);
+  gatePw.addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock(); });
+  gatePw.focus();
+}
+</script>
+</body>
+</html>

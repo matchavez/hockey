@@ -27,6 +27,8 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | `preflight/` | **Broadcast Pre-Flight** (producer tool, not an overlay): worker round-trip, manifest freshness (GitHub commits API), leaders/standings/schedule reach, per-club game resolution + BUGMAP status + box-score probe + FINAL status, copy-ready overlay URLs with per-club `?bs=`/`?tk=` tuning persisted in localStorage | — |
 | `warehouse/` | **Data Warehouse** (producer tool, not an overlay): browses the full season game archive (`nzihl-season-data`'s `nzihl.json`/`nzwihl.json` — completed games w/ streak chips + searchable/filterable table + box-score links, plus remaining fixtures) and the full player+coach photo library (`nzihl-player-photos`'s `manifest.json` — every rostered person, grouped by team, sorted by jersey #, real thumbnails or initials placeholders, missing-photo counts) on one page. Both fetched live client-side, nothing copied in. | — |
 | `lowerthirds/` | **Player Lower Thirds** (producer tool, not an overlay): phone control page — tap a tonight's-roster jersey pill, preview (shares the `activity-banner/?preview=` renderer), edit/toggle an auto-computed fact, Fire through a Cloudflare Worker Durable Object control channel to the `activity-banner/` already on air | `?team=` |
+| `startinglineup/` | **Starting Lineup** broadcast graphic: 1840×1000 opaque panel (transparent surround) on the bottom half of a vertical rink — six starters (LF/CF/RF/LD/RD/GK) as horizontal cards in an inverted pyramid. Evergreen browser source: state persists in the worker's `/lineup/<slug>` channel, polls every 10 s | `?team=` `?preview=` |
+| `startinglineup/control/` | **Starting Lineup control** (producer tool, not an overlay): director's picker — six slot buttons, tap a slot then a jersey pill, live preview iframe (the display page itself in `?preview=` mode), team switcher, domigan gate | `?team=` |
 | `assets/fonts/` | InterVariable (+Italic) woff2 — the 2026 house font | — |
 
 Common params across live pages: `?team=<slug>` picks the club's live/next game from the roster
@@ -307,6 +309,40 @@ off the auto-computed fact line, then Fire.
   in `localStorage` so a producer's phone doesn't re-prompt every reload). Same trust model as
   the `CONTROL_TOKEN` already embedded in the page's source — a deterrent against casual
   visitors on a static GitHub Pages file, not real security.
+
+## startinglineup/ — Starting Lineup graphic + control (2026-07-13)
+
+Evergreen per-team starting-six graphic, deliberately NOT tied to any game — teams rarely
+change more than a slot or two between games, so the last-set lineup persists until the
+director changes it minutes before puck drop.
+
+- **Display** (`startinglineup/?team=<slug>`): 1840×1000 opaque panel centered in a
+  transparent 1920×1080 browser source (Game Summary convention). Bottom ~half of a vertical
+  rink drawn inline as SVG (centre red line across the top + half centre circle, blue line,
+  end-zone faceoff circles with hash marks, goal line, crease, goal frame). Team half-dark
+  header (logo, STARTING LINEUP, team name in team ink, league label). Six horizontal cards —
+  headshot (or team crest if no photo — estate convention; silhouette if slot unset), jersey
+  # in team ink, name (shrink-to-fit, never ellipsis), generic FORWARD/DEFENSE/GOALIE label.
+  Inverted pyramid: LF/CF/RF on the red line with CF staggered higher, LD/RD on the blue
+  line, GK at the crease. Staggered reveal (GK up through the pyramid, CF last); slot changes
+  after first paint swap in place with a pulse, no re-reveal. Polls `/lineup/<slug>` every
+  10 s so a last-minute change lands on an already-loaded source. `?preview=<json>` renders a
+  URL-supplied lineup and skips polling (single JSON.parse of the URLSearchParams-decoded
+  value — never double-decode, see the L3 "%-in-a-fact" bug).
+- **Control** (`startinglineup/control/?team=<slug>`): phone-first picker behind the shared
+  domigan gate (same `l3_gate_ok` localStorage key as `lowerthirds/`). Six slot rows
+  (LF/CF/RF/LD/RD/GK), tap a slot → full-roster jersey pills (goalies badged, team-ink =
+  has photo, grey = crest fallback; players already in the lineup get a white ring), tap a
+  pill → saved via `POST /lineup/<slug> {action:"set_slot"}`. Per-slot ✕ clears; Clear-all
+  button on the preview card. Preview iframe = the display page in `?preview=` mode (one
+  renderer, can't drift). Team switcher at the bottom covers the same Mako-excluded 9 clubs;
+  last team remembered in localStorage. If the worker predates the `/lineup/` route the page
+  detects the non-JSON reply and shows a "needs redeploy" notice (picks still preview).
+- **State:** worker-side, per team, in the SAME ControlChannel Durable Object as the L3
+  channel but under a separate `"lineup"` storage key — shape
+  `{slots:{LF..GK:{number,name,position,photo}}, updated_at}`. Photo is resolved to a
+  `nzihl-player-photos` manifest path at pick time so the display page never needs the
+  manifest. Writes token-gated with the same CONTROL_TOKEN; reads open.
 
 ## summary/
 

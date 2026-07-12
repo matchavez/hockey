@@ -6,7 +6,7 @@ Self-context for Claude. README.md here is already extremely thorough and explic
 The live portal + every deployed broadcast overlay page for NZIHL/NZWIHL. `https://matchavez.com/hockey/` via GitHub Pages, custom domain, deploy = push to `main`. Single-file HTML overlays, no build step, 1920×1080 YoloBox browser sources.
 
 ## Page inventory (see README for full param contracts)
-`index.html` (portal), `team/`, `league/`, `ticker/`, `scorebug/`, `activity-banner/` (now also renders Player Lower Thirds, see below), `summary/` (Live Game Summary), `scoringleaders/` (+ `ab-test.html`, a design-experiment page not in the deployed rotation — ask before deleting once a variant is promoted), `preflight/` (producer tool, not an overlay), `warehouse/` (producer tool, not an overlay — added 2026-07-11), `lowerthirds/` (producer tool, phone control page — added 2026-07-12), `assets/fonts/`. `box/` was retired 2026-07-12, see below.
+`index.html` (portal), `team/`, `league/`, `ticker/`, `scorebug/`, `activity-banner/` (now also renders Player Lower Thirds, see below), `summary/` (Live Game Summary), `scoringleaders/` (+ `ab-test.html`, a design-experiment page not in the deployed rotation — ask before deleting once a variant is promoted), `preflight/` (producer tool, not an overlay), `warehouse/` (producer tool, not an overlay — added 2026-07-11), `lowerthirds/` (producer tool, phone control page — added 2026-07-12), `startinglineup/` + `startinglineup/control/` (evergreen starting-six graphic + director's picker — added 2026-07-13), `assets/fonts/`. `box/` was retired 2026-07-12, see below.
 
 ## warehouse/ (2026-07-11)
 Single page combining two data sources that previously only had standalone/linked-out views: the full season game archive (nzihl-season-data) and the full player+coach photo library (nzihl-player-photos). Built in the preflight/-style dark producer-tool theme (--bg:#0d0f13 etc.), not the flashy portal-landing style -- this is a browsing tool for Mat, not a broadcast overlay or a public-facing showcase page.
@@ -370,6 +370,18 @@ longer audited or referenced anywhere in this repo or memory going forward.
 
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
+
+## startinglineup/ (2026-07-13)
+Evergreen starting-six graphic + control page (full contract in README.md). Worth remembering
+beyond the README: state lives in the worker's `/lineup/<slug>` route — added to
+`nzihl-broadcast-assets` `summary/worker.js` (commit 65aaffd) reusing the existing
+ControlChannel DO under a separate "lineup" storage key, so redeploy needs NO wrangler.toml
+migration, just `wrangler deploy` from `summary/` (Mat's manual step, same as the L3 channel).
+Until redeployed, `/lineup/` falls through to the box-score proxy ("missing ?url", 400) — both
+startinglineup pages and preflight's "Starting Lineup channel" card detect that and degrade
+gracefully. Control page shares the L3 gate's `l3_gate_ok` localStorage key deliberately (one
+unlock covers both producer tools). Display cards use the same photo→crest→(silhouette when
+unset) fallback convention as the L3.
 
 ## Sync note
 Keep this file and README.md in sync with every meaningful change. If they drift, flag it to Mat and get approval before publishing the sync rather than doing it silently.

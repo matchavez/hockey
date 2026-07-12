@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta charset="utf-8">
+<title>NZIHL — Starting Lineup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+/* ============================================================
+   NZIHL / NZWIHL — STARTING LINEUP broadcast graphic.
+   URL: hockey/startinglineup/?team=<slug>          (live, polls the worker)
+        hockey/startinglineup/?team=<slug>&preview=<json>   (control-page preview)
+
+   1840x1000 opaque panel centered in a transparent 1920x1080 browser
+   source (Game Summary convention). Bottom half of a vertical rink drawn
+   in SVG — centre red line across the top, blue line, end-zone faceoff
+   circles, goal line + crease at the bottom. Six horizontal player cards
+   in an inverted pyramid: LF / CF (staggered higher) / RF on the red
+   line, LD / RD on the blue line, GK at the crease.
+
+   State comes from the Cloudflare worker's persistent /lineup/<slug>
+   endpoint (see nzihl-broadcast-assets summary/worker.js) — set by
+   hockey/startinglineup/control/. Evergreen: no game dependency at all.
+   ============================================================ */
+html,body{margin:0;padding:0;background:transparent;overflow:hidden;
+  font-family:Inter,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
+#frame{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:0 0;
+  background:transparent;pointer-events:none;}
+
+#panel{position:absolute;left:40px;top:40px;width:1840px;height:1000px;
+  border-radius:26px 26px 96px 96px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.55);
+  opacity:0;transform:translateY(26px);}
+#panel.show{animation:panelIn .55s cubic-bezier(.22,.9,.3,1) forwards;}
+@keyframes panelIn{to{opacity:1;transform:translateY(0);}}
+
+/* ---------- header ---------- */
+#hdr{position:absolute;left:0;top:0;right:0;height:128px;display:flex;align-items:center;
+  padding:0 44px 0 34px;gap:26px;}
+#hdrLogo{width:96px;height:96px;object-fit:contain;flex:0 0 auto;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
+#hdrText{flex:1 1 auto;min-width:0;}
+#hdrTitle{font-size:52px;font-weight:900;letter-spacing:.015em;color:#fff;line-height:1.02;
+  white-space:nowrap;}
+#hdrTeam{font-size:25px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  margin-top:3px;white-space:nowrap;}
+#hdrLeague{flex:0 0 auto;font-size:22px;font-weight:800;letter-spacing:.18em;
+  color:rgba(255,255,255,.55);text-transform:uppercase;}
+
+/* ---------- ice ---------- */
+#ice{position:absolute;left:0;top:128px;right:0;bottom:0;
+  background:linear-gradient(180deg,#eef3f8 0%,#f6f9fc 40%,#e9eff6 100%);}
+#rink{position:absolute;inset:0;width:100%;height:100%;}
+
+/* ---------- player cards ---------- */
+.card{position:absolute;width:520px;height:120px;border-radius:18px;display:flex;
+  align-items:stretch;overflow:hidden;box-shadow:0 10px 26px rgba(10,16,28,.42);
+  opacity:0;transform:scale(.86);}
+.card.show{animation:cardIn .42s cubic-bezier(.25,1.25,.4,1) forwards;}
+@keyframes cardIn{to{opacity:1;transform:scale(1);}}
+/* .shown = static visible state for post-reveal swaps (opacity is NOT part of
+   the pulse animation, so it must come from the class, not `forwards`) */
+.card.shown{opacity:1;transform:scale(1);}
+.card.pulse{animation:cardPulse .45s ease;}
+@keyframes cardPulse{0%{transform:scale(1);}40%{transform:scale(1.045);}100%{transform:scale(1);}}
+.cphoto{flex:0 0 auto;width:120px;height:120px;position:relative;overflow:hidden;
+  background:#1b2029;}
+.cphoto img.head{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
+.cphoto .crest{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.cphoto .crest img{max-width:72%;max-height:72%;object-fit:contain;}
+.cphoto .sil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.cphoto .sil svg{width:66%;height:66%;opacity:.4;}
+.cbody{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
+  padding:0 22px;border-left:4px solid transparent;}
+.cline1{display:flex;align-items:baseline;gap:11px;white-space:nowrap;overflow:visible;}
+.cnum{font-size:29px;font-weight:800;flex:0 0 auto;}
+.cname{font-size:35px;font-weight:800;color:#fff;letter-spacing:.005em;}
+.crole{font-size:18px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.62);margin-top:5px;}
+.card.empty .cbody{opacity:.75;}
+.card.empty .cname{color:rgba(255,255,255,.5);}
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="panel">
+    <div id="hdr">
+      <img id="hdrLogo" alt="">
+      <div id="hdrText">
+        <div id="hdrTitle">STARTING LINEUP</div>
+        <div id="hdrTeam"></div>
+      </div>
+      <div id="hdrLeague"></div>
+    </div>
+    <div id="ice">
+      <svg id="rink" viewBox="0 0 1840 872" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- centre red line (top of the visible half-rink) -->
+        <rect x="0" y="46" width="1840" height="16" fill="#C8102E"/>
+        <!-- lower half of the centre faceoff circle, clipped by the red line -->
+        <path d="M 740 54 A 180 180 0 0 0 1100 54" fill="none" stroke="#1B5FAA" stroke-width="6" opacity=".85"/>
+        <circle cx="920" cy="54" r="11" fill="#1B5FAA" opacity=".85"/>
+        <!-- blue line -->
+        <rect x="0" y="306" width="1840" height="16" fill="#1B5FAA"/>
+        <!-- end-zone faceoff circles -->
+        <g stroke="#C8102E" stroke-width="6" fill="none" opacity=".9">
+          <circle cx="330" cy="606" r="158"/>
+          <circle cx="1510" cy="606" r="158"/>
+        </g>
+        <circle cx="330" cy="606" r="10" fill="#C8102E" opacity=".9"/>
+        <circle cx="1510" cy="606" r="10" fill="#C8102E" opacity=".9"/>
+        <!-- faceoff hash marks -->
+        <g stroke="#C8102E" stroke-width="6" opacity=".9">
+          <line x1="300" y1="576" x2="300" y2="556"/><line x1="360" y1="576" x2="360" y2="556"/>
+          <line x1="300" y1="636" x2="300" y2="656"/><line x1="360" y1="636" x2="360" y2="656"/>
+          <line x1="1480" y1="576" x2="1480" y2="556"/><line x1="1540" y1="576" x2="1540" y2="556"/>
+          <line x1="1480" y1="636" x2="1480" y2="656"/><line x1="1540" y1="636" x2="1540" y2="656"/>
+        </g>
+        <!-- goal crease (bulges up toward centre ice) + goal line -->
+        <path d="M 810 836 A 110 110 0 0 1 1030 836 Z" fill="#7FB6E6" fill-opacity=".45" stroke="#C8102E" stroke-width="6"/>
+        <rect x="0" y="836" width="1840" height="7" fill="#C8102E"/>
+        <!-- goal frame hint -->
+        <rect x="874" y="843" width="92" height="22" rx="6" fill="none" stroke="#C8102E" stroke-width="5" opacity=".8"/>
+      </svg>
+      <!-- inverted pyramid: forwards on the red line (CF staggered higher), D on the blue line, GK at the crease -->
+      <div class="card" id="slot_LF" style="left:40px;  top:132px;"></div>
+      <div class="card" id="slot_CF" style="left:660px; top:34px;"></div>
+      <div class="card" id="slot_RF" style="left:1280px;top:132px;"></div>
+      <div class="card" id="slot_LD" style="left:330px; top:402px;"></div>
+      <div class="card" id="slot_RD" style="left:990px; top:402px;"></div>
+      <div class="card" id="slot_GK" style="left:660px; top:652px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================== CONFIG ====================== */
+let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";
+const LOGO = "https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/";
+
+// Team registry keyed by channel slug (same slug() convention as the rest of
+// the estate: full club name, lowercased, non-alphanumerics -> hyphens).
+// ink/dark/logo mirror activity-banner's REG (kept in sync manually — same
+// accepted sibling-drift tradeoff as every other page in this repo).
+const TEAMS = {
+ "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
+ "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
+ "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png"},
+ "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png"},
+ "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
+ "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
+ "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png"},
+ "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png"},
+ "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
+};
+
+const SLOTS = ["LF","CF","RF","LD","RD","GK"];
+const ROLE_LABEL = {LF:"Forward", CF:"Forward", RF:"Forward", LD:"Defense", RD:"Defense", GK:"Goalie"};
+// reveal order: goalie up through the pyramid, CF lands last
+const REVEAL_MS = {GK:380, LD:540, RD:660, LF:800, RF:920, CF:1060};
+
+const Q = new URLSearchParams(location.search);
+if(Q.get("worker")) WORKER = Q.get("worker");
+const esc = s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const slugify = s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+
+const TEAM_SLUG = slugify(Q.get("team")||"");
+const T = TEAMS[TEAM_SLUG] || null;
+// Single JSON.parse of the already-URLSearchParams-decoded value — never
+// decodeURIComponent() it again (the "%-in-a-fact" double-decode bug, 2026-07-12).
+let PREVIEW = null;
+try{ if(Q.get("preview")) PREVIEW = JSON.parse(Q.get("preview")); }catch(e){ PREVIEW = null; }
+
+/* ====================== SCALING (16:9-safe, symmetric centering) ====================== */
+function fitWindow(){
+  const s = Math.min(window.innerWidth/1920, window.innerHeight/1080);
+  const left = Math.max(0,(window.innerWidth  - 1920*s)/2);
+  const top  = Math.max(0,(window.innerHeight - 1080*s)/2);
+  const f = document.getElementById("frame");
+  f.style.transform = `translate(${left}px,${top}px) scale(${s})`;
+}
+window.addEventListener("resize", fitWindow); fitWindow();
+
+/* ====================== TEXT FIT (shrink, never ellipsis) ====================== */
+function fitLine(el, base, min){
+  el.style.fontSize = base+"px";
+  const box = el.parentElement;
+  let size = base;
+  // parent is flex row; measure overflow against the card body width
+  while(size > min && box.scrollWidth > box.clientWidth){
+    size -= 1; el.style.fontSize = size+"px";
+  }
+}
+
+/* ====================== RENDER ====================== */
+const SIL_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="34" r="17" fill="#8a93a0"/>
+  <path d="M18 92 C18 66 34 58 50 58 C66 58 82 66 82 92 Z" fill="#8a93a0"/></svg>`;
+
+let CUR = {};          // slot -> serialized player key currently rendered
+let FIRST_PAINT = true;
+let LAST_UPDATED = null;
+
+function playerKey(p){ return p ? [p.number,p.name,p.photo||""].join("|") : ""; }
+
+function renderSlot(slot, player, animate){
+  const el = document.getElementById("slot_"+slot);
+  const dark = T.dark, ink = T.ink;
+  el.style.background = `linear-gradient(135deg, ${dark} 0%, ${dark} 78%, rgba(255,255,255,.07) 100%), ${dark}`;
+  let photoHtml;
+  if(player && player.photo){
+    photoHtml = `<img class="head" src="${esc(PHOTO_BASE+player.photo)}" alt=""
+      onerror="this.style.display='none';this.parentElement.querySelector('.crest').style.display='flex'">
+      <div class="crest" style="display:none"><img src="${esc(LOGO+encodeURIComponent(T.logo))}" alt=""></div>`;
+  } else if(player){
+    // player set but no headshot in the warehouse -> team crest (estate convention)
+    photoHtml = `<div class="crest" style="display:flex"><img src="${esc(LOGO+encodeURIComponent(T.logo))}" alt=""></div>`;
+  } else {
+    photoHtml = `<div class="sil">${SIL_SVG}</div>`;
+  }
+  el.className = "card" + (player ? "" : " empty");
+  el.innerHTML =
+    `<div class="cphoto">${photoHtml}</div>
+     <div class="cbody" style="border-left-color:${ink}">
+       <div class="cline1">
+         ${player&&player.number!=null?`<span class="cnum" style="color:${ink}">#${esc(player.number)}</span>`:""}
+         <span class="cname">${player?esc(player.name):"&mdash;"}</span>
+       </div>
+       <div class="crole">${ROLE_LABEL[slot]}</div>
+     </div>`;
+  const nameEl = el.querySelector(".cname");
+  if(animate){
+    el.style.animationDelay = REVEAL_MS[slot]+"ms";
+    // force reflow so the animation restarts cleanly
+    void el.offsetWidth;
+    el.classList.add("show");
+    setTimeout(()=>fitLine(nameEl, 35, 20), REVEAL_MS[slot]+40);
+  } else {
+    el.style.animationDelay = "0ms";
+    el.classList.add("shown");
+    void el.offsetWidth;               // restart the pulse cleanly
+    el.classList.add("pulse");
+    fitLine(nameEl, 35, 20);
+  }
+}
+
+function renderAll(state){
+  const slots = (state && state.slots) || {};
+  SLOTS.forEach(slot=>{
+    const p = slots[slot] || null;
+    const key = playerKey(p);
+    if(FIRST_PAINT){ renderSlot(slot, p, true); CUR[slot]=key; }
+    else if(CUR[slot] !== key){ renderSlot(slot, p, false); CUR[slot]=key; }
+  });
+  FIRST_PAINT = false;
+}
+
+/* ====================== DATA ====================== */
+async function pollLineup(){
+  try{
+    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store"});
+    const txt = await r.text();
+    let j; try{ j = JSON.parse(txt); }catch(e){ return; }   // worker not redeployed yet — keep whatever we have
+    if(j.error) return;
+    if(j.updated_at === LAST_UPDATED && !FIRST_PAINT) return;
+    LAST_UPDATED = j.updated_at;
+    renderAll(j);
+  }catch(e){ /* best effort — never blank an on-air graphic over a failed poll */
+    if(FIRST_PAINT) renderAll(null);
+  }
+}
+
+/* ====================== INIT ====================== */
+function start(){
+  if(!T){ document.body.innerHTML = ""; return; }   // bad slug: render nothing (transparent source)
+  document.title = T.name + " — Starting Lineup";
+  const panel = document.getElementById("panel");
+  panel.style.background = "#0d0f13";
+  document.getElementById("hdr").style.background =
+    `linear-gradient(90deg, ${T.dark} 0%, ${T.dark} 72%, rgba(255,255,255,.06) 100%), ${T.dark}`;
+  document.getElementById("hdrLogo").src = LOGO + encodeURIComponent(T.logo);
+  document.getElementById("hdrTeam").textContent = T.name;
+  document.getElementById("hdrTeam").style.color = T.ink;
+  document.getElementById("hdrLeague").textContent = T.league.toUpperCase();
+  panel.classList.add("show");
+
+  if(PREVIEW){
+    renderAll(PREVIEW);                 // control-page preview: state rides in the URL, no polling
+  } else {
+    pollLineup();                       // live: worker state on load...
+    setInterval(pollLineup, 10000);     // ...then poll so late changes land on an open source
+  }
+}
+if(document.fonts && document.fonts.ready){ document.fonts.ready.then(start); } else { start(); }
+</script>
+</body>
+</html>
