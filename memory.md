@@ -302,6 +302,54 @@ worth deciding if/how to de-duplicate before more L3 iteration rounds land, sinc
 L3 tweak has to be applied to both files by hand (as this session's narrow/centre/balance
 passes were).
 
+## Photo + season-data warehouse estate-wide audit + migration (2026-07-12)
+
+Full-estate audit per Mat's request, covering both leagues on every graphic/overlay/page
+against the two warehouses ([[nzihl-player-photos]], [[nzihl-season-data]]). Full findings
+committed as `warehouse-audit.md` at repo root (repo/surface -> photo source, data source,
+real-time?, action taken/reason).
+
+**Photo migration shipped (commit a21c51c):** `activity-banner/` (goal/pen banner scorer
+photo), `scoringleaders/index.html` + `ab-test.html`, and `summary/` (Game Summary) were all
+still naive-guess -> esportsdesk `rosters_profile.cfm` live fallback ONLY -- none of them tried
+the photo warehouse first, even though Player L3s (added the day before, in `activity-banner/`,
+`scorebug-l3/`, `lowerthirds/`) already did. Added `warehousePhotoFor(teamID, no)` to each: looks
+up `nzihl-player-photos`' `manifest.json` by team code + jersey number BEFORE the naive guess.
+Fallback chain everywhere is now: warehouse manifest -> naive `<FirstLast>.jpg` guess ->
+`rosters_profile.cfm` live profile-page scrape -> initials placeholder (unchanged tail, just a
+new head). `ab-test.html` (already known throwaway, not linked anywhere -- see [[nzihl-scoring-leaders-project]])
+got a lighter version keyed directly off team code since it doesn't carry `TEAMID_CODE`.
+**Deliberately NOT touched:** `nzihl-broadcast-assets/summary/index.html` +
+`previews/game-summary.html` -- confirmed via that repo's own memory.md these are
+design/prototype workspace, not the deployed page (deployed = this repo's `summary/`) --
+migrating dev-sandbox files mid-iteration wasn't worth the churn. `box/index.html`'s
+`admin.esportsdesk.com/media/leagues/6795/graphics/` use is team LOGOS, not player headshots
+-- out of scope.
+
+**Season-data side: verified, found a real bug, did NOT migrate scoring-leaders' totals.**
+Reproduced live `stats_1team.cfm` season totals via `nzihl-season-data`'s `player_game_logs`
+for 2 teams/league (ADM/CRD nzihl, AST/CIN nzwihl). ADM/CRD/AST matched exactly. **CIN did
+not** -- found a genuine parser bug in `nzihl-season-data`: a parenthetical nickname/maiden
+name in an ASSIST name (not just the scorer's own name, which was already fixed) corrupts the
+goal-line regex, e.g. game 2520003 stored as `who:"Gabrielle Guerin (Reagyn Shattock",
+assists:["Niskakoski)"], teamID:null` -- the goal silently drops out of both players' totals.
+Same bug recurred in game 2520016 via "Lucy-Jane(LJ) Hart"'s own nickname paren. Ruled out a
+freshness gap first (triggered a `workflow_dispatch`, confirmed the newest CIN game was already
+included, discrepancy persisted) before concluding it's a real parsing bug. Per Mat's standing
+instruction, scoringleaders stays on its live `stats_1team.cfm` Worker fetch -- did not switch.
+Flagged to Mat as a fast-follow for `nzihl-season-data`: port the existing "greedy name capture"
+fix (already applied to scorer names) to assist names too.
+
+**Other findings, not actioned this pass (see `warehouse-audit.md` for full detail):**
+`stats.json` (feeds Player L3 stat lines, built into both roster repos) duplicates
+`nzihl-season-data`'s purpose but not its mechanism -- left alone since it shipped 2026-07-11
+and nzihl-season-data currently has the bug above. Pregame team-standing-position text in
+`activity-banner`/`scorebug-l3`/`ticker` (one-shot live `standings.cfm` fetch) is a genuine
+migration candidate to `nzihl-season-data` but that repo doesn't store a standings table yet --
+flagged rather than shipped unverified. `reddevils-nzihl-integration` (Fixtures/Standings/Top
+Scorers) is a clean migration candidate in principle but is a third-party dev's (Strive
+Digital) codebase, delivered as local files, not something pushed from here.
+
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
 
