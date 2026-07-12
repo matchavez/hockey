@@ -221,6 +221,24 @@ See Claude's `nzihl-player-lower-thirds` cross-session memory for the full
 design-decision log (this is the "built" follow-up to that memory, which
 previously said "not built yet" -- update that memory too if revisiting).
 
+**`?nobanner=1`, 2026-07-12 (Mat: "It's not working on the Canterbury Inferno page
+.../scorebug/?team=canterbury-inferno"):** turned out `scorebug/index.html` is a totally
+separate, self-contained page (Singular scoreboard iframe + its own goal/penalty banner +
+pregame alert) that never got Player L3 support built into it -- firing from the phone posts
+to the same control channel fine, but scorebug/ has nothing listening for it. Mat confirmed
+`activity-banner/` (the intended L3 platform) does work, and chose to add it as a SECOND
+browser source over `scorebug/` for teams needing both, rather than porting L3 support into
+scorebug/ itself. Problem: both pages independently poll the same box score for goal/penalty
+events and both show a pregame confidence banner, so naively layering them would double-fire
+both. Added `activity-banner/?team=<slug>&nobanner=1` -- suppresses `showConfidenceAlert()`
+and the `fireGoal()`/`firePen()` calls in `tick()` (goal/pen signatures are still tracked even
+while suppressed, so toggling the flag mid-game can't backfill a burst of missed events) while
+leaving L3 polling/firing completely untouched. Verified live for Canterbury Inferno (CIN):
+`NOBANNER===true`, `#pre` stays `display:none`, and a real control-channel fire for Gabrielle
+Guerin (#10) still rendered correctly. Production setups needing both a persistent scoreboard
+AND Player L3s should run `scorebug/?team=<slug>` (as before) PLUS
+`activity-banner/?team=<slug>&nobanner=1` as a second layered source.
+
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
 
