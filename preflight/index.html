@@ -304,7 +304,8 @@ function buildBoard(){
     wrap.appendChild(copyBtn("Banner",()=>BASE+`activity-banner/?team=${t.slug}`));
     wrap.appendChild(copyBtn("Player L3",()=>BASE+`lowerthirds/?team=${t.slug}`));
     wrap.appendChild(copyBtn("Summary",()=>BASE+`summary/?team=${t.slug}`));
-    if(r)wrap.appendChild(copyBtn("Box",()=>BASE+`box/?g=${r.gid}`+(r.m.league==="nzwihl"?"&w=1":"")));
+    // 2026-07-12: box/index.html retired -- link straight to the live esportsdesk box score instead.
+    if(r)wrap.appendChild(copyBtn("Box",()=>boxURL(r.m, r.gid)));
     c8.appendChild(wrap);
     [c1,c2,c3,c4,c5,c6,c7,c8].forEach(td=>tr.appendChild(td));
     tbody.appendChild(tr);

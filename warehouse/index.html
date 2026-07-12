@@ -202,7 +202,15 @@ function streakStrip(derived, leagueKey){
 
 const leagueCodeMaps = {}; // leagueKey -> {teamId: code}, built while rendering games
 
-function renderGamesLeague(leagueKey, leagueLabel, season, boxHref){
+// Direct esportsdesk box score (2026-07-12: box/index.html retired, per Mat -- this
+// producer tool now links straight to the live no-cache origin instead of a
+// dedicated auto-refreshing viewer page).
+const boxScoreURL = (leagueKey, gid) => {
+  const clientid = leagueKey === "nzwihl" ? 7132 : 7131;
+  const leagueid = leagueKey === "nzwihl" ? 35501 : 35499;
+  return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${clientid}&leagueid=${leagueid}&gameid=${gid}&printPage=1`;
+};
+function renderGamesLeague(leagueKey, leagueLabel, season){
   const games = (season && season.games) || [];
   const upcoming = (season && season.upcoming) || [];
   const derived = season && season.derived;
@@ -218,7 +226,7 @@ function renderGamesLeague(leagueKey, leagueLabel, season, boxHref){
 
   const playedRows = played.map(g => {
     const gid = g.gameid;
-    const href = `${boxHref}?g=${gid}${leagueKey==="nzwihl" ? "&w=1" : ""}`;
+    const href = boxScoreURL(leagueKey, gid);
     return `<tr data-teams="${esc(g.away.code)} ${esc(g.home.code)}">
       <td>${fmtDate(g.date)}</td>
       <td><div class="matchup">${teamCell(g.away)} <span class="sc">${g.away.total}</span><span class="at">@</span><span class="sc">${g.home.total}</span> ${teamCell(g.home)}</div></td>
@@ -295,8 +303,8 @@ async function loadGames(){
       `${(nzihl.games||[]).length + (nzwihl.games||[]).length} completed · ${(nzihl.upcoming||[]).length + (nzwihl.upcoming||[]).length} upcoming`;
 
     root.innerHTML =
-      `<div id="games-nzihl">${renderGamesLeague("nzihl", "NZIHL", nzihl, "../box/")}</div>` +
-      `<div id="games-nzwihl">${renderGamesLeague("nzwihl", "NZWIHL", nzwihl, "../box/")}</div>`;
+      `<div id="games-nzihl">${renderGamesLeague("nzihl", "NZIHL", nzihl)}</div>` +
+      `<div id="games-nzwihl">${renderGamesLeague("nzwihl", "NZWIHL", nzwihl)}</div>`;
     wireGameFilters();
   }catch(e){
     root.innerHTML = `<p class="err-note">Couldn't load season data (${esc(e.message)}). The nzihl-season-data repo may be mid-rebuild — try reloading in a minute.</p>`;

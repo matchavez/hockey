@@ -6,7 +6,7 @@ Self-context for Claude. README.md here is already extremely thorough and explic
 The live portal + every deployed broadcast overlay page for NZIHL/NZWIHL. `https://matchavez.com/hockey/` via GitHub Pages, custom domain, deploy = push to `main`. Single-file HTML overlays, no build step, 1920×1080 YoloBox browser sources.
 
 ## Page inventory (see README for full param contracts)
-`index.html` (portal), `team/`, `league/`, `ticker/`, `scorebug/`, `activity-banner/` (now also renders Player Lower Thirds, see below), `summary/` (Live Game Summary), `scoringleaders/` (+ `ab-test.html`, a design-experiment page not in the deployed rotation — ask before deleting once a variant is promoted), `box/`, `preflight/` (producer tool, not an overlay), `warehouse/` (producer tool, not an overlay — added 2026-07-11), `lowerthirds/` (producer tool, phone control page — added 2026-07-12), `assets/fonts/`.
+`index.html` (portal), `team/`, `league/`, `ticker/`, `scorebug/`, `activity-banner/` (now also renders Player Lower Thirds, see below), `summary/` (Live Game Summary), `scoringleaders/` (+ `ab-test.html`, a design-experiment page not in the deployed rotation — ask before deleting once a variant is promoted), `preflight/` (producer tool, not an overlay), `warehouse/` (producer tool, not an overlay — added 2026-07-11), `lowerthirds/` (producer tool, phone control page — added 2026-07-12), `assets/fonts/`. `box/` was retired 2026-07-12, see below.
 
 ## warehouse/ (2026-07-11)
 Single page combining two data sources that previously only had standalone/linked-out views: the full season game archive (nzihl-season-data) and the full player+coach photo library (nzihl-player-photos). Built in the preflight/-style dark producer-tool theme (--bg:#0d0f13 etc.), not the flashy portal-landing style -- this is a browsing tool for Mat, not a broadcast overlay or a public-facing showcase page.
@@ -301,6 +301,20 @@ now each carry an independent COPY of the same Player L3 code (CSS+JS) -- fine f
 worth deciding if/how to de-duplicate before more L3 iteration rounds land, since every future
 L3 tweak has to be applied to both files by hand (as this session's narrow/centre/balance
 passes were).
+
+## box/ retired (2026-07-12)
+
+Mat asked to remove it, on the assumption it had no other dependents. It actually had two: the
+"Box" copy-URL button in `preflight/`'s per-club panel, and the box-score link on every
+completed-game row in `warehouse/`'s game archive table -- both built `box/?g=<gameid>` links.
+Flagged this before deleting; Mat's call was to repoint both straight at the live esportsdesk
+`hockey_boxscores.cfm` origin instead of removing the links or building a replacement page.
+`preflight/` now reuses its existing `boxURL(m,gid)` helper for the copy button. `warehouse/`
+gained an equivalent `boxScoreURL(leagueKey,gid)` helper (it didn't have direct esportsdesk
+access before -- `renderGamesLeague()` used to take a `boxHref` string param pointing at
+`../box/`, now takes no such param and builds the URL itself). No other repo/page linked to
+`box/` -- confirmed via a full-repo grep before deleting. `README.md`'s `box/` doc row/section
+removed, replaced with a short retirement note.
 
 ## Photo + season-data warehouse estate-wide audit + migration (2026-07-12)
 

@@ -24,7 +24,6 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | `summary/` | Live Game Summary graphic (1840×1000-style card) | `?team=` `?g=` `?w=1` `?bg=opaque` |
 | `scoringleaders/` | **Team Scoring Leaders**: each side's top-3 point scorers, live stats + a season-form descriptor line (1840×1000-style card, same visual family as `summary/`) | `?team=` `?g=` `?w=1` `?bg=opaque` |
 | `scoringleaders/ab-test.html` | **Design-experiment page, NOT part of the deployed rotation** — not linked from the portal or anywhere else, direct-URL only. Stacks multiple full-size variants of the Team Scoring Leaders pill construction (mirrored vs symmetric vs centred-text, labelled A/B/C) on one page so Mat can compare before a decision lands in `scoringleaders/index.html`. Same convention as the old `summary/translucent-test.html`. Safe to delete once a variant is picked and promoted — ask before deleting. | `?team=` `?g=` `?w=1` |
-| `box/` | Auto-refreshing box-score iframe card with team logos | `?g=` `?w=1` `?s=<secs>` (refresh, default 35, min 8) |
 | `preflight/` | **Broadcast Pre-Flight** (producer tool, not an overlay): worker round-trip, manifest freshness (GitHub commits API), leaders/standings/schedule reach, per-club game resolution + BUGMAP status + box-score probe + FINAL status, copy-ready overlay URLs with per-club `?bs=`/`?tk=` tuning persisted in localStorage | — |
 | `warehouse/` | **Data Warehouse** (producer tool, not an overlay): browses the full season game archive (`nzihl-season-data`'s `nzihl.json`/`nzwihl.json` — completed games w/ streak chips + searchable/filterable table + box-score links, plus remaining fixtures) and the full player+coach photo library (`nzihl-player-photos`'s `manifest.json` — every rostered person, grouped by team, sorted by jersey #, real thumbnails or initials placeholders, missing-photo counts) on one page. Both fetched live client-side, nothing copied in. | — |
 | `lowerthirds/` | **Player Lower Thirds** (producer tool, not an overlay): phone control page — tap a tonight's-roster jersey pill, preview (shares the `activity-banner/?preview=` renderer), edit/toggle an auto-computed fact, Fire through a Cloudflare Worker Durable Object control channel to the `activity-banner/` already on air | `?team=` |
@@ -309,13 +308,16 @@ off the auto-computed fact line, then Fire.
   the `CONTROL_TOKEN` already embedded in the page's source — a deterrent against casual
   visitors on a static GitHub Pages file, not real security.
 
-## summary/ and box/
+## summary/
 
 - `summary/` — Live Game Summary card (goal/penalty rows w/ headshots-or-initials, period-driven
   columns, per-team accents incl. legibility tints + the Swarm-vs-Red-Devils Honey exception via
   `applyMatchupAccents()`). `?bg=opaque` for a solid background.
-- `box/` — dual-iframe cross-faded auto-refresher around the raw printPage box score (`?s=`
-  cadence, default 35s), team logos overlaid, NZWIHL via `?w=1`.
+
+**2026-07-12: `box/` retired.** It was a dual-iframe auto-refresher around the raw esportsdesk
+box score, with no unique data of its own (superseded by `summary/`'s Game Summary graphic).
+`preflight/`'s "Box" copy button and `warehouse/`'s per-game box-score links now point straight
+at the live esportsdesk `hockey_boxscores.cfm` origin instead.
 
 ## scoringleaders/ — Team Scoring Leaders
 
