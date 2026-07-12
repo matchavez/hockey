@@ -282,6 +282,26 @@ with a fact long enough to force a two-line wrap in both `activity-banner/` and 
 it at ~2 lines (unrelated, unchanged) — a 3rd-line-worth of fact text still gets clipped, same
 as before this pass.
 
+**Ninth pass, 2026-07-12: compress pill grid 40% + inline fact toggle.**
+`lowerthirds/index.html` only -- `.pill` height 52px->31px (40% reduction, "so we have a better
+chance of seeing it without scrolling") and `.factBox` restructured to a flex row so the
+"Include fact" switch sits inline to the LEFT of the fact textarea (compact vertical
+switch+label column) instead of stacked on its own row above it. Verified live: full page
+(preview + fact box + both team pill grids) now fits without scrolling on a phone-sized
+viewport; pill tap/preview/toggle all still function correctly.
+
+**Pending, flagged for Mon 2026-07-13 afternoon: clean up the L3 setup.** Mat asked for a note
+to revisit and consolidate. Current loose ends: (1) original `scorebug/index.html` was kept
+untouched as a same-day fallback for the 2026-07-12 Inferno game -- decide whether it's still
+needed now that `scorebug-l3/index.html` (same page + L3s) is the one actually being used, or
+whether it should be retired/redirected; (2) `activity-banner/`'s `?nobanner=1` flag was built
+for the two-layer approach Mat then abandoned in favour of `scorebug-l3/` -- confirm whether
+anything still uses it before leaving it in place; (3) `scorebug-l3/` and `activity-banner/`
+now each carry an independent COPY of the same Player L3 code (CSS+JS) -- fine for now, but
+worth deciding if/how to de-duplicate before more L3 iteration rounds land, since every future
+L3 tweak has to be applied to both files by hand (as this session's narrow/centre/balance
+passes were).
+
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
 
