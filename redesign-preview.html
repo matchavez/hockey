@@ -63,15 +63,30 @@
     transition:color .15s, border-color .15s, background .15s; }
   nav a:hover{ color:var(--txt); border-color:var(--line); background:var(--panel); }
   nav a.on{ color:var(--gold); border-color:rgba(247,190,17,.35); background:rgba(247,190,17,.07); }
-  nav a b{ color:var(--gold); font-weight:800; margin-right:6px; font-size:11px; }
-  nav a.on b{ color:inherit; }
+
+  /* ---------- team strip: one line, top fold ---------- */
+  .team-strip{ background:rgba(10,11,13,.94); border-bottom:1px solid var(--line); }
+  .team-strip .wrap{ display:flex; align-items:center; gap:7px; padding:8px 16px;
+    overflow-x:auto; scrollbar-width:none; }
+  .team-strip .wrap::-webkit-scrollbar{ display:none; }
+  .team-strip .lgmark{ flex:0 0 auto; display:flex; align-items:center; padding:4px 6px;
+    border-radius:8px; transition:background .15s; }
+  .team-strip .lgmark img{ height:20px; width:auto; }
+  .team-strip .lgmark:hover{ background:var(--panel); }
+  .team-strip .div{ width:1px; height:20px; background:var(--line); flex:0 0 auto; margin:0 3px; }
+  .tpill{ flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 6px;
+    border-radius:999px; border:1px solid var(--line); background:var(--panel);
+    font-size:12px; font-weight:700; color:var(--muted);
+    transition:color .15s, border-color .15s, box-shadow .2s; }
+  .tpill img{ width:24px; height:24px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .tpill:hover{ color:var(--txt); border-color:rgba(247,190,17,.5); box-shadow:0 0 12px rgba(247,190,17,.12); }
+  .tpill.w:hover{ border-color:rgba(58,160,255,.5); box-shadow:0 0 12px rgba(58,160,255,.12); }
 
   /* ---------- sections ---------- */
-  section{ padding:34px 0 10px; }
-  .zone-head{ display:flex; align-items:baseline; gap:12px; margin:0 0 4px; }
-  .zone-num{ font-size:12px; font-weight:800; color:var(--gold); letter-spacing:.14em; }
-  .zone-head h2{ font-size:21px; font-weight:800; margin:0; letter-spacing:.005em; }
-  .zone-sub{ color:var(--muted); font-size:13.5px; margin:0 0 16px; }
+  section{ padding:24px 0 6px; }
+  .zone-head{ display:flex; align-items:baseline; gap:12px; margin:0 0 2px; }
+  .zone-head h2{ font-size:19px; font-weight:800; margin:0; letter-spacing:.005em; }
+  .zone-sub{ color:var(--muted); font-size:13px; margin:0 0 12px; }
   .chip{ display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:800;
     letter-spacing:.1em; text-transform:uppercase; color:var(--live);
     border:1px solid rgba(46,204,113,.35); background:rgba(46,204,113,.07);
@@ -81,23 +96,23 @@
   @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,.5);} 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0);} }
 
   /* ---------- game cards ---------- */
-  .games{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; }
-  .game{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
-    display:flex; flex-direction:column; gap:10px; transition:border-color .15s, box-shadow .2s; }
+  .games{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; }
+  .game{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:11px 13px;
+    display:flex; flex-direction:column; gap:8px; transition:border-color .15s, box-shadow .2s; }
   .game:hover{ border-color:#3a3f47; box-shadow:0 6px 22px rgba(0,0,0,.35); }
   .game .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .game .when{ font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.02em; }
   .lg-tag{ font-size:10px; font-weight:800; letter-spacing:.12em; padding:2px 8px; border-radius:999px; }
   .lg-tag.nzihl{ color:var(--gold); border:1px solid rgba(247,190,17,.4); background:rgba(247,190,17,.06); }
   .lg-tag.nzwihl{ color:var(--accent); border:1px solid rgba(58,160,255,.4); background:rgba(58,160,255,.06); }
-  .game .match{ display:flex; flex-direction:column; gap:7px; font-size:15px; font-weight:700; }
-  .game .match .side{ display:flex; align-items:center; gap:9px; }
-  .game .match img{ width:26px; height:26px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
-  .game .match .at{ color:var(--muted); font-weight:600; font-size:13px; width:14px; text-align:center; flex:0 0 auto; }
-  .game .venue{ font-size:12.5px; color:var(--muted); }
-  .game .acts{ display:flex; gap:7px; flex-wrap:wrap; margin-top:2px; }
-  .btn{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:700;
-    padding:6px 12px; border-radius:9px; border:1px solid var(--line); background:var(--panel2);
+  .game .match{ display:flex; flex-direction:column; gap:5px; font-size:14px; font-weight:700; }
+  .game .match .side{ display:flex; align-items:center; gap:8px; }
+  .game .match img{ width:22px; height:22px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .game .match .at{ color:var(--muted); font-weight:600; font-size:12px; width:12px; text-align:center; flex:0 0 auto; }
+  .game .venue{ font-size:12px; color:var(--muted); }
+  .game .acts{ display:flex; gap:6px; flex-wrap:wrap; margin-top:1px; }
+  .btn{ display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:700;
+    padding:4px 10px; border-radius:7px; border:1px solid var(--line); background:var(--panel2);
     cursor:pointer; transition:border-color .15s, color .15s, box-shadow .2s; }
   .btn:hover{ border-color:rgba(247,190,17,.5); color:var(--gold); }
   .btn.pri{ border-color:rgba(247,190,17,.45); background:rgba(247,190,17,.08); color:var(--gold); }
@@ -105,79 +120,37 @@
   .btn.dis{ opacity:.45; pointer-events:none; }
   .btn.copied{ color:var(--live); border-color:rgba(46,204,113,.5); }
   .note{ color:var(--muted); font-size:13px; }
-  .roster-left{ margin-top:14px; background:var(--panel); border:1px solid var(--line);
-    border-radius:14px; padding:12px 16px; }
-  .roster-left h3{ margin:0 0 8px; font-size:13px; font-weight:800; letter-spacing:.06em;
+  .roster-left{ margin-top:10px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:9px 13px; }
+  .roster-left h3{ margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:.06em;
     text-transform:uppercase; color:var(--muted); }
   .roster-item{ display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:7px 0; border-top:1px solid var(--line); font-size:13.5px; }
+    padding:5px 0; border-top:1px solid var(--line); font-size:13px; }
   .roster-item:first-of-type{ border-top:none; }
 
-  /* ---------- team hub ---------- */
-  .hub-grid{ display:flex; flex-direction:column; gap:10px; }
-  .hub-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .hub-lg-label{ flex:0 0 68px; font-size:11px; font-weight:800; letter-spacing:.12em;
-    text-transform:uppercase; }
-  .hub-lg-label.nzihl{ color:var(--gold); } .hub-lg-label.nzwihl{ color:var(--accent); }
-  .team-btn{ display:flex; flex-direction:column; align-items:center; gap:6px; width:86px;
-    padding:10px 6px 8px; border-radius:12px; border:1px solid var(--line); background:var(--panel);
-    cursor:pointer; transition:border-color .15s, transform .15s, box-shadow .2s; }
-  .team-btn:hover{ transform:translateY(-2px); border-color:#3a3f47; box-shadow:0 6px 18px rgba(0,0,0,.35); }
-  .team-btn img{ width:40px; height:40px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
-  .team-btn span{ font-size:11px; font-weight:700; color:var(--muted); text-align:center; line-height:1.2; }
-  .team-btn.sel{ border-color:rgba(247,190,17,.6); background:rgba(247,190,17,.06);
-    box-shadow:0 0 16px rgba(247,190,17,.15); }
-  .team-btn.sel span{ color:var(--gold); }
-  .team-btn.sel.w{ border-color:rgba(58,160,255,.6); background:rgba(58,160,255,.06);
-    box-shadow:0 0 16px rgba(58,160,255,.15); }
-  .team-btn.sel.w span{ color:var(--accent); }
-
-  #team-panel{ margin-top:16px; border:1px solid var(--line); border-radius:16px;
-    background:var(--panel); overflow:hidden; display:none; }
-  #team-panel.show{ display:block; animation:fadeup .25s ease; }
-  @keyframes fadeup{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
-  .panel-head{ display:flex; align-items:center; gap:14px; padding:16px 20px;
-    border-bottom:1px solid var(--line); background:var(--panel2); flex-wrap:wrap; }
-  .panel-head img{ width:44px; height:44px; object-fit:contain; }
-  .panel-head .pn{ font-size:18px; font-weight:800; }
-  .panel-head .pl{ font-size:11px; font-weight:800; letter-spacing:.12em; color:var(--muted); }
-  .panel-head .spacer{ flex:1; }
-  .panel-body{ display:grid; grid-template-columns:1.5fr 1fr; gap:0; }
-  @media (max-width:760px){ .panel-body{ grid-template-columns:1fr; } }
-  .panel-col{ padding:16px 20px; }
-  .panel-col + .panel-col{ border-left:1px solid var(--line); }
-  @media (max-width:760px){ .panel-col + .panel-col{ border-left:none; border-top:1px solid var(--line); } }
-  .panel-col h3{ margin:0 0 10px; font-size:12px; font-weight:800; letter-spacing:.1em;
-    text-transform:uppercase; color:var(--muted); }
-  .url-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--line);
-    flex-wrap:wrap; }
-  .url-row:first-of-type{ border-top:none; }
-  .url-row .lbl{ flex:1 1 150px; min-width:130px; }
-  .url-row .lbl b{ display:block; font-size:13.5px; font-weight:700; }
-  .url-row .lbl code{ display:block; font-size:11px; color:var(--muted);
-    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; margin-top:1px;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:280px; }
-  .url-row .acts{ display:flex; gap:6px; flex-wrap:wrap; }
-  .mako-note{ padding:12px 0 4px; }
-
   /* ---------- league assets ---------- */
-  .assets-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; }
-  .asset{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px;
-    display:flex; flex-direction:column; gap:10px; transition:border-color .15s, box-shadow .2s; }
+  .assets-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; }
+  .asset{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+    display:flex; flex-direction:column; gap:8px; transition:border-color .15s, box-shadow .2s; }
   .asset:hover{ border-color:#3a3f47; box-shadow:0 6px 22px rgba(0,0,0,.35); }
-  .asset h3{ margin:0; font-size:15.5px; font-weight:800; }
-  .asset p{ margin:0; font-size:13px; color:var(--muted); }
-  .asset .acts{ display:flex; gap:7px; flex-wrap:wrap; margin-top:auto; padding-top:4px; }
-  .stand-thumb{ width:100%; border-radius:9px; border:1px solid var(--line); background:#000; display:block; }
+  .asset h3{ margin:0; font-size:14.5px; font-weight:800; }
+  .asset p{ margin:0; font-size:12.5px; color:var(--muted); }
+  .asset .acts{ display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; padding-top:2px; }
+  .stand-thumb{ width:100%; border-radius:8px; border:1px solid var(--line); background:#000; display:block; }
 
-  /* ---------- tools ---------- */
-  .tools-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
-  .tool{ display:flex; flex-direction:column; gap:3px; background:var(--panel); border:1px solid var(--line);
-    border-radius:12px; padding:12px 14px; transition:border-color .15s; }
-  .tool:hover{ border-color:rgba(247,190,17,.4); }
-  .tool b{ font-size:13.5px; }
-  .tool span{ font-size:12px; color:var(--muted); }
-  .tool .beta{ color:var(--accent); font-size:10px; font-weight:800; letter-spacing:.1em; }
+  /* ---------- tools: dense divided list, no cards ---------- */
+  .tool-list{ border:1px solid var(--line); border-radius:12px; background:var(--panel);
+    padding:2px 14px; }
+  .tool-row{ display:flex; align-items:baseline; gap:9px; padding:8px 0;
+    border-top:1px solid var(--line); font-size:13px; }
+  .tool-row:first-child{ border-top:none; }
+  .tool-row b{ font-weight:700; white-space:nowrap; }
+  .tool-row:hover b{ color:var(--gold); }
+  .tool-row span{ color:var(--muted); font-size:12px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .tool-row .beta{ flex:0 0 auto; color:var(--accent); font-size:9.5px; font-weight:800;
+    letter-spacing:.1em; border:1px solid rgba(58,160,255,.4); border-radius:999px; padding:1px 7px; }
+  .tool-row .go{ margin-left:auto; color:var(--muted); flex:0 0 auto; }
 
   footer{ margin-top:36px; border-top:1px solid var(--line); padding:20px 0 40px;
     color:var(--muted); font-size:12.5px; }
@@ -209,21 +182,24 @@
   </div>
 </header>
 
+<div class="team-strip">
+  <div class="wrap" id="team-strip-row"></div>
+</div>
+
 <nav>
   <div class="wrap">
-    <a href="#weekend" class="on"><b>01</b>This Weekend</a>
-    <a href="#teams"><b>02</b>Team Hub</a>
-    <a href="#league"><b>03</b>League Assets</a>
-    <a href="#tools"><b>04</b>Tools</a>
+    <a href="#weekend" class="on">This Weekend</a>
+    <a href="#league">League Assets</a>
+    <a href="#tools">Tools</a>
   </div>
 </nav>
 
 <main>
 
-  <!-- ============ 01 THIS WEEKEND ============ -->
+  <!-- ============ THIS WEEKEND ============ -->
   <section id="weekend">
     <div class="wrap">
-      <div class="zone-head"><span class="zone-num">01</span><h2>This Weekend <span class="chip"><span class="dot"></span>Live</span></h2></div>
+      <div class="zone-head"><h2>This Weekend <span class="chip"><span class="dot"></span>Live</span></h2></div>
       <p class="zone-sub">One card per game — summary, scoring leaders and the roster PDF together. Links go live as the pipeline resolves them.</p>
       <div id="games-grid" class="games"><div class="note">Loading fixtures…</div></div>
       <div id="roster-leftover" class="roster-left" style="display:none">
@@ -236,23 +212,10 @@
     </div>
   </section>
 
-  <!-- ============ 02 TEAM HUB ============ -->
-  <section id="teams">
-    <div class="wrap">
-      <div class="zone-head"><span class="zone-num">02</span><h2>Team Hub</h2></div>
-      <p class="zone-sub">Pick a team — every live overlay URL and download pack for that club in one panel.</p>
-      <div class="hub-grid">
-        <div class="hub-row"><span class="hub-lg-label nzihl">NZIHL</span><span id="hub-nzihl" style="display:contents"></span></div>
-        <div class="hub-row"><span class="hub-lg-label nzwihl">NZWIHL</span><span id="hub-nzwihl" style="display:contents"></span></div>
-      </div>
-      <div id="team-panel"></div>
-    </div>
-  </section>
-
-  <!-- ============ 03 LEAGUE ASSETS ============ -->
+  <!-- ============ LEAGUE ASSETS ============ -->
   <section id="league">
     <div class="wrap">
-      <div class="zone-head"><span class="zone-num">03</span><h2>League Assets</h2></div>
+      <div class="zone-head"><h2>League Assets</h2></div>
       <p class="zone-sub">League-wide graphics and reference — standings rebuild nightly, photos weekly.</p>
       <div class="assets-grid">
         <div class="asset">
@@ -309,26 +272,26 @@
     </div>
   </section>
 
-  <!-- ============ 04 TOOLS ============ -->
+  <!-- ============ TOOLS ============ -->
   <section id="tools">
     <div class="wrap">
-      <div class="zone-head"><span class="zone-num">04</span><h2>Tools &amp; Beta</h2></div>
+      <div class="zone-head"><h2>Tools &amp; Beta</h2></div>
       <p class="zone-sub">Producer utilities and in-progress overlays.</p>
-      <div class="tools-grid">
-        <a class="tool" href="https://matchavez.com/hockey/preflight/" target="_blank" rel="noopener">
-          <b>Broadcast Pre-Flight</b><span>Worker / manifest / game checks + copy-ready URLs</span></a>
-        <a class="tool" href="https://matchavez.com/hockey/scorebug/?test=1" target="_blank" rel="noopener">
-          <b>Red Devils Scorebug + Banner</b><span class="beta">BETA</span></a>
-        <a class="tool" href="https://matchavez.com/hockey/scorebug/?team=canterbury-inferno&amp;test=1" target="_blank" rel="noopener">
-          <b>Inferno Scorebug + Banner</b><span class="beta">BETA</span></a>
-        <a class="tool" href="https://matchavez.com/hockey/ticker/?test=1" target="_blank" rel="noopener">
-          <b>Ticker Page</b><span>Scorebug + scrolling game ticker</span><span class="beta">BETA</span></a>
-        <a class="tool" href="https://matchavez.com/hockey/activity-banner/?test=1" target="_blank" rel="noopener">
-          <b>Activity Banner test</b><span>Goal/penalty banner, no scorebug</span></a>
-        <a class="tool" href="https://cockpit.49ing.ch/dashboard" target="_blank" rel="noopener">
-          <b>49ing Cockpit ↗</b><span>Stream dashboard</span></a>
-        <a class="tool" href="https://app.singular.live/appinstances/6104631/control" target="_blank" rel="noopener">
-          <b>Christchurch Scorebug Login ↗</b><span>Singular.live control</span></a>
+      <div class="tool-list">
+        <a class="tool-row" href="https://matchavez.com/hockey/preflight/" target="_blank" rel="noopener">
+          <b>Broadcast Pre-Flight</b><span>worker / manifest / game checks + copy-ready URLs</span><span class="go">→</span></a>
+        <a class="tool-row" href="https://matchavez.com/hockey/scorebug/?test=1" target="_blank" rel="noopener">
+          <b>Red Devils Scorebug + Banner</b><span class="beta">BETA</span><span class="go">→</span></a>
+        <a class="tool-row" href="https://matchavez.com/hockey/scorebug/?team=canterbury-inferno&amp;test=1" target="_blank" rel="noopener">
+          <b>Inferno Scorebug + Banner</b><span class="beta">BETA</span><span class="go">→</span></a>
+        <a class="tool-row" href="https://matchavez.com/hockey/ticker/?test=1" target="_blank" rel="noopener">
+          <b>Ticker Page</b><span>scorebug + scrolling game ticker</span><span class="beta">BETA</span><span class="go">→</span></a>
+        <a class="tool-row" href="https://matchavez.com/hockey/activity-banner/?test=1" target="_blank" rel="noopener">
+          <b>Activity Banner test</b><span>goal/penalty banner, no scorebug</span><span class="go">→</span></a>
+        <a class="tool-row" href="https://cockpit.49ing.ch/dashboard" target="_blank" rel="noopener">
+          <b>49ing Cockpit</b><span>stream dashboard</span><span class="go">↗</span></a>
+        <a class="tool-row" href="https://app.singular.live/appinstances/6104631/control" target="_blank" rel="noopener">
+          <b>Christchurch Scorebug Login</b><span>Singular.live control</span><span class="go">↗</span></a>
       </div>
     </div>
   </section>
@@ -385,71 +348,17 @@ document.getElementById('nzihl-1840').href  = `${ASSETS}/NZIHL_Standings_1840x10
 document.getElementById('nzwihl-1920').href = `${ASSETS}/NZWIHL_Standings.png`;
 document.getElementById('nzwihl-1840').href = `${ASSETS}/NZWIHL_Standings_1840x1000.png`;
 
-/* ---------- team hub ---------- */
-function teamBtn(t, w){
-  return `<button class="team-btn${w?' w':''}" data-team="${t.nm}" data-w="${w?1:0}">
-    <img loading="lazy" src="${logoUrl(t)}" alt=""><span>${t.nick}</span></button>`;
-}
-document.getElementById('hub-nzihl').innerHTML  = NZIHL.map(t=>teamBtn(t,false)).join('');
-document.getElementById('hub-nzwihl').innerHTML = NZWIHL.map(t=>teamBtn(t,true)).join('');
-
-function urlRow(label, mono, acts){
-  return `<div class="url-row"><span class="lbl"><b>${label}</b><code>${mono}</code></span><span class="acts">${acts}</span></div>`;
-}
+/* ---------- team strip — one line, links to team pages ---------- */
 const open = (href,txt,pri) => `<a class="btn${pri?' pri':''}" target="_blank" rel="noopener" href="${href}">${txt}</a>`;
-const copy = url => `<button class="btn" data-copy="${url}">Copy</button>`;
-
-function renderPanel(t, isW){
-  const sl = slugOf(t.nm);
-  const noLive = NO_LIVE.has(t.nm);
-  const S  = `${HOCKEY}/summary/?team=${sl}`;
-  const L  = `${HOCKEY}/scoringleaders/?team=${sl}`;
-  const AB = `${HOCKEY}/activity-banner/?team=${sl}`;
-  const L3 = `${HOCKEY}/lowerthirds/?team=${sl}`;
-  const TK = `${HOCKEY}/ticker/?team=${sl}`;
-  const overlays = noLive
-    ? `<p class="note mako-note">No 2026 games — live overlay URLs aren't wired for ${t.nick}. Download packs still apply.</p>`
-    : urlRow('Game Summary', `/summary/?team=${sl}`,
-        open(S+'&bg=black','Black',true)+open(S+'&bg=opaque','Opaque')+copy(S+'&bg=black'))
-    + urlRow('Scoring Leaders', `/scoringleaders/?team=${sl}`,
-        open(L+'&bg=black','Black',true)+open(L+'&bg=opaque','Opaque')+copy(L+'&bg=black'))
-    + urlRow('Activity Banner', `/activity-banner/?team=${sl}`,
-        open(AB,'Open',true)+copy(AB))
-    + urlRow('Player Lower Thirds', `/lowerthirds/?team=${sl}`,
-        open(L3,'Phone page',true)+copy(L3))
-    + urlRow('Ticker', `/ticker/?team=${sl}`,
-        open(TK,'Open',true)+copy(TK));
-  const downloads =
-      urlRow('Up Next pack', `${zipSlug(t.nm)}_upnext.zip`,
-        open(`${ASSETS}/up-next/zips/${zipSlug(t.nm)}_upnext.zip`,'Zip',true)
-        +open(`https://github.com/matchavez/nzihl-broadcast-assets/tree/main/up-next/${enc(t.up)}`,'Browse'))
-    + urlRow('DVD Bounce loops', `${zipSlug(t.nm)}_dvd.zip`,
-        open(`${ASSETS}/DVD%20Bounce%20Loops/zips/${zipSlug(t.nm)}_dvd.zip`,'Zip',true)
-        +open(`https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${t.dvd}`,'Browse'));
-  const panel = document.getElementById('team-panel');
-  panel.innerHTML = `
-    <div class="panel-head">
-      <img src="${logoUrl(t)}" alt="">
-      <div><div class="pn">${t.nm}</div><div class="pl">${isW?'NZWIHL':'NZIHL'}</div></div>
-      <div class="spacer"></div>
-      ${open(`${HOCKEY}/team/?team=${sl}`,'Team page →')}
-    </div>
-    <div class="panel-body">
-      <div class="panel-col"><h3>Live overlay URLs — paste as a browser source</h3>${overlays}</div>
-      <div class="panel-col"><h3>Downloads</h3>${downloads}</div>
-    </div>`;
-  panel.classList.add('show');
-}
-
-document.addEventListener('click', e=>{
-  const b = e.target.closest('.team-btn'); if(!b) return;
-  document.querySelectorAll('.team-btn').forEach(x=>x.classList.remove('sel'));
-  b.classList.add('sel');
-  const isW = b.dataset.w === '1';
-  const t = (isW ? NZWIHL : NZIHL).find(t=>t.nm===b.dataset.team);
-  renderPanel(t, isW);
-  document.getElementById('team-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
-});
+const LEAGUE_LOGOS = { NZIHL:"NZIHL-White-2000.png", NZWIHL:"NZWIHL-Logo-White-1000px.png" };
+const leagueMark = key => `<a class="lgmark" href="${HOCKEY}/league/?league=${key.toLowerCase()}" title="${key} league page">
+  <img loading="lazy" src="${ASSETS}/assets/league/${enc(LEAGUE_LOGOS[key])}" alt="${key}"></a>`;
+const teamPill = (t,w) => `<a class="tpill${w?' w':''}" href="${HOCKEY}/team/?team=${slugOf(t.nm)}" title="${t.nm} — every broadcast link for this club">
+  <img loading="lazy" src="${logoUrl(t)}" alt="">${t.nick}</a>`;
+document.getElementById('team-strip-row').innerHTML =
+  leagueMark('NZIHL') + leagueMark('NZWIHL') + '<span class="div"></span>' +
+  NZIHL.map(t=>teamPill(t,false)).join('') + '<span class="div"></span>' +
+  NZWIHL.map(t=>teamPill(t,true)).join('');
 
 /* ---------- this weekend: fixtures + roster PDFs unified ---------- */
 const STALE_CUTOFF_DAYS = 2;
@@ -527,10 +436,10 @@ async function loadWeekend(){
     const isW = (g.league||'').toUpperCase().startsWith('NZW');
     const pdf = pdfFor(g);
     const sumBtn = gid
-      ? open(`${HOCKEY}/summary/?g=${gid}${wSuffix(g)}`,'Game Summary',true)
+      ? open(`${HOCKEY}/summary/?g=${gid}${wSuffix(g)}`,'Summary',true)
       : `<span class="btn dis">Summary TBC</span>`;
     const ldrBtn = gid
-      ? open(`${HOCKEY}/scoringleaders/?g=${gid}${wSuffix(g)}`,'Scoring Leaders')
+      ? open(`${HOCKEY}/scoringleaders/?g=${gid}${wSuffix(g)}`,'Leaders')
       : `<span class="btn dis">Leaders TBC</span>`;
     const rosBtn = pdf ? open(pdf.browser_download_url,'Roster PDF') : '';
     return `<div class="game">
