@@ -47,8 +47,8 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
   white-space:nowrap;}
 #hdrTeam{font-size:25px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   margin-top:3px;white-space:nowrap;}
-#hdrLeague{flex:0 0 auto;font-size:22px;font-weight:800;letter-spacing:.18em;
-  color:rgba(255,255,255,.55);text-transform:uppercase;}
+#hdrLeague{flex:0 0 auto;height:70px;max-width:210px;object-fit:contain;opacity:.95;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
 
 /* ---------- ice ---------- */
 #ice{position:absolute;left:0;top:128px;right:0;bottom:0;
@@ -93,7 +93,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         <div id="hdrTitle">STARTING LINEUP</div>
         <div id="hdrTeam"></div>
       </div>
-      <div id="hdrLeague"></div>
+      <img id="hdrLeague" alt="">
     </div>
     <div id="ice">
       <svg id="rink" viewBox="0 0 1840 872" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -104,19 +104,33 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         <circle cx="920" cy="54" r="11" fill="#1B5FAA" opacity=".85"/>
         <!-- blue line -->
         <rect x="0" y="306" width="1840" height="16" fill="#1B5FAA"/>
-        <!-- end-zone faceoff circles -->
+        <!-- neutral-zone faceoff dots (just centre-side of the blue line) -->
+        <circle cx="330" cy="262" r="10" fill="#C8102E" opacity=".9"/>
+        <circle cx="1510" cy="262" r="10" fill="#C8102E" opacity=".9"/>
+        <!-- end-zone faceoff circles (per Mat's reference diagram 2026-07-13:
+             hash marks CROSS the circle boundary at top+bottom, and the dot
+             gets its bracket-style restraining lines either side) -->
         <g stroke="#C8102E" stroke-width="6" fill="none" opacity=".9">
           <circle cx="330" cy="606" r="158"/>
           <circle cx="1510" cy="606" r="158"/>
         </g>
         <circle cx="330" cy="606" r="10" fill="#C8102E" opacity=".9"/>
         <circle cx="1510" cy="606" r="10" fill="#C8102E" opacity=".9"/>
-        <!-- faceoff hash marks -->
-        <g stroke="#C8102E" stroke-width="6" opacity=".9">
-          <line x1="300" y1="576" x2="300" y2="556"/><line x1="360" y1="576" x2="360" y2="556"/>
-          <line x1="300" y1="636" x2="300" y2="656"/><line x1="360" y1="636" x2="360" y2="656"/>
-          <line x1="1480" y1="576" x2="1480" y2="556"/><line x1="1540" y1="576" x2="1540" y2="556"/>
-          <line x1="1480" y1="636" x2="1480" y2="656"/><line x1="1540" y1="636" x2="1540" y2="656"/>
+        <g stroke="#C8102E" stroke-width="6" opacity=".9" fill="none">
+          <!-- left circle: edge hash marks straddling the boundary, top + bottom -->
+          <line x1="308" y1="432" x2="308" y2="462"/><line x1="352" y1="432" x2="352" y2="462"/>
+          <line x1="308" y1="750" x2="308" y2="780"/><line x1="352" y1="750" x2="352" y2="780"/>
+          <!-- left circle: dot brackets -->
+          <line x1="300" y1="576" x2="300" y2="636"/><line x1="360" y1="576" x2="360" y2="636"/>
+          <line x1="300" y1="588" x2="284" y2="588"/><line x1="300" y1="624" x2="284" y2="624"/>
+          <line x1="360" y1="588" x2="376" y2="588"/><line x1="360" y1="624" x2="376" y2="624"/>
+          <!-- right circle: edge hash marks -->
+          <line x1="1488" y1="432" x2="1488" y2="462"/><line x1="1532" y1="432" x2="1532" y2="462"/>
+          <line x1="1488" y1="750" x2="1488" y2="780"/><line x1="1532" y1="750" x2="1532" y2="780"/>
+          <!-- right circle: dot brackets -->
+          <line x1="1480" y1="576" x2="1480" y2="636"/><line x1="1540" y1="576" x2="1540" y2="636"/>
+          <line x1="1480" y1="588" x2="1464" y2="588"/><line x1="1480" y1="624" x2="1464" y2="624"/>
+          <line x1="1540" y1="588" x2="1556" y2="588"/><line x1="1540" y1="624" x2="1556" y2="624"/>
         </g>
         <!-- goal crease (bulges up toward centre ice) + goal line -->
         <path d="M 810 836 A 110 110 0 0 1 1030 836 Z" fill="#7FB6E6" fill-opacity=".45" stroke="#C8102E" stroke-width="6"/>
@@ -139,6 +153,8 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 /* ====================== CONFIG ====================== */
 let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";
 const LOGO = "https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+const LEAGUE_LOGO_BASE = "https://matchavez.com/nzihl-broadcast-assets/assets/league/";
+const LEAGUE_LOGO = {nzihl:"NZIHL-White-2000.png", nzwihl:"NZWIHL-Logo-White-1000px.png"};
 const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/";
 
 // Team registry keyed by channel slug (same slug() convention as the rest of
@@ -287,7 +303,7 @@ function start(){
   document.getElementById("hdrLogo").src = LOGO + encodeURIComponent(T.logo);
   document.getElementById("hdrTeam").textContent = T.name;
   document.getElementById("hdrTeam").style.color = T.ink;
-  document.getElementById("hdrLeague").textContent = T.league.toUpperCase();
+  document.getElementById("hdrLeague").src = LEAGUE_LOGO_BASE + encodeURIComponent(LEAGUE_LOGO[T.league]);
   panel.classList.add("show");
 
   if(PREVIEW){
