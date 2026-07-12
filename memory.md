@@ -260,6 +260,19 @@ Production recipe for teams needing this: `scorebug-l3/?team=<slug>` as the sing
 (replaces `scorebug/?team=<slug>` — same Singular scoreboard, same banner, now also L3s).
 `scorebug/index.html` itself was NOT modified.
 
+**Seventh pass, 2026-07-12 (Mat, after the scorebug-l3 work): narrow + centre + never-ellipsis.**
+Applied identically to BOTH `activity-banner/index.html` and `scorebug-l3/index.html` (kept in
+parity since they're now two independent copies of the same L3 code): card width 1360->1320px
+(40px narrower), `.l3name`/`.l3stat` given `text-align:center` (was left-aligned within the
+full-width body column), and CSS `text-overflow:ellipsis` truncation replaced with a JS
+shrink-to-fit — reused the existing `fitLine(el,base,min)` helper (already used for the pregame
+banner text, same "never ellipsis, shrink font instead" pattern) called as
+`fitLine(l3name,38,20)` / `fitLine(l3stat,38,20)` right after `l3.classList.add("show")` in
+`finishPhoto()`, with a forced reflow (`void l3.offsetWidth`) first since clientWidth reads 0
+while `#l3` is still `display:none`. Verified live: a normal name (Toby Schuck) renders
+narrower + centered; a deliberately absurd stress-test name ("Maximilian Wolfgang-Harrington
+Alexander III") shrinks to fit on one line with zero truncation/ellipsis in both files.
+
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
 
