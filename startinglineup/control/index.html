@@ -334,6 +334,11 @@ function renderSwitcher(){
   });
 }
 
+document.getElementById("clearAllBtn").onclick = ()=>{
+  ACTIVE_SLOT = null; renderPicker();
+  clearAll();
+};
+
 /* ====================== INIT ====================== */
 async function start(){
   localStorage.setItem(LAST_TEAM_KEY, TEAM_SLUG);
