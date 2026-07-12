@@ -263,8 +263,11 @@ async function pollLineup(){
   try{
     const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store"});
     const txt = await r.text();
-    let j; try{ j = JSON.parse(txt); }catch(e){ return; }   // worker not redeployed yet — keep whatever we have
-    if(j.error) return;
+    // Worker not redeployed yet (non-JSON "missing ?url") or channel error:
+    // still paint the six silhouette placeholders on first load — the graphic
+    // must always look complete on air, never six invisible cards.
+    let j; try{ j = JSON.parse(txt); }catch(e){ if(FIRST_PAINT) renderAll(null); return; }
+    if(j.error){ if(FIRST_PAINT) renderAll(null); return; }
     if(j.updated_at === LAST_UPDATED && !FIRST_PAINT) return;
     LAST_UPDATED = j.updated_at;
     renderAll(j);
