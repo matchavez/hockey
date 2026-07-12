@@ -90,9 +90,10 @@
   .lg-tag{ font-size:10px; font-weight:800; letter-spacing:.12em; padding:2px 8px; border-radius:999px; }
   .lg-tag.nzihl{ color:var(--gold); border:1px solid rgba(247,190,17,.4); background:rgba(247,190,17,.06); }
   .lg-tag.nzwihl{ color:var(--accent); border:1px solid rgba(58,160,255,.4); background:rgba(58,160,255,.06); }
-  .game .match{ display:flex; align-items:center; gap:9px; font-size:15px; font-weight:700; flex-wrap:wrap; }
+  .game .match{ display:flex; flex-direction:column; gap:7px; font-size:15px; font-weight:700; }
+  .game .match .side{ display:flex; align-items:center; gap:9px; }
   .game .match img{ width:26px; height:26px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
-  .game .match .at{ color:var(--muted); font-weight:600; font-size:13px; }
+  .game .match .at{ color:var(--muted); font-weight:600; font-size:13px; width:14px; text-align:center; flex:0 0 auto; }
   .game .venue{ font-size:12.5px; color:var(--muted); }
   .game .acts{ display:flex; gap:7px; flex-wrap:wrap; margin-top:2px; }
   .btn{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:700;
@@ -535,7 +536,9 @@ async function loadWeekend(){
     return `<div class="game">
       <div class="top"><span class="when">${fmt(g)}${g.time?' · '+g.time:''}</span>
         <span class="lg-tag ${isW?'nzwihl':'nzihl'}">${(g.league||'').toUpperCase()}</span></div>
-      <div class="match">${lgImg(g.away)}${g.away} <span class="at">@</span> ${lgImg(g.home)}${g.home}</div>
+      <div class="match">
+        <span class="side"><span class="at"></span>${lgImg(g.away)}${g.away}</span>
+        <span class="side"><span class="at">@</span>${lgImg(g.home)}${g.home}</span></div>
       <div class="venue">${g.venue||''}</div>
       <div class="acts">${sumBtn}${ldrBtn}${rosBtn}</div>
     </div>`;
