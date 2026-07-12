@@ -273,6 +273,15 @@ while `#l3` is still `display:none`. Verified live: a normal name (Toby Schuck) 
 narrower + centered; a deliberately absurd stress-test name ("Maximilian Wolfgang-Harrington
 Alexander III") shrinks to fit on one line with zero truncation/ellipsis in both files.
 
+**Eighth pass, 2026-07-12: centre + balance the fact line.** Same-day follow-up to the
+narrow/centre/never-ellipsis pass — the fact line (`.l3fact`) was still left-aligned and, when
+it wrapped to two lines, could look ragged (a full first line + a short leftover second line).
+Added `text-align:center` and `text-wrap:balance` (both files, kept in parity). Verified live
+with a fact long enough to force a two-line wrap in both `activity-banner/` and `scorebug-l3/`
+— lines come out visually balanced instead of ragged. Pre-existing `max-height:2.6em` still caps
+it at ~2 lines (unrelated, unchanged) — a 3rd-line-worth of fact text still gets clipped, same
+as before this pass.
+
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
 
