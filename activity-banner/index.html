@@ -311,6 +311,15 @@ const vis=id=>REG[id]||DEFV;
 const Q=new URLSearchParams(location.search);
 if(Q.get("worker")) WORKER=Q.get("worker");
 const TESTMODE = Q.get("test")==="1";
+// Lets activity-banner/ be layered as a SECOND browser source purely for
+// Player L3 firing, on top of a production (like scorebug/) that already
+// has its own scoreboard + goal/penalty banner + pregame alert -- without
+// this, both sources would independently detect the same box-score events
+// and show two overlapping banners. Doesn't touch L3 firing/polling at all,
+// just the goal/penalty banner + pregame alert this file would otherwise
+// also render (Mat, 2026-07-12 -- Canterbury Inferno layering scorebug/ +
+// activity-banner/ together: use activity-banner/?team=...&nobanner=1).
+const NOBANNER = Q.get("nobanner")==="1";
 
 /* ====================== NAME / TEXT HELPERS ====================== */
 const decamel=s=>String(s||"").replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
@@ -701,10 +710,12 @@ async function tick(){
   P.goals.forEach(g=>{ g.name = g.teamID===AWAYID?AWAYN : g.teamID===HOMEID?HOMEN : (vis(g.teamID).code||""); });
   if(P.goals[0]) firstGoal=P.goals[0]; if(P.pens[0]) firstPen=P.pens[0];
   if(!baselined){ P.goals.forEach(g=>seen.add(sigGoal(g))); P.pens.forEach(p=>seen.add(sigPen(p))); baselined=true; return; }
-  // new goals
-  P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
+  // new goals -- signatures still tracked even when NOBANNER suppresses the
+  // actual banner, so toggling nobanner mid-game never backfills a burst of
+  // "new" events it had been silently ignoring.
+  P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);if(!NOBANNER)fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
   // new penalties (one at a time, queued)
-  P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);firePen(p,AWAYID,HOMEID);}});
+  P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);if(!NOBANNER)firePen(p,AWAYID,HOMEID);}});
 }
 
 /* ====================== PLAYER LOWER THIRDS (added 2026-07-12) ======================
@@ -1063,7 +1074,7 @@ async function start(){
   TARGET=await resolveTarget();
   const diag=document.getElementById("diag");
   if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+TEAM_SLUG+" · "+(TARGET?("game "+TARGET.gid):"no-game"); }
-  if(!PREVIEW) showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started
+  if(!PREVIEW && !NOBANNER) showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started; suppressed when layered as an L3-only source (see NOBANNER above)
   if(TARGET&&WORKER){ await tick();
     const t0=Date.now();
     const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }
