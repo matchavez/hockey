@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Red Devils Scorebug + Live Banner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable-Italic.woff2') format('woff2');}
+  /* ============================================================
+     NZIHL — Red Devils unified scorebug + live goal/penalty banner
+     ONE static 1920x1080 source for the YoloBox.
+       • Bottom layer: the live Singular scorebug (iframe, watermark clipped)
+       • Top layer:    goal / penalty banners driven by the league box score
+     The scorebug iframe is never modified, so it keeps working as-is.
+     ============================================================ */
+  :root{
+    --ink:#E5242B;    /* current event team accent (set per-event) */
+    --dark:#5A0E12;   /* current event team shade  (set per-event) */
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;background:transparent;overflow:hidden;
+    font-family:Inter,-apple-system,"Segoe UI",sans-serif;
+    font-feature-settings:"tnum" 1,"cv05" 1;-webkit-font-smoothing:antialiased;}
+
+  /* full broadcast frame; YoloBox captures this 1:1 (fit-scaled only for desktop preview) */
+  #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;
+    transform-origin:0 0;overflow:hidden;}
+
+  /* --- scorebug clip window (upper-left). Red bar top-left = 0,0 --- */
+  #bugclip{position:absolute;left:0;top:0;overflow:hidden;z-index:1;pointer-events:none;}
+  #bug{position:absolute;border:0;background:transparent;transform-origin:0 0;width:1920px;height:1080px;}
+
+  /* --- live banner (full width, BOTTOM of frame) ---
+     Moved from top:0 to bottom:0 (Mat, 2026-07-06 — same change as the standalone Activity
+     Banner, applied here too for Red Devils + Inferno). The scorebug iframe (#bugclip/#bug)
+     stays exactly where it is, top:0 — only the goal/penalty banner relocates, so it no longer
+     overlaps the persistent scorebug graphic; it now shows independently at the bottom of the
+     frame while the bug stays visible at top. */
+  /* banner height matches the scorebug bar (~66px) + a hair */
+  /* Flat solid fill = the team's official Half-Dark "Scorebug BG" colour (--dark in REG); no
+     fade/gradient, so white text sits on a uniform high-contrast bed across the whole bar. */
+  #bnr{position:absolute;left:0;bottom:0;width:1920px;height:78px;z-index:5;
+    display:flex;align-items:center;
+    background:var(--dark);
+    box-shadow:0 -8px 24px rgba(0,0,0,.42);
+    clip-path:inset(0 100% 0 0);opacity:0;display:none;
+    will-change:clip-path,opacity;}
+  #bnr.show{display:flex;clip-path:inset(0 0 0 0);opacity:1;
+    transition:clip-path .25s cubic-bezier(.4,0,.2,1),opacity .16s ease;}
+  #bnr.hide{display:flex;clip-path:inset(0 0 0 100%);opacity:1;
+    transition:clip-path .25s cubic-bezier(.4,0,.2,1);}
+  .bend{flex:0 0 150px;height:78px;display:flex;align-items:center;justify-content:center;}
+  .bend img{max-width:74px;max-height:60px;object-fit:contain;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+  /* line-height 1.25 keeps descenders (p, g, y) inside the line box so overflow:hidden can't clip them */
+  .btxt{flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;
+    color:#fff;font-weight:800;line-height:1.25;letter-spacing:.005em;padding:0 16px;
+    text-shadow:0 2px 8px rgba(0,0,0,.45);}
+  .btxt .team{font-weight:900;letter-spacing:.01em;}
+  .btxt .kw{font-weight:900;color:#fff;}
+  .btxt .lc{font-weight:600;opacity:.9;text-transform:none;}
+  .btxt .who{font-weight:900;}
+  .btxt .ast{font-weight:600;opacity:.92;}
+  .btxt .dur{font-weight:900;font-variant-numeric:tabular-nums;}
+  .btxt .sep{opacity:.55;font-weight:700;padding:0 .15em;}
+
+  /* Pregame "confidence alert": fires once on load (pre-game only) for 7s, showing
+     AWAY VS HOME + date/venue, so a producer glancing at the frame before puck drop can
+     confirm the right game resolved. Solid black (not a team colour) since it's neutral —
+     ported from activity-banner/index.html for parity. */
+  #pre{position:absolute;left:0;bottom:0;width:1920px;height:78px;z-index:6;
+    display:flex;align-items:center;
+    background:#000000;
+    box-shadow:0 -8px 24px rgba(0,0,0,.42);
+    clip-path:inset(0 100% 0 0);opacity:0;display:none;
+    will-change:clip-path,opacity;}
+  #pre.show{display:flex;clip-path:inset(0 0 0 0);opacity:1;
+    transition:clip-path .25s cubic-bezier(.4,0,.2,1),opacity .16s ease;}
+  #pre.hide{display:flex;clip-path:inset(0 0 0 100%);opacity:1;
+    transition:clip-path .25s cubic-bezier(.4,0,.2,1);}
+  .ptxt{flex:1 1 auto;min-width:0;text-align:center;color:#fff;padding:0 16px;}
+  .pline1{font-weight:900;letter-spacing:.01em;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-shadow:0 2px 8px rgba(0,0,0,.45);}
+  .pline2{font-weight:600;opacity:.85;line-height:1.2;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-shadow:0 2px 8px rgba(0,0,0,.4);}
+
+  /* --- PLAYER LOWER THIRDS (ported from activity-banner/index.html, 2026-07-12) ---
+     Mat wanted a standalone copy of scorebug/ with L3 support baked in directly
+     (single unified browser source), rather than layering activity-banner on top
+     -- keeps the original scorebug/index.html untouched as a same-day fallback.
+     Geometry/behaviour identical to activity-banner's #l3: 1360x245 (noFact 180),
+     centered horizontally, flush against the SAME bottom edge as #bnr/#pre
+     (bottom:0). Collision rule: an auto goal/penalty banner always interrupts/kills
+     a live or about-to-fire L3 -- see enqueue()/pollControl() below. */
+  :root{ --l3ink:#9aa3ad; --l3dark:#181c22; }
+  #l3{position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(16px);
+    width:1360px;height:245px;border-radius:14px;overflow:hidden;
+    display:none;align-items:stretch;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
+    opacity:0;z-index:4;
+    transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);}
+  #l3.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0);}
+  #l3.noFact{height:180px;}
+  #l3 .l3photo{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;overflow:hidden;position:relative;
+    box-sizing:border-box;background:#1b2029;border:6px solid var(--l3ink);}
+  #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
+  #l3 .l3photologo{position:absolute;inset:0;display:none;align-items:center;justify-content:center;}
+  #l3 .l3photologo img{max-width:70%;max-height:70%;object-fit:contain;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));}
+  #l3 .l3initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:56px;color:#4a525f;letter-spacing:.02em;}
+  #l3 .l3body{flex:1 1 auto;min-width:0;padding:20px 51px;display:flex;flex-direction:column;
+    justify-content:center;gap:10px;color:#fff;font-family:Inter,sans-serif;}
+  #l3 .l3name{font-weight:800;font-size:38px;line-height:1.15;letter-spacing:.005em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 10px rgba(0,0,0,.4);}
+  #l3 .l3name .jnum{font-size:.72em;font-weight:800;color:var(--l3ink);}
+  #l3 .l3name .pos{color:var(--l3ink);margin-right:.22em;}
+  #l3 .l3name .nametext{font-size:1.25em;}
+  #l3 .l3stat{font-weight:800;font-size:38px;color:#fff;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #l3 .l3stat .unit{font-weight:400;font-size:.56em;opacity:.65;}
+  #l3 .l3tonight{display:none;margin-top:1px;padding:4px 12px;border-radius:7px;
+    background:rgba(255,255,255,.16);font-weight:800;font-size:16px;letter-spacing:.02em;
+    align-self:flex-start;}
+  #l3 .l3tonight.show{display:inline-block;}
+  #l3 .l3fact{display:none;font-weight:700;font-style:italic;font-size:24px;line-height:1.25;
+    color:#c9cdd6;max-height:2.6em;overflow:hidden;}
+  #l3.noFact .l3fact{display:none;}
+  #l3:not(.noFact) .l3fact.has{display:block;}
+  #l3 .l3logowrap{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.09);}
+  #l3 .l3logowrap img{max-width:60%;max-height:60%;object-fit:contain;display:none;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));}
+  #l3 .l3logowrap img.show{display:block;}
+
+  /* --- test controls (only with ?test=1) --- */
+  /* pinned to the TOP now (was bottom:22px) so the dev panel doesn't sit on top of the
+     banner, which now lives at the bottom of the frame (2026-07-06). */
+  #test{position:absolute;left:24px;top:22px;right:24px;z-index:9;display:none;gap:8px;
+    flex-wrap:wrap;align-items:center;font-family:Inter,sans-serif;}
+  #test button{font:600 15px Inter,sans-serif;color:#fff;background:#15181d;
+    border:1px solid #333a44;border-radius:9px;padding:10px 16px;cursor:pointer;}
+  #test button:hover{background:#1d2128;border-color:#4a5562;}
+  #teamBtns{display:flex;flex-wrap:wrap;gap:5px 9px;align-items:center;}
+  #test .tg{display:inline-flex;align-items:center;gap:3px;}
+  #test .tg .ab{color:#aeb6c0;font:700 12px Inter,sans-serif;letter-spacing:.05em;margin-right:2px;}
+  #test button.tb{font:700 13px Inter,sans-serif;padding:7px 10px;min-width:30px;letter-spacing:.03em;}
+  #test button.tb.gb{border-color:#2f6b46;} #test button.tb.gb:hover{background:#16271d;border-color:#3f8f5e;}
+  #test button.tb.pb{border-color:#7a5a1e;} #test button.tb.pb:hover{background:#241d10;border-color:#a87d2a;}
+  #test button.tb .k{font-weight:600;opacity:.55;margin-left:5px;font-size:11px;}
+  #test button#tAll{background:#1c2630;border-color:#395066;}
+  #test .lbl{color:#7e8794;font:600 13px Inter,sans-serif;align-self:center;
+    background:#0d0f13;border:1px solid #222;border-radius:8px;padding:8px 12px;}
+  #diag{position:absolute;right:18px;bottom:16px;z-index:9;color:#5d646e;
+    font:500 12px Inter,sans-serif;display:none;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bugclip"><iframe id="bug" title="Scorebug" allowtransparency="true" scrolling="no"></iframe></div>
+
+  <div id="bnr">
+    <div class="bend" id="bendL"><img id="blogoL" alt=""></div>
+    <div class="btxt" id="btxt"></div>
+    <div class="bend" id="bendR"><img id="blogoR" alt=""></div>
+  </div>
+
+  <div id="pre">
+    <div class="bend"><img id="preLogoL" alt=""></div>
+    <div class="ptxt" id="ptxt">
+      <div class="pline1" id="preLine1"></div>
+      <div class="pline2" id="preLine2"></div>
+    </div>
+    <div class="bend"><img id="preLogoR" alt=""></div>
+  </div>
+
+  <div id="l3">
+    <div class="l3photo" id="l3photo">
+      <img id="l3img" alt="">
+      <div class="l3photologo" id="l3photologo" style="display:none"><img id="l3photologoImg" alt=""></div>
+      <div class="l3initials" id="l3initials" style="display:none"></div>
+    </div>
+    <div class="l3body">
+      <div class="l3name" id="l3name"></div>
+      <div class="l3stat" id="l3stat"></div>
+      <div class="l3tonight" id="l3tonight"></div>
+      <div class="l3fact" id="l3fact"></div>
+    </div>
+    <div class="l3logowrap"><img id="l3logo" alt=""></div>
+  </div>
+
+  <div id="test">
+    <span class="lbl">TEST · GOAL / PEN · EACH TEAM</span>
+    <span id="teamBtns"></span>
+    <button id="tAll">▶ Play all</button>
+  </div>
+  <div id="diag"></div>
+</div>
+
+<script>
+/* ====================== CONFIG ====================== */
+// CORS proxy (your Cloudflare worker.js). Paste the deployed URL here, OR pass ?worker=...
+// Until set, the scorebug still shows; the test buttons use sample data.
+let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";   // Cloudflare CORS proxy (worker.js)
+
+// The Singular scorebug output is PER-BROADCAST, not per-team. Red Devils + Inferno share the
+// Christchurch (Alpine Ice) output; the other 8 clubs each use a DIFFERENT one.
+// *** BEFORE PUBLISHING any non-Christchurch club, fill its output id below (or pass ?bug=<id|url>). ***
+const BUG_CHC = "7wvd7ZPATlYl3NoLxtxmkF";          // Christchurch — Red Devils + Inferno ONLY
+const BUGMAP = {
+  "canterbury-red-devils": BUG_CHC,
+  "canterbury-inferno":    BUG_CHC,
+  // TODO @publish — different Singular output per club (uncomment + fill, or use ?bug=):
+  // "dunedin-thunder":"", "botany-swarm":"", "pure-nz-admirals":"", "skycity-stampede":"",
+  // "auckland-steel":"", "dunedin-thunder-women":"", "wakatipu-wild":"",
+};
+const SINGULAR = v => /^https?:/.test(v) ? v : "https://app.singular.live/output/"+v;
+let SCOREBUG_SRC = SINGULAR(BUG_CHC);   // resolved per-team in start(); ?bug= overrides
+
+// Scorebug placement / crop. The red scoreline's top-left = (cropX,cropY) -> page (x,y).
+// Callouts ABOVE the red bar are clipped out; penalty drop-downs below are kept.
+// Watermark (bottom-right of the composition) falls outside clipW/clipH -> hidden.
+// The clip window itself sits at page (0,0). Empty space on the LEFT of the bug = cropX is a few
+// px short of the red bar's true left edge, so transparent composition shows through. Nudge cropX UP
+// to eat it (or DOWN if the bar is clipped). Tune live: ?bs=scale,x,y,clipW,clipH[,cropX,cropY]
+//   e.g. ?bs=0.78,0,0,1000,172,402,500   (raise cropX 390 -> 402 to close left gap)
+let BUG = { scale:0.78, x:0, y:0, cropX:390, cropY:500, clipW:1000, clipH:172 };
+
+const HOLD_GOAL = 10000;   // goal banner visible (ms)
+const HOLD_PEN  = 7000;    // penalty banner visible (ms)
+const POLL_MS   = 12000;   // box-score poll cadence (<15s SLA)
+const RUN_CAP   = 3.25*3600*1000;   // auto-stop polling after 3h15m
+
+const LOGO="https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+const MANIFESTS=[
+  {league:"nzihl",  url:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",  clientid:7131, leagueid:35499},
+  {league:"nzwihl", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json", clientid:7132, leagueid:35501},
+];
+// team visuals keyed by nzihl teamID (ink = accent, dark = shade, logo = file in /assets/logos/)
+const REG={
+ // dark = official Half-Dark "Scorebug BG" per 2026 style guide (also used as the flat banner fill)
+ "674110":{code:"ADM", ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
+ "675633":{code:"CRD", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png"},
+ "675634":{code:"DUN", ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png"},
+ "675635":{code:"SCS", ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
+ "674109":{code:"BSW", ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
+ "675636":{code:"AST", ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
+ "675637":{code:"CIN", ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png"},
+ "675638":{code:"DTW", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png"},
+ "675639":{code:"WLD", ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
+ // Auckland Mako (NZIHL men) — Mako Steel / Mako Ink per 2026 style guide. TODO @publish: set teamID (left key below) from a parsed Mako box score.
+ // "<MAKO_TEAMID>":{code:"MKO", ink:"#8A8F96", dark:"#202222", logo:"Auckland Mako 2000x2000.png"},
+};
+const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:""};
+const vis=id=>REG[id]||DEFV;
+
+/* ====================== URL OVERRIDES ====================== */
+const Q=new URLSearchParams(location.search);
+if(Q.get("worker")) WORKER=Q.get("worker");
+if(Q.get("bug"))    SCOREBUG_SRC=SINGULAR(Q.get("bug"));
+if(Q.get("bs")){const a=Q.get("bs").split(",").map(Number);
+  if(a.length>=1&&a[0])BUG.scale=a[0]; if(a.length>=3){BUG.x=a[1];BUG.y=a[2];}
+  if(a.length>=5){BUG.clipW=a[3];BUG.clipH=a[4];}
+  if(a.length>=7){BUG.cropX=a[5];BUG.cropY=a[6];}}   // optional inner crop nudge (close left/top gap)
+const TESTMODE = Q.get("test")==="1";
+
+/* ====================== SCOREBUG IFRAME ====================== */
+function placeBug(){
+  const clip=document.getElementById("bugclip"), f=document.getElementById("bug");
+  clip.style.left=BUG.x+"px"; clip.style.top=BUG.y+"px";
+  clip.style.width=BUG.clipW+"px"; clip.style.height=BUG.clipH+"px";
+  // inside the clip, shift the full 1920x1080 composition so (cropX,cropY) -> (0,0)
+  f.style.left=(-BUG.scale*BUG.cropX)+"px";
+  f.style.top =(-BUG.scale*BUG.cropY)+"px";
+  f.style.transform="scale("+BUG.scale+")";
+  if(f.src!==SCOREBUG_SRC) f.src=SCOREBUG_SRC;
+}
+
+/* ====================== NAME / TEXT HELPERS ====================== */
+const decamel=s=>String(s||"").replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
+// esportsdesk source data sometimes arrives ALL CAPS or all lower-case. Detect wholesale
+// one-case text (not stylised mixed case like "McDonald" or "O'Brien", which is left
+// untouched) and normalise to Title Case, capitalising after spaces/hyphens/apostrophes/
+// periods so compound surnames like "Ruski-Jones" keep BOTH halves capitalised (ported
+// from summary.html's properCase() — was the bug behind "Ruski-Jones" -> "Ruski-jones").
+function properCase(s){s=String(s||"");if(!s)return s;
+  const letters=s.replace(/[^a-zA-Z]/g,"");if(!letters)return s;
+  const allUpper=letters===letters.toUpperCase()&&letters!==letters.toLowerCase();
+  const allLower=letters===letters.toLowerCase()&&letters!==letters.toUpperCase();
+  if(!allUpper&&!allLower)return s;
+  return s.toLowerCase().replace(/(^|[\s\-'.(])([a-z])/g,(m,p1,p2)=>p1+p2.toUpperCase());}
+// last-name-only: de-camelCase first, then take the final token (handles
+// "First Last", camelCase "FirstLast", and Maori multi-given-name "Te Rangi Henare" -> "Henare")
+// first-initial + surname (siblings on a roster can share a surname — the initial
+// disambiguates, e.g. two Ruski-Jones players). Applied to every shortened name.
+// Per-player surname corrections the generic decamel/initSurname logic can't get
+// right on its own -- e.g. genuine two-word surnames it would otherwise treat as
+// "given name + surname" and truncate/initial away. Keyed by the raw scraped text
+// (case-insensitive, decamel'd). Mirrors the roster pipeline's overrides.py.
+// 2026-07-11: de Jonge (Pure NZ Admirals #26) added after Michael reported the
+// Activity Banner showing "Jonge" instead of "de Jonge" mid-broadcast.
+const SURNAME_OVERRIDES={"de jonge":"De Jonge"};
+const surnameOverride=n=>SURNAME_OVERRIDES[decamel(n).trim().replace(/\s+/g," ").toLowerCase()]||null;
+function initSurname(n){const forced=surnameOverride(n);if(forced)return forced;const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?(w[0][0]+". "+w[w.length-1]):(w[0]||"");}
+function surnameUC(n){return initSurname(n).toUpperCase();}
+function surnameTC(n){return properCase(initSurname(n));}
+function assistList(a){
+  if(!a||/^unassisted$/i.test(a)) return "";
+  return a.split(",").map(s=>surnameTC(s.trim())).filter(Boolean).join(", ");
+}
+const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+/* ====================== BOX-SCORE PARSER (from Game Summary) ====================== */
+const SHIM=u=>WORKER?(WORKER.replace(/\/$/,"")+"?url="+encodeURIComponent(u)):null;
+const normP=s=>{s=String(s).toUpperCase();if(s.startsWith("1"))return"1";if(s.startsWith("2"))return"2";if(s.startsWith("3"))return"3";if(/OT|OVER/.test(s))return"OT";if(/SO|SHOOT/.test(s))return"SO";return s;};
+function parse(html){
+  // esportsdesk wraps a player's jersey#/first-name in a responsive "d-sm-inline d-none"
+  // <span> (shown only at wider breakpoints) with the surname as trailing plain text right
+  // after it. Usually that's "...</span> Surname" (a real space), but at least one field
+  // (assist lists) sometimes omits the space entirely: "...</span>beckstead)". When the
+  // first name also happens to be stored lowercase (a known esportsdesk quirk, e.g. "cole"),
+  // there's no letter-case boundary left for decamel() to split on either, so the two names
+  // silently fuse into one word ("Cole" + "Beckstead" -> "colebeckstead", caught live 2026-07-06).
+  // Force a space after every closing </span> up front, before anything reads .textContent —
+  // harmless where a space/tag already followed (collapsed back down by the \s+ normalisation
+  // every cell-text reader already does), and it fixes this at the source for every field.
+  html=html.replace(/<\/span>/gi,"</span> ");
+  html=html.replace(/Shattock\s*\(\s*Niskakoski\s*\)/gi,"Shattock"); // 2026-07-11: strip Inferno #3's maiden-name parenthetical before any regex parsing, per Mat
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
+  const h5=[...doc.querySelectorAll("h5")];
+  const findH=re=>h5.find(h=>re.test(h.textContent));
+  const tidOf=el=>{const a=el&&el.querySelector&&el.querySelector('a[href*="teamID="]');const m=a&&a.getAttribute("href").match(/teamID=(\d+)/i);return m?m[1]:null;};
+  const btw=(a,b)=>{const r=[];let e=a&&a.nextElementSibling;while(e&&e!==b){r.push(e);e=e.nextElementSibling;}return r;};
+  const tables=[...doc.querySelectorAll("table")];
+  const scoreTbl=tables[0]; const srows=[...scoreTbl.querySelectorAll("tr")];
+  const team=tr=>{const c=[...tr.children].map(txt);const m=c[0].match(/^(.*?)\s+([A-Z]{2,4})$/);
+    return {teamID:tidOf(tr),name:(m?m[1]:c[0]).trim(),code:(m?m[2]:"").trim(),tot:+c[c.length-1]||0};};
+  const away=team(srows[1]), home=team(srows[2]);
+  // roster: full-name -> teamID
+  const skaters=[];
+  h5.filter(h=>/SKATERS/i.test(h.textContent)).forEach(h=>{
+    let e=h.nextElementSibling,tbl=null;
+    while(e&&!/^H5$/.test(e.tagName)){if(e.tagName==="TABLE"){tbl=e;break;}if(e.querySelector&&e.querySelector("table")){tbl=e.querySelector("table");break;}e=e.nextElementSibling;}
+    if(tbl)[...tbl.querySelectorAll("tr")].slice(1).forEach(row=>{const id=tidOf(row);if(id)skaters.push({id,text:txt(row)});});
+  });
+  const teamOfName=who=>{const s=skaters.find(sk=>sk.text.includes(who));return s?s.id:null;};
+  function section(h5el,stopEl){
+    const items=[];let per="";
+    btw(h5el,stopEl).forEach(el=>{
+      const t=txt(el);
+      if(/^(1ST|2ND|3RD|\dTH|OVERTIME|OT\d*|SHOOTOUT)(\s+PERIOD)?(\s*\d+)?$/i.test(t)&&!(el.querySelector&&el.querySelector("table"))){per=normP(t);return;}
+      const tbl=(el.querySelector&&el.querySelector("table"))||(el.tagName==="TABLE"?el:null);
+      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties|No Scoring/i.test(c[0]))items.push({per,c});});
+    });
+    return items;
+  }
+  const ssH=findH(/SCORING SUMMARY/i),psH=findH(/PENALTY SUMMARY/i),skH=findH(/SKATERS/i);
+  const goals=ssH?section(ssH,psH).map(o=>{const m=o.c[0].match(/^#?(\d+)\s+(.+?)\s*\((.*)\)\s*$/);
+    const who=m?m[2].trim():o.c[0];const id=teamOfName(who);
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:m?+m[1]:"",who,a:m?m[3].trim():"",teamID:id};}):[];
+  // robust team match: the SCORING header may abbreviate (e.g. "Dunedin Thunder" vs the penalty's
+  // "Dunedin Thunder Women") — compare normalised + contains, with a roster-name fallback.
+  const normT=s=>String(s||"").toLowerCase().replace(/[^a-z]/g,"");
+  const matchTeam=tn=>{const t=normT(tn);if(!t)return null;for(const T of [away,home]){const n=normT(T.name);if(n&&(t===n||t.includes(n)||n.includes(t)))return T.teamID;}return null;};
+  const pens=psH?section(psH,skH).map(o=>{
+    const cell=o.c[0];
+    const tm=cell.match(/\(([^)]*)\)\s*$/);                      // team is ALWAYS in the trailing parens — incl. team penalties (no player/#)
+    const pm=cell.match(/^#?(\d+)\s+(.+?)\s*\([^)]*\)\s*$/);     // player penalty = "#no name (team)"
+    const who=pm?pm[2].trim():cell.replace(/\s*\([^)]*\)\s*$/,"").trim();  // else label minus (team), e.g. "Team Penalty"
+    const id=matchTeam(tm?tm[1].trim():"") || (pm?teamOfName(who):null);   // parens-team match; fall back to roster lookup of the player
+    return {p:o.per,t:o.c[o.c.length-1]||"",no:pm?+pm[1]:"",who,inf:o.c[1]||"",dur:o.c[2]||"",teamID:id};}):[];
+  return {away,home,goals,pens};
+}
+
+/* ====================== BANNER BUILD + ANIMATE ====================== */
+const bnr=document.getElementById("bnr"), btxt=document.getElementById("btxt");
+const blogoL=document.getElementById("blogoL"), blogoR=document.getElementById("blogoR");
+const FONTS = (document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
+let fontsLoaded=false; FONTS.then(()=>{fontsLoaded=true;});
+
+function setLogo(el,id){const v=vis(id);if(v.logo){el.src=LOGO+encodeURIComponent(v.logo);el.style.visibility="";}else el.style.visibility="hidden";}
+function setLogoFile(el,file){if(file){el.src=LOGO+encodeURIComponent(file);el.style.visibility="";}else el.style.visibility="hidden";}
+
+function goalHTML(g, awayName, homeName){
+  const v=vis(g.teamID);
+  const team=esc(g.name|| (g.teamID===g.awayID?awayName:homeName) || "");
+  const ast=assistList(g.a);
+  return `<span class="team">${team.toUpperCase()}</span> <span class="kw">GOAL</span> `
+       + `<span class="lc">scored by</span> <span class="who">${esc(surnameUC(g.who))}</span>`
+       + (ast?` <span class="ast">(${esc(ast)})</span>`:``);
+}
+// box score writes durations as "2 Minutes" / "5 Minutes" -> render as #:00 per spec
+function fmtDur(d){d=String(d||"").trim();
+  const m=d.match(/(\d+)\s*min/i); if(m) return m[1]+":00";
+  if(/^\d+:\d{2}$/.test(d)) return d;
+  return d; // e.g. "Game Misconduct", "Match" — leave as written
+}
+function penHTML(p){
+  return `<span class="lc">Penalty by</span> <span class="who">${esc(surnameUC(p.who))}</span>`
+       + ` <span class="sep">-</span> <span class="dur">${esc(fmtDur(p.dur))}</span>`
+       + ` <span class="lc">for</span> <span class="kw">${esc((p.inf||"").trim())}</span>`;
+}
+
+// fit text so it NEVER ellipsises: shrink font until it fits the available width
+function fitBanner(){
+  let fs=42; btxt.style.fontSize=fs+"px";   // sized to the shorter (78px) bar
+  // measure; shrink in 1px steps to a sane floor — never clip/ellipsis
+  let guard=80;
+  while(btxt.scrollWidth>btxt.clientWidth && fs>20 && guard-->0){ fs-=1; btxt.style.fontSize=fs+"px"; }
+}
+
+const queue=[]; let busy=false;
+let l3ActiveFireId=null;   // set while an L3 fire is being rendered (even before .show lands)
+function enqueue(job){
+  // Auto goal/penalty banners always interrupt a live-or-about-to-show L3
+  // (Player Lower Thirds) — see the PLAYER LOWER THIRDS section below.
+  if(typeof l3!=="undefined" && (l3ActiveFireId || l3.classList.contains("show"))){
+    if(typeof l3Token!=="undefined") l3Token++;   // abort any in-flight showL3() before it reveals
+    if(typeof hideL3==="function") hideL3();
+    l3ActiveFireId=null;
+    if(typeof reportInterrupt==="function") reportInterrupt();
+  }
+  queue.push(job); pump();
+}
+function pump(){
+  if(busy||!queue.length) return; busy=true;
+  const job=queue.shift();
+  document.documentElement.style.setProperty("--ink", job.ink);
+  document.documentElement.style.setProperty("--dark", job.dark);
+  if(job.logoFile){ setLogoFile(blogoL, job.logoFile); setLogoFile(blogoR, job.logoFile); } // test harness: explicit logo
+  else { setLogo(blogoL, job.eventID); setLogo(blogoR, job.eventID); }   // both ends = the involved player's team
+  btxt.innerHTML=job.html;
+  bnr.classList.remove("hide");
+  bnr.style.display="flex";
+  void bnr.offsetWidth;                 // reflow: lock the hidden start state
+  (fontsLoaded?Promise.resolve():FONTS).then(()=>{ fitBanner();
+    void bnr.offsetWidth;
+    bnr.classList.add("show");          // wipe in (L->R), 250ms
+    setTimeout(()=>{
+      bnr.classList.remove("show"); bnr.classList.add("hide");   // wipe out (L->R), 250ms
+      setTimeout(()=>{ bnr.classList.remove("hide"); bnr.style.display="none";
+        busy=false; pump(); }, 300);
+    }, job.hold);
+  });
+}
+function fireGoal(g, awayID, homeID, awayName, homeName){
+  const v=vis(g.teamID);
+  enqueue({html:goalHTML({...g,awayID,homeID,awayName,homeName}, awayName, homeName),
+    ink:v.ink, dark:v.dark, eventID:g.teamID, hold:HOLD_GOAL});
+}
+function firePen(p, awayID, homeID){
+  const v=vis(p.teamID);
+  enqueue({html:penHTML(p), ink:v.ink, dark:v.dark, eventID:p.teamID, hold:HOLD_PEN});
+}
+
+/* ====================== LIVE DETECTION ====================== */
+const sigGoal=g=>`G|${g.teamID}|${g.p}|${g.t}|${g.no}|${surnameUC(g.who)}`;
+const sigPen =p=>`P|${p.teamID}|${p.p}|${p.t}|${p.no}|${surnameUC(p.who)}|${p.inf}`;
+const seen=new Set(); let baselined=false;
+let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="";
+let PREGAME=null;
+
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
+async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
+const SCRAPE_HOST = "https://admin.esportsdesk.com";   // added for Player L3s' standingsRowFor()
+function boxURL(m,gid){return `${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
+const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+
+const SLUG_VIS = {
+ "pure-nz-admirals": REG["674110"], "canterbury-red-devils": REG["675633"],
+ "dunedin-thunder": REG["675634"], "skycity-stampede": REG["675635"],
+ "botany-swarm": REG["674109"], "auckland-steel": REG["675636"],
+ "canterbury-inferno": REG["675637"], "dunedin-thunder-women": REG["675638"],
+ "wakatipu-wild": REG["675639"],
+};
+const visByName=n=>SLUG_VIS[slug(n)]||DEFV;
+
+const ASSET_TIMEOUT_MS = 1500;
+function loadImage(src, timeoutMs){
+  return new Promise(res=>{
+    if(!src){ res(null); return; }
+    let done=false; const img=new Image();
+    const finish=ok=>{ if(done) return; done=true; res(ok?img:null); };
+    img.onload=()=>finish(true); img.onerror=()=>finish(false);
+    img.src=src;
+    setTimeout(()=>finish(false), timeoutMs||ASSET_TIMEOUT_MS);
+  });
+}
+function fitLine(el, base, min){
+  let fs=base; el.style.fontSize=fs+"px";
+  let guard=80;
+  while(el.scrollWidth>el.clientWidth && fs>min && guard-->0){ fs-=1; el.style.fontSize=fs+"px"; }
+}
+function fitPregame(){ fitLine(preLine1,30,16); fitLine(preLine2,16,11); }
+function fmtPregameDate(gm){
+  let dpart=gm.date||"";
+  try{ dpart=new Date(gm.datetime||(gm.date+"T00:00:00")).toLocaleDateString("en-NZ",
+    {weekday:"short",day:"numeric",month:"short",timeZone:"Pacific/Auckland"}); }catch(e){}
+  return (dpart+(gm.time?(" · "+gm.time):"")).trim();
+}
+function showConfidenceAlert(gm){
+  if(!gm||!gm.away||!gm.home) return;
+  const startMs = new Date(gm.datetime||gm.date).getTime();
+  if(!startMs || Date.now()>=startMs) return;   // already started (or unknown start) — never show
+  const av=visByName(gm.away), hv=visByName(gm.home);
+  const aSrc = av.logo?LOGO+encodeURIComponent(av.logo):null;
+  const hSrc = hv.logo?LOGO+encodeURIComponent(hv.logo):null;
+  Promise.all([loadImage(aSrc), loadImage(hSrc)]).then(([aImg,hImg])=>{
+    if(Date.now()>=startMs) return;   // re-check post-load: the wait must never push us past kickoff
+    preLogoL.style.visibility = aImg ? "" : "hidden"; if(aImg) preLogoL.src=aImg.src;
+    preLogoR.style.visibility = hImg ? "" : "hidden"; if(hImg) preLogoR.src=hImg.src;
+    preLine1.textContent = `${gm.away.toUpperCase()} VS ${gm.home.toUpperCase()}`;
+    preLine2.textContent = `${fmtPregameDate(gm)} - ${gm.venue||""}`;
+    pre.style.display="flex"; void pre.offsetWidth;
+    fitPregame();
+    pre.classList.add("show");
+    setTimeout(()=>{
+      pre.classList.remove("show"); pre.classList.add("hide");
+      setTimeout(()=>{ pre.classList.remove("hide"); pre.style.display="none"; }, 300);
+    }, 7000);
+  });
+}
+
+async function resolveTarget(){
+  const team=Q.get("team"), g=Q.get("g")||Q.get("gameid");
+  const lp=(Q.get("l")||Q.get("league")||"").toLowerCase();
+  if(g){
+    const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");
+    try{ const data=await getJSON(m.url); const gm=(data.games||[]).find(x=>String(x.gameid)===String(g));
+      if(gm) PREGAME={away:gm.away,home:gm.home,venue:gm.venue,date:gm.date,time:gm.time,datetime:gm.datetime}; }catch(e){}
+    return {m,gid:g};
+  }
+  // Reuse the ROSTER selector: same boxscores.json (current round) the portal's rosters +
+  // box-score links are built from. Pick THIS team's live/next game. Static per-team URL:
+  //   scorebug/?team=canterbury-red-devils  (or dunedin-thunder, botany-swarm, pure-nz-admirals,
+  //   skycity-stampede, auckland-steel, canterbury-inferno, dunedin-thunder-women, wakatipu-wild …)
+  const slugTeam = slug(team || "canterbury-red-devils");   // default: Red Devils
+  // Fallback gameids for games the pipeline hasn't filled yet (manifest gameid=null); self-clears when gm.gameid arrives.
+  const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
+  const cands=[];
+  for(const m of MANIFESTS){let data;try{data=await getJSON(m.url);}catch(e){continue;}
+    (data.games||[]).forEach(gm=>{
+      const gid = gm.gameid || KNOWN_GIDS[[gm.away,gm.home,gm.date].join("|")] || null;
+      if(!gid) return;
+      if(slug(gm.away)!==slugTeam && slug(gm.home)!==slugTeam) return;
+      cands.push({m, gid, dt:new Date(gm.datetime||gm.date).getTime()||0, gm}); });}
+  if(!cands.length) return null;
+  const now=Date.now(), LIVE=5*3600*1000;                    // a game up to 5h old still counts as "current"
+  const live=cands.filter(c=>c.dt>=now-LIVE).sort((a,b)=>a.dt-b.dt);  // soonest live/upcoming first
+  const pick=live[0] || cands.sort((a,b)=>b.dt-a.dt)[0];      // else the most recent
+  PREGAME = {away:pick.gm.away, home:pick.gm.home, venue:pick.gm.venue, date:pick.gm.date, time:pick.gm.time, datetime:pick.gm.datetime};
+  return {m:pick.m, gid:pick.gid};
+}
+
+let firstGoal=null, firstPen=null;     // captured for the test buttons
+async function tick(){
+  if(!TARGET||!WORKER) return;
+  let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
+  if(typeof LAST_PARSE!=="undefined") LAST_PARSE=P;   // feeds the Player Lower Thirds TONIGHT chip
+  AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
+  // tag each goal with a display name (its own team)
+  P.goals.forEach(g=>{ g.name = g.teamID===AWAYID?AWAYN : g.teamID===HOMEID?HOMEN : (vis(g.teamID).code||""); });
+  if(P.goals[0]) firstGoal=P.goals[0]; if(P.pens[0]) firstPen=P.pens[0];
+  if(!baselined){ P.goals.forEach(g=>seen.add(sigGoal(g))); P.pens.forEach(p=>seen.add(sigPen(p))); baselined=true; return; }
+  // new goals
+  P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
+  // new penalties (one at a time, queued)
+  P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);firePen(p,AWAYID,HOMEID);}});
+}
+
+/* ====================== PLAYER LOWER THIRDS (added 2026-07-12) ======================
+   Fired via the Cloudflare Durable Object control channel (POST/GET
+   /control/<team-slug> on the same WORKER as the box-score proxy — see
+   nzihl-broadcast-assets/summary/worker.js) from the phone control page
+   hockey/lowerthirds/, OR rendered statically from a ?preview= URL param by
+   that same page's live miniature preview iframe. Both paths call the exact
+   same buildL3Data()/showL3() below, so preview and broadcast can never
+   drift (grep: renderL3/showL3 is defined once, in this file).
+   Collision rule: an auto goal/penalty banner ALWAYS interrupts a live or
+   about-to-fire L3 — enforced in pump() (kills a showing L3 the instant a
+   new banner job starts) and pollControl() (rejects a fire that arrives
+   while #bnr is already showing). Both report back to the control channel
+   via action:"interrupt" so the phone can show "interrupted — still queued".
+   NOT built here: the facts engine (nzihl-season-data + stats.json + tonight
+   rules, editable-field safety net) — that runs on the PHONE, once, and the
+   resulting text rides through the control channel/preview payload as-is.
+   This file only ever DISPLAYS whatever fact string it's given (or none). */
+// Same CONTROL_TOKEN as lowerthirds/index.html — shared-secret gating writes
+// only; reads are open. See worker.js's own comment for the trust model.
+const CONTROL_TOKEN = "l3-EXleXBAfHbgn7P1qHeJ81U1K";
+const STATS_URLS = {
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/stats.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/stats.json",
+};
+const PHOTO_MANIFEST_URL = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json";
+const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/";
+const CODE_LEAGUE = {ADM:"nzihl",BSW:"nzihl",CRD:"nzihl",DUN:"nzihl",MKO:"nzihl",SCS:"nzihl",
+                      AST:"nzwihl",CIN:"nzwihl",DTW:"nzwihl",WLD:"nzwihl"};
+const normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const ordinal=n=>{n=+n||0;const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+
+// Simple TTL caches — best-effort, never block a render on a slow/failed fetch.
+const _cache = {stats:{}, photos:null, standings:{}};
+async function getStats(league){
+  const hit=_cache.stats[league];
+  if(hit && Date.now()-hit.t<5*60*1000) return hit.data;
+  try{ const data=await getJSON(STATS_URLS[league]); _cache.stats[league]={data,t:Date.now()}; return data; }
+  catch(e){ return hit?hit.data:null; }
+}
+async function getPhotoManifest(){
+  if(_cache.photos && Date.now()-_cache.photos.t<5*60*1000) return _cache.photos.data;
+  try{ const data=await getJSON(PHOTO_MANIFEST_URL); _cache.photos={data,t:Date.now()}; return data; }
+  catch(e){ return _cache.photos?_cache.photos.data:null; }
+}
+async function standingsRowFor(league, code){
+  const hit=_cache.standings[league];
+  let rows = (hit && Date.now()-hit.t<5*60*1000) ? hit.data : null;
+  if(!rows){
+    const m = MANIFESTS.find(x=>x.league===league); if(!m) return null;
+    try{
+      const u=`${SCRAPE_HOST}/leagues/standings.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`;
+      const doc=new DOMParser().parseFromString(await getText(u),"text/html");
+      const tbl=doc.querySelector("table");
+      if(tbl){
+        rows=[...tbl.querySelectorAll("tr")].slice(1).map((r,i)=>{
+          const c=[...r.children].map(x=>x.textContent.replace(/\s+/g," ").trim());
+          return {k:normName(c[0]), pos:i+1, gp:+c[1]||0, w:+c[2]||0, l:+c[3]||0, otw:+c[4]||0, otl:+c[5]||0, pts:+c[6]||0};
+        }).filter(r=>r.k);
+        _cache.standings[league]={data:rows,t:Date.now()};
+      }
+    }catch(e){ rows = hit?hit.data:null; }
+  }
+  if(!rows) return null;
+  const teamName = (TEAM_DISPLAY_NAMES[code]||code);
+  const q=normName(teamName);
+  return rows.find(r=>r.k.includes(q)) || null;
+}
+// Full display names, needed only to match standings.cfm's concatenated
+// "TeamNameTLA" cell text (same technique as ticker/index.html's standOf()).
+const TEAM_DISPLAY_NAMES = {
+  ADM:"Pure NZ Admirals", BSW:"Botany Swarm", CRD:"Canterbury Red Devils",
+  DUN:"Dunedin Thunder", MKO:"Auckland Mako", SCS:"SkyCity Stampede",
+  AST:"Auckland Steel", CIN:"Canterbury Inferno", DTW:"Dunedin Thunder Women", WLD:"Wakatipu Wild",
+};
+// teamID -> TLA, needed to match tonight's box-score goal/pen rows (which
+// carry teamID, not a short code) against a player identity's team_code.
+const TEAMID_CODE = Object.fromEntries(Object.entries(REG).map(([id,v])=>[id,v.code]));
+
+// Tonight's per-player G/A tally from the box score tick() is already polling
+// every 12s (LAST_PARSE, set at the end of tick()). Omits the chip entirely
+// if the player has no goals/assists yet tonight (no "0G 0A" clutter).
+let LAST_PARSE = null;
+function tonightChipFor(identity){
+  if(!LAST_PARSE || identity.role==="coach") return null;
+  const wantCode = identity.team_code, wantSurname = surnameUC(identity.name);
+  let g=0,a=0;
+  (LAST_PARSE.goals||[]).forEach(ev=>{
+    const evCode = TEAMID_CODE[ev.teamID];
+    if(evCode!==wantCode) return;
+    if(surnameUC(ev.who)===wantSurname) g++;
+    const asts = (ev.a||"").split(",").map(x=>surnameUC(x.trim())).filter(Boolean);
+    if(asts.includes(wantSurname)) a++;
+  });
+  if(!g && !a) return null;
+  const parts=[]; if(g) parts.push(g+"G"); if(a) parts.push(a+"A");
+  return "TONIGHT: "+parts.join(" ");
+}
+
+async function buildL3Data(identity){
+  const league = CODE_LEAGUE[identity.team_code] || "nzihl";
+  const [stats, manifest] = await Promise.all([getStats(league), getPhotoManifest()]);
+  const teamStats = stats && stats.teams && stats.teams[identity.team_code];
+  const teamPeople = (manifest && manifest.leagues && manifest.leagues[league] &&
+                       manifest.leagues[league].teams[identity.team_code] &&
+                       manifest.leagues[league].teams[identity.team_code].people) || {};
+  // statParts: array of {val,unit} pairs rendered as a fuller Scoring-Leaders-
+  // style stat row (bold value + small unit label) instead of a single
+  // "13 GP · 6 G · 11 A" text line — see showL3()'s l3stat.innerHTML build.
+  let statParts=null, photo=null, tonight=null;
+  if(identity.role==="coach"){
+    const row = await standingsRowFor(league, identity.team_code);
+    if(row) statParts = [
+      {val:`${row.w}-${row.l}-${row.otw}-${row.otl}`, unit:"RECORD"},
+      {val:ordinal(row.pos), unit:`IN ${league.toUpperCase()}`},
+    ];
+    const person = Object.values(teamPeople).find(p=>p.role==="coach" && normName(p.name)===normName(identity.name));
+    if(person && person.photo) photo = PHOTO_BASE+person.photo;
+  } else {
+    const list = identity.role==="goalie" ? (teamStats&&teamStats.goalies||[]) : (teamStats&&teamStats.skaters||[]);
+    const row = list.find(r=>String(r.number)===String(identity.number));
+    if(row){
+      statParts = identity.role==="goalie"
+        ? [{val:row.gp,unit:"GP"},{val:row.gaa,unit:"GAA"},{val:row.sv_pct,unit:"SV%"},{val:row.so,unit:"SO"}]
+        : [{val:row.gp,unit:"GP"},{val:row.g,unit:"G"},{val:row.a,unit:"A"},{val:row.pts,unit:"PTS"},{val:row.pim,unit:"PIM"}];
+    }
+    // Photo warehouse tags BOTH skaters and goalies role:"player" (goalies are
+    // distinguished only by position:"G") — match by number regardless of
+    // identity.role being "player" or "goalie".
+    const person = Object.values(teamPeople).find(p=>p.role==="player" && String(p.number)===String(identity.number));
+    if(person && person.photo) photo = PHOTO_BASE+person.photo;
+    tonight = tonightChipFor(identity);
+  }
+  return {statParts, photo, tonight};
+}
+
+function initialsOf(name){
+  const parts=String(name||"").trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return "";
+  const first=parts[0][0]||"", last=parts[parts.length-1][0]||"";
+  return (first+last).toUpperCase();
+}
+
+const l3=document.getElementById("l3"), l3photo=document.getElementById("l3photo"),
+      l3img=document.getElementById("l3img"),
+      l3photologo=document.getElementById("l3photologo"), l3photologoImg=document.getElementById("l3photologoImg"),
+      l3initials=document.getElementById("l3initials"),
+      l3name=document.getElementById("l3name"),
+      l3stat=document.getElementById("l3stat"),
+      l3tonight=document.getElementById("l3tonight"), l3fact=document.getElementById("l3fact"),
+      l3logo=document.getElementById("l3logo");
+let l3HideTimer=null, l3Token=0;
+
+function hideL3(){
+  if(l3HideTimer){ clearTimeout(l3HideTimer); l3HideTimer=null; }
+  l3.classList.remove("show");
+  l3ActiveFireId=null;
+}
+
+// The ONE render path both live control-channel fires AND ?preview= use.
+// identity: {team_code, team_name, role, number, name, position}
+// opts: {sticky:boolean, holdMs:number}
+async function showL3(identity, fact, includeFact, opts){
+  opts = opts || {};
+  const myToken = ++l3Token;
+  const v = vis(Object.keys(REG).find(id=>REG[id].code===identity.team_code)) || DEFV;
+  document.documentElement.style.setProperty("--l3ink", v.ink);
+  document.documentElement.style.setProperty("--l3dark", v.dark);
+
+  const data = await buildL3Data(identity);
+  if(myToken!==l3Token) return;   // superseded while awaiting stats/photo fetches
+
+  // Line 1: jersey # + position + name, one line, matching
+  // scoringleaders/index.html's .pline/.jnum pattern -- jersey number smaller
+  // and team-ink-coloured, position also ink-coloured (same size as name),
+  // name itself white. Coaches have no jersey number. Replaces the old
+  // separate l3name + l3meta lines (Mat, 2026-07-12).
+  const nameParts=[];
+  if(identity.role!=="coach" && identity.number) nameParts.push(`<span class="jnum">${identity.number}</span>`);
+  const posText = identity.role==="coach" ? (identity.position||"Coach")
+                                           : (identity.position||(identity.role==="goalie"?"G":""));
+  if(posText) nameParts.push(`<span class="pos">${posText}</span>`);
+  const displayName = properCase(identity.name||"").toUpperCase() || (identity.name||"");
+  nameParts.push(`<span class="nametext">${displayName}</span>`);
+  l3name.innerHTML = nameParts.join(" ");
+
+  l3stat.innerHTML = (data.statParts||[])
+    .map(p=>`${p.val} <span class="unit">${p.unit}</span>`).join("\u00A0\u00A0");
+  if(data.tonight){ l3tonight.textContent=data.tonight; l3tonight.classList.add("show"); }
+  else { l3tonight.classList.remove("show"); l3tonight.textContent=""; }
+
+  const factText = (fact||"").trim();
+  const showFact = !!includeFact && !!factText;
+  l3.classList.toggle("noFact", !showFact);
+  l3fact.classList.toggle("has", showFact);
+  l3fact.textContent = showFact ? factText : "";
+
+  // Team crest -- used both for the always-on right-side end panel AND as the
+  // LEFT-side photo-circle fallback, so a player with no headshot shows the
+  // crest on BOTH sides (balanced) instead of a crest vs. bare initials
+  // (Mat, 2026-07-12). Fetched once, reused for both slots.
+  const logoP = loadImage(v.logo ? LOGO+encodeURIComponent(v.logo) : null, 1800);
+  logoP.then(img=>{
+    if(myToken!==l3Token) return;
+    if(img){ l3logo.src=img.src; l3logo.classList.add("show"); }
+    else { l3logo.removeAttribute("src"); l3logo.classList.remove("show"); }
+  });
+
+  const showPhotoState = (mode, img)=>{
+    // mode: "photo" | "logo" | "initials" -- in priority order.
+    l3img.style.display = mode==="photo" ? "" : "none";
+    if(mode==="photo") l3img.src = img.src; else l3img.removeAttribute("src");
+    // Direct style.display, not a CSS class toggle -- the element's inline
+    // style="display:none" default (same pattern as l3initials/l3img below)
+    // otherwise wins over a class selector's specificity.
+    l3photologo.style.display = mode==="logo" ? "flex" : "none";
+    if(mode==="logo") l3photologoImg.src = img.src; else l3photologoImg.removeAttribute("src");
+    l3initials.style.display = mode==="initials" ? "flex" : "none";
+    if(mode==="initials") l3initials.textContent = initialsOf(identity.name);
+  };
+  const finishPhoto = ()=>{
+    if(myToken!==l3Token) return;
+    l3HideTimer && clearTimeout(l3HideTimer);
+    l3.classList.add("show");
+    if(!opts.sticky){
+      const holdMs = typeof opts.holdMs==="number" ? opts.holdMs : 10000;
+      l3HideTimer = setTimeout(hideL3, Math.max(0, holdMs));
+    }
+  };
+  const photoP = data.photo ? loadImage(data.photo, 1800) : Promise.resolve(null);
+  Promise.all([photoP, logoP]).then(([photoImg, logoImg])=>{
+    if(myToken!==l3Token) return;
+    if(photoImg) showPhotoState("photo", photoImg);
+    else if(logoImg) showPhotoState("logo", logoImg);
+    else showPhotoState("initials");
+    finishPhoto();
+  });
+}
+
+// ---- control-channel polling (live pages only, never in ?preview= mode) ----
+let l3LastFireId=null, l3PollBusy=false;
+let TEAM_SLUG = null;   // set once in start(); default matches resolveTarget()'s own fallback
+async function reportInterrupt(){
+  if(!TEAM_SLUG) return;
+  try{
+    await fetch(`${WORKER}/control/${TEAM_SLUG}`,{
+      method:"POST", cache:"no-store",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({action:"interrupt", token:CONTROL_TOKEN}),
+    });
+  }catch(e){ /* best-effort */ }
+}
+function bannerBusy(){ return bnr.classList.contains("show") || busy; }
+async function pollControl(){
+  if(l3PollBusy) return; l3PollBusy=true;
+  try{
+    if(!TEAM_SLUG) return;
+    let st;
+    try{ const r=await fetch(`${WORKER}/control/${TEAM_SLUG}`,{cache:"no-store"}); st=await r.json(); }
+    catch(e){ return; }
+    if(!st || st.error) return;   // not deployed yet (NO_DO_BINDING) or transient — degrade silently
+    if(st.status==="fired" && st.fire_id && st.fire_id!==l3LastFireId){
+      l3LastFireId = st.fire_id;
+      if(bannerBusy()){
+        reportInterrupt();
+      } else if(st.player){
+        l3ActiveFireId = st.fire_id;
+        const holdMs = st.expires_at ? (st.expires_at-Date.now()) : 10000;
+        showL3(st.player, st.fact, st.include_fact, {sticky:false, holdMs});
+      }
+    } else if(st.status!=="fired"){
+      l3LastFireId=null;
+    }
+  } finally { l3PollBusy=false; }
+}
+
+/* ====================== TEST: 10-TEAM BANNER SHOWCASE ======================
+   Mirrors banner-test-10-teams.html — fires a sample goal/penalty banner for each of
+   the ten clubs over the live scorebug, using each team's official scorebug-BG (dark)
+   flat fill + crest. Auckland Mako is included (not in the live REG since it has no 2026
+   games, so it carries its colours/logo inline here). */
+const TEST_TEAMS = [
+ {abbr:"ADM", name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", goalWho:"Marcus Henderson", goalA:"Sanjay Patel, Ethan Cole", penWho:"Ethan Cole",       penDur:"2:00", penInf:"Tripping"},
+ {abbr:"BSW", name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png",     goalWho:"Wiremu Mikaere",   goalA:"Hemi Tane, Josh Reid",  penWho:"Wiremu Mikaere",    penDur:"2:00", penInf:"Hooking"},
+ {abbr:"SCS", name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", goalWho:"Scott Henry",  goalA:"Josh Reid",        penWho:"Aiden O'Connor",   penDur:"2:00", penInf:"Slashing"},
+ {abbr:"DUN", name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png",            goalWho:"Nico Hemming",     goalA:"Luka Stegmann",    penWho:"Grant Sutherland", penDur:"5:00", penInf:"Fighting"},
+ {abbr:"MKO", name:"Auckland Mako",         ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png",    goalWho:"Hemi Tane",      goalA:"Connor Brooks, Isaac Lee", penWho:"Connor Brooks",     penDur:"2:00", penInf:"Interference"},
+ {abbr:"CRD", name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png",      goalWho:"Ollie Ruski-Jones",    goalA:"Leo Ruski-Jones",      penWho:"Tyler Walker",     penDur:"2:00", penInf:"Cross-checking"},
+ {abbr:"AST", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png",       goalWho:"Ben Thompson",  goalA:"Arjun Nair",        penWho:"Arjun Nair",       penDur:"2:00", penInf:"Holding"},
+ {abbr:"CIN", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png",              goalWho:"Callum Morgan",    goalA:"Isaac Lee",         penWho:"Callum Morgan",     penDur:"2:00", penInf:"Hooking"},
+ {abbr:"DTW", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png",        goalWho:"Justin Daigle",    goalA:"Rebecca Park",        penWho:"Rebecca Park",       penDur:"2:00", penInf:"Tripping"},
+ {abbr:"WLD", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png",        goalWho:"Jack Anderson",  goalA:"Sam Frost, Riley Bell", penWho:"Sam Frost",      penDur:"2:00", penInf:"Slashing"},
+];
+function fireTest(t, kind, hold){
+  const html = kind==="pen"
+    ? penHTML({who:t.penWho, dur:t.penDur, inf:t.penInf})
+    : goalHTML({name:t.name, who:t.goalWho, a:t.goalA||""}, t.name, t.name);
+  enqueue({html, ink:t.ink, dark:t.dark, logoFile:t.logo,
+           hold: hold || (kind==="pen"?HOLD_PEN:HOLD_GOAL)});
+}
+function buildTestButtons(){
+  const wrap=document.getElementById("teamBtns");
+  TEST_TEAMS.forEach(t=>{
+    const g=document.createElement("span"); g.className="tg";
+    const lab=document.createElement("span"); lab.className="ab"; lab.textContent=t.abbr; g.appendChild(lab);
+    const bg=document.createElement("button"); bg.className="tb gb"; bg.textContent="G"; bg.title=t.name+" — goal banner";    bg.onclick=()=>fireTest(t,"goal"); g.appendChild(bg);
+    const bp=document.createElement("button"); bp.className="tb pb"; bp.textContent="P"; bp.title=t.name+" — penalty banner"; bp.onclick=()=>fireTest(t,"pen");  g.appendChild(bp);
+    wrap.appendChild(g);
+  });
+}
+function playAll(){ TEST_TEAMS.forEach(t=>{ fireTest(t,"goal",2400); fireTest(t,"pen",2400); }); }   // cycle every team: goal then penalty
+
+/* ====================== INIT ====================== */
+function fitWindow(){document.getElementById("stage").style.transform="scale("+Math.min(innerWidth/1920,innerHeight/1080)+")";}
+addEventListener("resize",fitWindow);
+
+async function start(){
+  // pick this club's Singular scorebug (per-broadcast). ?bug= already won above if present.
+  const teamSlug = slug(Q.get("team")||"canterbury-red-devils");
+  TEAM_SLUG = teamSlug;   // Player L3 control-channel polling uses this same slug
+  let bugFallback=false;
+  if(!Q.get("bug")){
+    if(BUGMAP[teamSlug]) SCOREBUG_SRC=SINGULAR(BUGMAP[teamSlug]);
+    else { SCOREBUG_SRC=SINGULAR(BUG_CHC); bugFallback=true; }   // unmapped club — needs its own id before publish
+  }
+  fitWindow(); placeBug();
+  if(TESTMODE){ document.getElementById("test").style.display="flex";
+    document.getElementById("diag").style.display="block";
+    buildTestButtons();
+    document.getElementById("tAll").onclick=playAll; }
+  TARGET=await resolveTarget();
+  showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started
+  const diag=document.getElementById("diag");
+  if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+(TARGET?("game "+TARGET.gid):"no-game")
+    + (bugFallback?"  ·  ⚠ DEFAULT scorebug — set "+teamSlug+"'s Singular id before publish":""); }
+  if(TARGET&&WORKER){ await tick();
+    const t0=Date.now();
+    const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }
+  // ---- Player Lower Thirds: poll the same control channel the phone page fires to ----
+  if(WORKER){ pollControl(); setInterval(pollControl, 750); }
+}
+start();
+</script>
+</body>
+</html>
