@@ -493,9 +493,16 @@ async function loadWeekend(){
     return !m || daysPast(m[1], todayISO) <= STALE_CUTOFF_DAYS;
   });
   const matched = new Set();
+  const TLA = {"Pure NZ Admirals":"ADM","Botany Swarm":"BSW","SkyCity Stampede":"SCS",
+    "Dunedin Thunder":"DUN","Auckland Mako":"MKO","Canterbury Red Devils":"CRD",
+    "Auckland Steel":"AST","Canterbury Inferno":"CIN","Dunedin Thunder Women":"DTW","Wakatipu Wild":"WLD"};
   const pdfFor = g => {
-    const want = `${(g.date||'').slice(0,10)}_${(g.away||'').replace(/\s+/g,'_')}_at_${(g.home||'').replace(/\s+/g,'_')}.pdf`.toLowerCase();
-    const hit = pdfs.find(a=>a.name.toLowerCase()===want);
+    const d = (g.date||'').slice(0,10);
+    const wants = new Set([
+      `${d}_${(g.away||'').replace(/\s+/g,'_')}_at_${(g.home||'').replace(/\s+/g,'_')}.pdf`,
+      `${d}_${TLA[g.away]||''}_at_${TLA[g.home]||''}.pdf`,
+    ].map(s=>s.toLowerCase()));
+    const hit = pdfs.find(a=>wants.has(a.name.toLowerCase()));
     if(hit) matched.add(hit.name);
     return hit || null;
   };
