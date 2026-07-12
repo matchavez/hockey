@@ -195,7 +195,8 @@
   /* Line 3: fact, matching scoringleaders/index.html's .pline.descr treatment
      (italic, bold, light grey) rather than plain/regular-weight text. */
   #l3 .l3fact{display:none;font-weight:700;font-style:italic;font-size:24px;line-height:1.25;
-    color:#c9cdd6;max-height:2.6em;overflow:hidden;}
+    color:#c9cdd6;max-height:2.6em;overflow:hidden;
+    text-align:center;text-wrap:balance;}   /* centred + balanced across its wrapped lines (Mat, 2026-07-12) */
   #l3.noFact .l3fact{display:none;}
   #l3:not(.noFact) .l3fact.has{display:block;}
   #l3 .l3logowrap{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
