@@ -23,7 +23,7 @@ Legend: **RT** = real-time (must stay on the no-cache `admin.esportsdesk.com` wo
 | hockeyrosters | no headshot logic | No change | Links to roster PDF releases only. |
 | nzihl-broadcast-rosters / nzwihl-broadcast-rosters (roster PDFs) | no photos embedded in PDFs | No change | Text/table PDFs only. |
 | nzihl-broadcast-assets/summary/index.html + previews/game-summary.html | naive guess, `www.nzihl.com` host | **Not migrated** | Confirmed via memory.md: this is prototype/design workspace, NOT the deployed page (deployed page is hockey/summary/, already migrated above). Low priority — flagged, not touched, to avoid churning a dev sandbox mid-iteration. |
-| reddevils-nzihl-integration (client deliverable) | no headshots (Fixtures/Standings/Top Scorers only, no photo section) | No change | N/A — doesn't fetch photos at all. |
+| ~~reddevils-nzihl-integration~~ | — | — | **RETIRED 2026-07-12** — Mat confirmed the project is dead ("one-off, probably didn't get used, no longer my problem") and dropped it from tracking. Local deliverable files left in place untouched, just no longer audited/followed up on. |
 
 ## Season / game data
 
@@ -44,7 +44,7 @@ Legend: **RT** = real-time (must stay on the no-cache `admin.esportsdesk.com` wo
 | hockeyrosters | `boxscores.json` (11-day window, roster-PDF release matching only) | N/A | No change | Not a season-stat consumer — this window is for "which PDF release is current," a legitimate near-term use, not season data. |
 | nzihl-broadcast-rosters / nzwihl-broadcast-rosters (roster PDFs, `boxscores.json`) | own nightly `stats_1team.cfm`/`schedules.cfm` scrape | N/A | No change (optional) | Nightly, polite, stable — no forced migration per your "don't churn stable pipelines" rule. |
 | nzihl-broadcast-assets (standings PNGs) | own nightly `standings.cfm` scrape | N/A | No change (optional) | Same reasoning — nightly, stable, produces the standings graphic itself (can't be sourced from nzihl-season-data, which doesn't carry a standings table). |
-| reddevils-nzihl-integration (Fixtures/Standings/Top Scorers) | live `standings.cfm`/`stats_1team.cfm`/scoreboard scrape, cron 3x/week | No (season-view) | **Recommended, not actioned** | Third-party-owned Next.js codebase (Strive Digital) — local deliverable package only, not a repo Claude pushes to. Migrating it to `nzihl-season-data`'s raw JSON is straightforward (same data, one static fetch) but requires Mat to re-deliver the package to the developer. Flagged for Mat's call. |
+| ~~reddevils-nzihl-integration~~ | — | — | **RETIRED 2026-07-12** — see Photos table above. No longer tracked. |
 
 ## Findings for Mat (things neither warehouse can fully serve yet, or found mid-audit)
 
@@ -82,9 +82,9 @@ Legend: **RT** = real-time (must stay on the no-cache `admin.esportsdesk.com` wo
    is straightforward in principle but I didn't want to guess NZIHL's points system without
    verifying it against a live standings page the same way I verified scoring totals — flagging
    as a scoped follow-up rather than shipping unverified.
-4. **`reddevils-nzihl-integration`** (Fixtures/Standings/Top Scorers on reddevils.co.nz) is a
-   clean migration candidate in principle but is delivered code in a third-party dev's
-   repository, not something in Claude's push scope. Flagged for your call on whether to
-   re-package and hand off an updated version.
+4. ~~`reddevils-nzihl-integration`~~ — **retired 2026-07-12.** Mat confirmed it's a dead
+   one-off that probably never got used and is no longer his problem. Dropped from tracking
+   entirely; local deliverable files (folder, zip, plan doc) left untouched in the project
+   folder at his request, just no longer audited or referenced anywhere going forward.
 
 See also repo `memory.md` updates for full technical detail on what shipped this session.

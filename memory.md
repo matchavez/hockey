@@ -360,9 +360,13 @@ fix (already applied to scorer names) to assist names too.
 and nzihl-season-data currently has the bug above. Pregame team-standing-position text in
 `activity-banner`/`scorebug-l3`/`ticker` (one-shot live `standings.cfm` fetch) is a genuine
 migration candidate to `nzihl-season-data` but that repo doesn't store a standings table yet --
-flagged rather than shipped unverified. `reddevils-nzihl-integration` (Fixtures/Standings/Top
-Scorers) is a clean migration candidate in principle but is a third-party dev's (Strive
-Digital) codebase, delivered as local files, not something pushed from here.
+flagged rather than shipped unverified.
+
+**`reddevils-nzihl-integration` retired 2026-07-12.** Was flagged as a migration candidate in
+the audit above; Mat confirmed the same day it's a dead one-off ("probably didn't get used, no
+longer my problem") and asked it dropped from tracking entirely. Local deliverable files (the
+folder, zip, and plan doc in the project folder) left untouched at his request -- just no
+longer audited or referenced anywhere in this repo or memory going forward.
 
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
