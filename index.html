@@ -440,7 +440,7 @@
 
   <!-- STARTING LINEUP -->
   <section id="startinglineup">
-    <div class="sec-head"><span class="sec-txt"><h2>Starting Lineup <span class="chip blue">Evergreen URL</span></h2><span class="sub">Per-team starting-six graphic on a half-rink &mdash; director picks LF/CF/RF/LD/RD/GK on the control page, the browser-source graphic follows &middot; persists between games, not tied to any fixture</span></span></div>
+    <div class="sec-head"><span class="sec-txt"><h2>Starting Lineup <span class="chip blue">Evergreen URL</span></h2><span class="sub">Per-team starting-six graphic on a half-rink &mdash; pick LF/CF/RF/LD/RD/GK on the control page (all teams in one place), the browser-source graphic follows &middot; persists between games &middot; <a style="color:var(--live)" target="_blank" rel="noopener" href="startinglineup/control/">Control Page →</a></span></span></div>
     <div class="league-label">NZIHL</div>
     <div id="sl-nzihl" class="grid g3"></div>
     <div class="league-label blue">NZWIHL</div>
@@ -720,9 +720,8 @@ function slCard(t){
   const graphic = `startinglineup/?team=${sl}`;
   const full = `https://matchavez.com/hockey/${graphic}`;
   return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill ext" title="Open the director's picker for this team" target="_blank" rel="noopener" href="startinglineup/control/?team=${sl}">Control</a>
-    <a class="pill ext" title="Open the graphic itself" target="_blank" rel="noopener" href="${graphic}">View</a>
-    <a class="pill cp" title="Copy the browser-source URL for the mixer" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
+    <a class="pill ext" title="Open the graphic" target="_blank" rel="noopener" href="${graphic}">Open</a>
+    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
 }
 // Same 9-team Mako-excluded list as the Activity Banner / Player L3 sections.
 document.getElementById('sl-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(slCard).join('');
