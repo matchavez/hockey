@@ -77,9 +77,10 @@ h1{font-size:14px;font-weight:800;margin:0;letter-spacing:.01em;opacity:.75;}
 #clearBtn:active{background:rgba(0,0,0,.75);}
 
 .factBox{background:var(--card);border:1px solid var(--line);border-radius:12px;
-  padding:10px 12px;margin-bottom:12px;}
-.toggleRow{display:flex;align-items:center;gap:10px;margin-bottom:8px;user-select:none;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  padding:10px 12px;margin-bottom:12px;
+  display:flex;align-items:center;gap:12px;}   /* switch sits inline with the textbox, not stacked above it (Mat, 2026-07-12) */
+.toggleRow{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto;
+  user-select:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .toggleRow input{display:none;}
 .swatch{width:46px;height:27px;border-radius:14px;background:#2a303a;position:relative;
   transition:background .15s ease;flex:0 0 auto;}
@@ -87,18 +88,18 @@ h1{font-size:14px;font-weight:800;margin:0;letter-spacing:.01em;opacity:.75;}
   border-radius:50%;background:#8a93a0;transition:transform .15s ease,background .15s ease;}
 .toggleRow input:checked + .swatch{background:var(--ok);}
 .toggleRow input:checked + .swatch::after{transform:translateX(19px);background:#0d0f13;}
-.toggleRow span.lbl{font-size:14px;font-weight:700;}
-#factText{width:100%;min-height:50px;resize:vertical;background:#0e1116;border:1px solid var(--line);
+.toggleRow span.lbl{font-size:11px;font-weight:700;white-space:nowrap;}
+#factText{flex:1 1 auto;min-width:0;min-height:50px;resize:vertical;background:#0e1116;border:1px solid var(--line);
   border-radius:9px;color:var(--txt);font:500 14px/1.4 Inter,sans-serif;padding:9px 11px;}
 #factText::placeholder{color:#525a66;}
 
 .groupTitle{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
   color:var(--dim);margin:10px 2px 6px;}
 .pillWrap{display:flex;flex-wrap:wrap;gap:8px;}
-.pill{position:relative;border:2px solid transparent;border-radius:11px;min-width:52px;height:52px;
+.pill{position:relative;border:2px solid transparent;border-radius:11px;min-width:52px;height:31px;
   padding:0 10px;display:flex;align-items:center;justify-content:center;gap:3px;
   font:800 17px Inter,sans-serif;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;
-  box-shadow:0 2px 6px rgba(0,0,0,.35);}
+  box-shadow:0 2px 6px rgba(0,0,0,.35);}   /* was 52px -- compressed 40% (Mat, 2026-07-12) so the pill grid fits with less scrolling */
 .pill.coach{font-size:13px;letter-spacing:.02em;padding:0 14px;}
 .pill .g{font:800 10px Inter,sans-serif;background:rgba(255,255,255,.28);border-radius:5px;
   padding:1px 4px;margin-left:1px;}
