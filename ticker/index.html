@@ -472,16 +472,20 @@ function penSentence(e){
 /* ---------- GAME-PHASE AWARENESS (2026-07-07): pregame preview / live recap / FINAL ----------
    Accuracy rule (Mat): every line is scraped or calculated — anything unresolved is OMITTED. */
 let GM=null, ISFINAL=false, FINTYPE="", STAND=null, LASTMEET=null, H2H=null, pregameKicked=false;
+// Season data warehouse (matchavez/nzihl-season-data) -- nightly-scraped
+// standings.cfm table, captured verbatim (esportsdesk's own computed
+// GP/PTS + rank order, not recomputed here -- see that repo's README for
+// why). Replaces a live standings.cfm fetch (migrated 2026-07-13); same
+// one-shot pregameKicked-gated call site and graceful-omit-on-failure
+// behavior as before (STAND simply stays null -- pregameItems()'s
+// "sits Nth" line already requires both sa&&sh to render at all).
 async function fetchStandings(){
   if(!TARGET)return;
   try{
-    const u=`https://admin.esportsdesk.com/leagues/standings.cfm?clientid=${TARGET.m.clientid}&leagueid=${TARGET.m.leagueid}&printPage=1&_=${Date.now()}`;
-    const doc=new DOMParser().parseFromString(await getText(u),"text/html");
-    const tbl=doc.querySelector("table"); if(!tbl)return;
-    const rows=[...tbl.querySelectorAll("tr")].slice(1).map((r,i)=>{
-      const c=[...r.children].map(x=>x.textContent.replace(/\s+/g," ").trim());
-      return {k:normName(c[0]), pos:i+1, gp:+c[1]||0, pts:+c[6]||0};
-    }).filter(r=>r.k);
+    const url=SEASON_DATA_URL[LEAGUE]; if(!url)return;
+    const data=await getJSON(url);
+    const arr=(data&&data.derived&&data.derived.standings)||[];
+    const rows=arr.map((r,i)=>({k:normName(r.name||r.code||""), pos:i+1, gp:+r.gp||0, pts:+r.pts||0}));
     if(rows.length){STAND=rows; lastSig="";}
   }catch(e){}
 }

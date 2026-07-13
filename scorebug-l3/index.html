@@ -240,6 +240,12 @@ const MANIFESTS=[
   {league:"nzihl",  url:"https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",  clientid:7131, leagueid:35499},
   {league:"nzwihl", url:"https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json", clientid:7132, leagueid:35501},
 ];
+// Season data warehouse (matchavez/nzihl-season-data) -- same URL convention
+// as ticker/index.html's SEASON_DATA_URL, used here by standingsRowFor().
+const SEASON_DATA_URL={
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzihl.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzwihl.json",
+};
 // team visuals keyed by nzihl teamID (ink = accent, dark = shade, logo = file in /assets/logos/)
 const REG={
  // dark = official Half-Dark "Scorebug BG" per 2026 style guide (also used as the flat banner fill)
@@ -488,7 +494,7 @@ let PREGAME=null;
 
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
-const SCRAPE_HOST = "https://admin.esportsdesk.com";   // added for Player L3s' standingsRowFor()
+const SCRAPE_HOST = "https://admin.esportsdesk.com";   // box-score live poll only -- standingsRowFor() now uses SEASON_DATA_URL, not this
 function boxURL(m,gid){return `${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
@@ -646,36 +652,29 @@ async function getPhotoManifest(){
   try{ const data=await getJSON(PHOTO_MANIFEST_URL); _cache.photos={data,t:Date.now()}; return data; }
   catch(e){ return _cache.photos?_cache.photos.data:null; }
 }
+// Season data warehouse (matchavez/nzihl-season-data) -- nightly-scraped
+// standings.cfm table, captured verbatim (esportsdesk's own computed
+// W/L/OTW/OTL/PTS + rank order, not recomputed here -- see that repo's
+// README for why). Replaces a live standings.cfm fetch (migrated
+// 2026-07-13); same graceful-omit-on-failure behavior as before, just a
+// different source, and each entry already carries our canonical `code`
+// (e.g. "ADM"), so no name-matching against a fused "TeamNameTLA" cell is
+// needed anymore.
 async function standingsRowFor(league, code){
   const hit=_cache.standings[league];
   let rows = (hit && Date.now()-hit.t<5*60*1000) ? hit.data : null;
   if(!rows){
-    const m = MANIFESTS.find(x=>x.league===league); if(!m) return null;
+    const url = SEASON_DATA_URL[league]; if(!url) return null;
     try{
-      const u=`${SCRAPE_HOST}/leagues/standings.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&printPage=1&_=${Date.now()}`;
-      const doc=new DOMParser().parseFromString(await getText(u),"text/html");
-      const tbl=doc.querySelector("table");
-      if(tbl){
-        rows=[...tbl.querySelectorAll("tr")].slice(1).map((r,i)=>{
-          const c=[...r.children].map(x=>x.textContent.replace(/\s+/g," ").trim());
-          return {k:normName(c[0]), pos:i+1, gp:+c[1]||0, w:+c[2]||0, l:+c[3]||0, otw:+c[4]||0, otl:+c[5]||0, pts:+c[6]||0};
-        }).filter(r=>r.k);
-        _cache.standings[league]={data:rows,t:Date.now()};
-      }
+      const data = await getJSON(url);
+      const arr = (data && data.derived && data.derived.standings) || [];
+      rows = arr.map((r,i)=>({code:r.code, pos:i+1, gp:+r.gp||0, w:+r.w||0, l:+r.l||0, otw:+r.otw||0, otl:+r.otl||0, pts:+r.pts||0}));
+      _cache.standings[league]={data:rows,t:Date.now()};
     }catch(e){ rows = hit?hit.data:null; }
   }
   if(!rows) return null;
-  const teamName = (TEAM_DISPLAY_NAMES[code]||code);
-  const q=normName(teamName);
-  return rows.find(r=>r.k.includes(q)) || null;
+  return rows.find(r=>r.code===code) || null;
 }
-// Full display names, needed only to match standings.cfm's concatenated
-// "TeamNameTLA" cell text (same technique as ticker/index.html's standOf()).
-const TEAM_DISPLAY_NAMES = {
-  ADM:"Pure NZ Admirals", BSW:"Botany Swarm", CRD:"Canterbury Red Devils",
-  DUN:"Dunedin Thunder", MKO:"Auckland Mako", SCS:"SkyCity Stampede",
-  AST:"Auckland Steel", CIN:"Canterbury Inferno", DTW:"Dunedin Thunder Women", WLD:"Wakatipu Wild",
-};
 // teamID -> TLA, needed to match tonight's box-score goal/pen rows (which
 // carry teamID, not a short code) against a player identity's team_code.
 const TEAMID_CODE = Object.fromEntries(Object.entries(REG).map(([id,v])=>[id,v.code]));
