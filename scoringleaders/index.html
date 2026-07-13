@@ -230,10 +230,36 @@ function statsURL(teamID, clientid, leagueid){
 // (3 per team) — no stat type repeats except "Point Streak", reserved for the
 // longest (and, if it also qualifies, 2nd-longest) active streak in the pool.
 // Every other player gets a distinct, real computed stat.
-function buildCandidates(p, games, teamTotalPts, rankFn, leagueShort){
+function monthDay(dateStr){
+  // "2026-05-08" -> "May 8" — parsed manually (not via Date/toLocale) so an
+  // on-air stat can never shift a day from local-timezone parsing of a bare
+  // YYYY-MM-DD string.
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr||"");
+  if(!m) return "";
+  return `${MONTHS[parseInt(m[2],10)-1]} ${parseInt(m[3],10)}`;
+}
+
+function buildCandidates(p, games, teamTotalPts, rankFn, leagueShort, teamID, whGames){
   const cands = [];
   const bestGame = games.reduce((m,g)=>Math.max(m, g.goals+g.assists), 0);
-  if(bestGame >= 3) cands.push({type:"bestgame", text:`Season-high ${bestGame}-point game this year`});
+  if(bestGame >= 3){
+    // most recent occurrence of the season-high total — gives the freshest
+    // "against <team> on <date>" callout if a player has hit it more than once.
+    const bestEntry = games.slice().reverse().find(g => (g.goals+g.assists) === bestGame);
+    let text = `${bestGame}-point game this year`; // fallback if opponent/date can't be resolved
+    if(bestEntry && Array.isArray(whGames)){
+      const gm = whGames.find(x => x.gameid === bestEntry.gameid);
+      if(gm && gm.away && gm.home){
+        const isAway = teamID != null && String(gm.away.teamID) === String(teamID);
+        const isHome = teamID != null && String(gm.home.teamID) === String(teamID);
+        const opp = isAway ? gm.home : isHome ? gm.away : null;
+        const md = monthDay(bestEntry.date);
+        if(opp && opp.name) text = `${bestGame}-point game against ${opp.name}` + (md ? ` on ${md}` : "");
+      }
+    }
+    cands.push({type:"bestgame", text});
+  }
 
   const last3n = Math.min(3, games.length);
   const last3 = games.slice(-3).reduce((s,g)=>s+g.goals+g.assists, 0);
@@ -265,12 +291,13 @@ function buildCandidates(p, games, teamTotalPts, rankFn, leagueShort){
 
 function assignDescriptors(teams, wh, leagueShort){
   const logsByKey = (wh && wh.derived && wh.derived.player_game_logs) || {};
+  const whGames = (wh && Array.isArray(wh.games)) ? wh.games : [];
   const pool = [];
   teams.forEach(team => {
     team.top.forEach(p => {
       const log = logsByKey[normName(p.name)];
       const games = (log && log.games) ? log.games.slice().sort((a,b)=>a.gameid-b.gameid) : [];
-      pool.push({p, games, teamTotalPts: team.totalPts});
+      pool.push({p, games, teamTotalPts: team.totalPts, teamID: team.teamID});
     });
   });
 
@@ -298,7 +325,7 @@ function assignDescriptors(teams, wh, leagueShort){
 
   const usedTypes = new Set();
   const others = pool.filter(e => !streakWinners.has(e));
-  others.forEach(e => { e.cands = buildCandidates(e.p, e.games, e.teamTotalPts, rankFn, leagueShort); });
+  others.forEach(e => { e.cands = buildCandidates(e.p, e.games, e.teamTotalPts, rankFn, leagueShort, e.teamID, whGames); });
   // most-constrained-first so nobody gets boxed out of variety
   others.sort((a,b) => a.cands.length - b.cands.length);
   others.forEach(e => {
@@ -643,8 +670,8 @@ async function tick(){
     ]);
     const leagueShort = league==="nzwihl" ? "NZWIHL" : "NZIHL";
     assignDescriptors(
-      [{top:awayTop, totalPts:awayRows.reduce((s,r)=>s+r.pts,0)},
-       {top:homeTop, totalPts:homeRows.reduce((s,r)=>s+r.pts,0)}],
+      [{top:awayTop, totalPts:awayRows.reduce((s,r)=>s+r.pts,0), teamID:awayID},
+       {top:homeTop, totalPts:homeRows.reduce((s,r)=>s+r.pts,0), teamID:homeID}],
       wh, leagueShort
     );
     hideMsg();
