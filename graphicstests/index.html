@@ -342,7 +342,7 @@ registerFamily({
 
 // ---- Player Lower Thirds (rendered via Activity Banner's #l3, driven by ?preview=) ----
 registerFamily({
-  id:"l3", title:"Player Lower Thirds", w:1920, h:1080, scale:.16, settleMs:900,
+  id:"l3", title:"Player Lower Thirds", w:1920, h:1080, scale:.16, settleMs:2200,
   note:"activity-banner/?team=<slug>&preview=<json> — the actual on-air L3 graphic lives inside Activity Banner; this drives it with a synthetic player payload instead of needing a live control-channel fire.",
   buildUrl: t => {
     const payload={player:{team_code:t.code, name:"QA Test Player", number:9, role:"skater", position:"F"}, fact:"QA smoke-test fact line for layout checking.", include_fact:true};
