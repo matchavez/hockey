@@ -1,11 +1,14 @@
 name: Check overlay consistency
 
-# hockey/ has no build step -- these are 5 independent static HTML pages with no
-# shared module for the SURNAME_OVERRIDES map (see memory: nzihl-player-name-overrides).
-# It has already drifted once in practice (4 files -> 5 when scorebug-l3 was created as
-# a copy of scorebug). This workflow diffs them on every push so a future edit to just
-# one file fails loudly (red X in Actions) instead of silently drifting on-air surname
-# rendering between overlay pages.
+# hockey/ has no build step -- these are independent static HTML pages. The
+# actual name-correction data now lives in ONE place (nzihl-broadcast-assets'
+# name-overrides.json), fetched at runtime -- but each page still carries a
+# hardcoded SURNAME_OVERRIDES/PAREN_STRIPS fallback for when that fetch fails,
+# and those fallbacks have no shared module either. It has already drifted
+# once in practice (4 files -> 5 when scorebug-l3 was created as a copy of
+# scorebug). This workflow diffs the fallbacks on every push so a future edit
+# to just one file's fallback fails loudly (red X in Actions) instead of
+# silently drifting on-air surname rendering during a network hiccup.
 on:
   push:
     paths:
@@ -14,6 +17,9 @@ on:
       - "scorebug-l3/index.html"
       - "summary/index.html"
       - "ticker/index.html"
+      - "lowerthirds/index.html"
+      - "scoringleaders/index.html"
+      - "scoringleaders/ab-test.html"
       - "scripts/check-surname-overrides.js"
   pull_request:
   workflow_dispatch: {}
@@ -23,5 +29,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Diff SURNAME_OVERRIDES across all live-overlay pages
+      - name: Diff SURNAME_OVERRIDES/PAREN_STRIPS fallbacks across all overlay pages
         run: node scripts/check-surname-overrides.js

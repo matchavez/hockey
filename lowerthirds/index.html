@@ -217,6 +217,26 @@ const SHIM=u=>WORKER?(WORKER.replace(/\/$/,"")+"?url="+encodeURIComponent(u)):nu
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
 
+// SINGLE SOURCE OF TRUTH (2026-07-13): fetched from nzihl-broadcast-assets'
+// name-overrides.json by loadNameOverrides() (awaited at the top of start()).
+// This hardcoded value is only the FALLBACK used if that fetch fails or
+// times out -- an on-air graphic must never lose a name correction to a
+// network hiccup.
+let PAREN_STRIPS=[{re:/Shattock\s*\(\s*Niskakoski\s*\)/gi,to:"Shattock"}];
+const NAME_OVERRIDES_URL="https://raw.githubusercontent.com/matchavez/nzihl-broadcast-assets/main/assets/name-overrides.json";
+async function loadNameOverrides(){
+  try{
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),2500);
+    const r=await fetch(NAME_OVERRIDES_URL,{cache:"no-store",signal:ctrl.signal});
+    clearTimeout(t);
+    const cfg=await r.json();
+    if(cfg&&Array.isArray(cfg.parenthetical_strips)){
+      PAREN_STRIPS=cfg.parenthetical_strips.map(p=>({re:new RegExp(p.find,p.flags||"gi"),to:p.replace}));
+    }
+  }catch(e){ /* keep the hardcoded fallback above -- never break an on-air graphic over this */ }
+}
+function stripParens(s){ PAREN_STRIPS.forEach(p=>{ s=s.replace(p.re,p.to); }); return s; }
+
 /* ---- box-score parser, ported verbatim from activity-banner/index.html ----
    (kept byte-identical on purpose — this file needs it for the facts
    engine's "tonight" rule; see nzihl_player_name_overrides memory re: this
@@ -224,7 +244,7 @@ async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.
 const normP=s=>{s=String(s).toUpperCase();if(s.startsWith("1"))return"1";if(s.startsWith("2"))return"2";if(s.startsWith("3"))return"3";if(/OT|OVER/.test(s))return"OT";if(/SO|SHOOT/.test(s))return"SO";return s;};
 function parseBox(html){
   html=html.replace(/<\/span>/gi,"</span> ");
-  html=html.replace(/Shattock\s*\(\s*Niskakoski\s*\)/gi,"Shattock");
+  html=stripParens(html); // 2026-07-13: single-source parenthetical strips (nzihl-broadcast-assets/assets/name-overrides.json)
   const doc=new DOMParser().parseFromString(html,"text/html");
   const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
   const h5=[...doc.querySelectorAll("h5")];
@@ -632,6 +652,7 @@ document.getElementById("factToggle").addEventListener("change", ()=>{ scheduleP
 
 /* ====================== INIT ====================== */
 async function start(){
+  await loadNameOverrides();
   const teamSlug = slug(Q.get("team")||"");
   const footer=document.getElementById("footer");
   footer.textContent = "Fires through the same control channel the Activity Banner overlay polls — no new browser source needed.";

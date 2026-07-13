@@ -1,16 +1,23 @@
-// Verifies the SURNAME_OVERRIDES map embedded in every live-overlay page is
-// byte-identical across all copies. These five pages have no shared build/bundler
-// (independent static HTML files) -- the map has already drifted once in practice
-// (grew from 4 files to 5 when scorebug-l3/index.html was created as a full copy of
-// scorebug/index.html on 2026-07-12, silently duplicating the override table again).
-// Run this in CI on every push so a future edit to just one file fails loudly instead
-// of silently drifting on-air surname rendering between overlay pages.
+// Player-name corrections (multi-word surnames, parenthetical strips) now
+// live in ONE canonical file: nzihl-broadcast-assets/assets/name-overrides.json
+// (see memory: nzihl-player-name-overrides). Every consumer page fetches it at
+// start() and only falls back to the hardcoded SURNAME_OVERRIDES/PAREN_STRIPS
+// object literal below that fetch if the network call fails -- an on-air
+// graphic must never lose a name correction to a hiccup.
 //
-// See memory: nzihl-player-name-overrides, nzihl-roster-scraper-robustness.
+// This script no longer verifies "the" single source (that's the JSON file,
+// not these pages) -- it verifies the FALLBACK snapshots stay byte-identical
+// across every copy, so a stale/edited-by-hand fallback in one file doesn't
+// silently diverge from the others during whatever window the fetch is down.
+// Same drift class as before (scorebug-l3 silently duplicating the table when
+// it was created as a copy of scorebug/, 2026-07-12) -- just one layer down,
+// since the live value itself is no longer duplicated.
 const fs = require("fs");
 const path = require("path");
 
-const FILES = [
+// Files that declare SURNAME_OVERRIDES (splits/abbreviates a scraped name --
+// only the 5 broadcast overlays that do that kind of truncation need it).
+const SURNAME_FILES = [
   "activity-banner/index.html",
   "scorebug/index.html",
   "scorebug-l3/index.html",
@@ -18,41 +25,57 @@ const FILES = [
   "ticker/index.html",
 ];
 
-const RE = /const SURNAME_OVERRIDES=(\{[^;]*\});/;
+// Files that declare PAREN_STRIPS (strip a maiden-name/nickname parenthetical
+// from raw scraped text) -- every page that parses raw box-score/roster text.
+const PAREN_FILES = [
+  ...SURNAME_FILES,
+  "lowerthirds/index.html",
+  "scoringleaders/index.html",
+  "scoringleaders/ab-test.html",
+];
 
-let reference = null;
-let referenceFile = null;
-let failed = false;
-
-for (const rel of FILES) {
-  const p = path.join(__dirname, "..", rel);
-  if (!fs.existsSync(p)) {
-    console.error(`MISSING FILE: ${rel} (expected in the SURNAME_OVERRIDES file list -- ` +
-      `update FILES in scripts/check-surname-overrides.js if this file was intentionally removed)`);
-    failed = true;
-    continue;
+function checkGroup(label, files, re) {
+  let reference = null;
+  let referenceFile = null;
+  let failed = false;
+  for (const rel of files) {
+    const p = path.join(__dirname, "..", rel);
+    if (!fs.existsSync(p)) {
+      console.error(`[${label}] MISSING FILE: ${rel}`);
+      failed = true;
+      continue;
+    }
+    const src = fs.readFileSync(p, "utf8");
+    const m = src.match(re);
+    if (!m) {
+      console.error(`[${label}] MISSING declaration in ${rel}`);
+      failed = true;
+      continue;
+    }
+    const literal = m[1];
+    if (reference === null) {
+      reference = literal;
+      referenceFile = rel;
+    } else if (literal !== reference) {
+      console.error(`[${label}] DRIFT DETECTED`);
+      console.error(`  ${referenceFile}: ${reference}`);
+      console.error(`  ${rel}: ${literal}`);
+      failed = true;
+    }
   }
-  const src = fs.readFileSync(p, "utf8");
-  const m = src.match(RE);
-  if (!m) {
-    console.error(`MISSING "const SURNAME_OVERRIDES=" declaration in ${rel}`);
-    failed = true;
-    continue;
+  if (!failed) {
+    console.log(`OK -- [${label}] fallback identical across all ${files.length} files: ${reference}`);
   }
-  const literal = m[1];
-  if (reference === null) {
-    reference = literal;
-    referenceFile = rel;
-  } else if (literal !== reference) {
-    console.error(`SURNAME_OVERRIDES DRIFT DETECTED`);
-    console.error(`  ${referenceFile}: ${reference}`);
-    console.error(`  ${rel}: ${literal}`);
-    failed = true;
-  }
+  return !failed;
 }
 
-if (failed) {
-  console.error("\nFix: make the SURNAME_OVERRIDES literal identical (byte-for-byte) in every file listed above.");
+const okSurname = checkGroup("SURNAME_OVERRIDES fallback", SURNAME_FILES, /let SURNAME_OVERRIDES=(\{[^;]*\});/);
+const okParen = checkGroup("PAREN_STRIPS fallback", PAREN_FILES, /let PAREN_STRIPS=(\[[^;]*\]);/);
+
+if (!okSurname || !okParen) {
+  console.error("\nFix: make the fallback literal identical (byte-for-byte) in every file listed above,");
+  console.error("or better -- if the correction is a real, permanent one, add it to");
+  console.error("nzihl-broadcast-assets/assets/name-overrides.json (the actual single source of truth)");
+  console.error("and only update these fallbacks to match it.");
   process.exit(1);
 }
-console.log(`OK -- SURNAME_OVERRIDES identical across all ${FILES.length} live-overlay files: ${reference}`);

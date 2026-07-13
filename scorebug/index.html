@@ -239,7 +239,27 @@ function properCase(s){s=String(s||"");if(!s)return s;
 // (case-insensitive, decamel'd). Mirrors the roster pipeline's overrides.py.
 // 2026-07-11: de Jonge (Pure NZ Admirals #26) added after Michael reported the
 // Activity Banner showing "Jonge" instead of "de Jonge" mid-broadcast.
-const SURNAME_OVERRIDES={"de jonge":"De Jonge","hayward jones":"Hayward Jones"};
+// SINGLE SOURCE OF TRUTH (2026-07-13): fetched from nzihl-broadcast-assets'
+// name-overrides.json by loadNameOverrides() (awaited at the top of start()).
+// These two hardcoded values are only the FALLBACK used if that fetch fails
+// or times out -- an on-air graphic must never lose a name correction to a
+// network hiccup. See NAME_OVERRIDES_URL below.
+let SURNAME_OVERRIDES={"de jonge":"De Jonge","hayward jones":"Hayward Jones"};
+let PAREN_STRIPS=[{re:/Shattock\s*\(\s*Niskakoski\s*\)/gi,to:"Shattock"}];
+const NAME_OVERRIDES_URL="https://raw.githubusercontent.com/matchavez/nzihl-broadcast-assets/main/assets/name-overrides.json";
+async function loadNameOverrides(){
+  try{
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),2500);
+    const r=await fetch(NAME_OVERRIDES_URL,{cache:"no-store",signal:ctrl.signal});
+    clearTimeout(t);
+    const cfg=await r.json();
+    if(cfg&&cfg.surname_text_overrides) SURNAME_OVERRIDES=cfg.surname_text_overrides;
+    if(cfg&&Array.isArray(cfg.parenthetical_strips)){
+      PAREN_STRIPS=cfg.parenthetical_strips.map(p=>({re:new RegExp(p.find,p.flags||"gi"),to:p.replace}));
+    }
+  }catch(e){ /* keep the hardcoded fallback above -- never break an on-air graphic over this */ }
+}
+function stripParens(s){ PAREN_STRIPS.forEach(p=>{ s=s.replace(p.re,p.to); }); return s; }
 const surnameOverride=n=>SURNAME_OVERRIDES[decamel(n).trim().replace(/\s+/g," ").toLowerCase()]||null;
 function initSurname(n){const forced=surnameOverride(n);if(forced)return forced;const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?(w[0][0]+". "+w[w.length-1]):(w[0]||"");}
 function surnameUC(n){return initSurname(n).toUpperCase();}
@@ -265,7 +285,7 @@ function parse(html){
   // harmless where a space/tag already followed (collapsed back down by the \s+ normalisation
   // every cell-text reader already does), and it fixes this at the source for every field.
   html=html.replace(/<\/span>/gi,"</span> ");
-  html=html.replace(/Shattock\s*\(\s*Niskakoski\s*\)/gi,"Shattock"); // 2026-07-11: strip Inferno #3's maiden-name parenthetical before any regex parsing, per Mat
+  html=stripParens(html); // 2026-07-13: single-source parenthetical strips (nzihl-broadcast-assets/assets/name-overrides.json)
   const doc=new DOMParser().parseFromString(html,"text/html");
   const txt=el=>el?el.textContent.replace(/\s+/g," ").trim():"";
   const h5=[...doc.querySelectorAll("h5")];
@@ -546,6 +566,7 @@ function fitWindow(){document.getElementById("stage").style.transform="scale("+M
 addEventListener("resize",fitWindow);
 
 async function start(){
+  await loadNameOverrides();
   // pick this club's Singular scorebug (per-broadcast). ?bug= already won above if present.
   const teamSlug = slug(Q.get("team")||"canterbury-red-devils");
   let bugFallback=false;
