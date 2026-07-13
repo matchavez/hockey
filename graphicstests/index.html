@@ -154,6 +154,13 @@ function waitLoad(f, timeoutMs){
     setTimeout(()=>{ if(!done){done=true;res(false);} }, timeoutMs||9000);
   });
 }
+function evalIn(win, expr){
+  // const/let top-level declarations (e.g. TEST_TEAMS, ACTIVE_TEST_TEAMS) never attach to
+  // `window`, so reading win.TEST_TEAMS from outside the iframe is always undefined even
+  // though the harness works fine internally. contentWindow.eval() runs as an indirect eval
+  // in the iframe's own global scope, which DOES see those lexical bindings correctly.
+  try{ return win.eval(expr); }catch(e){ return undefined; }
+}
 function freeze(f){
   // Stops further live polling (worker/esportsdesk fetches) so a frozen thumbnail
   // doesn't keep costing network/API calls in the background — the already-rendered
@@ -285,7 +292,7 @@ registerFamily({
   buildUrl: t => `${BASE}activity-banner/?team=${t.slug}&test=1`,
   check: async (doc, win) => {
     if(typeof win.fireTest!=="function") return {status:"fail", msg:"test harness missing — fireTest() not found (page structure may have changed)"};
-    const pool = win.ACTIVE_TEST_TEAMS || win.TEST_TEAMS;
+    const pool = evalIn(win, "(typeof ACTIVE_TEST_TEAMS!=='undefined'?ACTIVE_TEST_TEAMS:(typeof TEST_TEAMS!=='undefined'?TEST_TEAMS:null))");
     if(!pool || !pool[0]) return {status:"fail", msg:"no ACTIVE_TEST_TEAMS/TEST_TEAMS for this club"};
     win.fireTest(pool[0], "goal");
     await sleep(900);
@@ -344,8 +351,9 @@ registerFamily({
     const broken1=brokenImages(doc);
     if(broken1.length) return {status:"fail", msg:broken1.length+" broken image(s) in persistent scorebug (crest/logo)"};
     if(typeof win.fireTest!=="function") return {status:"warn", msg:"scorebug crest OK, but goal/pen fireTest() harness missing"};
-    const pool = (win.TEST_TEAMS||[]).filter(x=>x.abbr===team.code);
-    const target = pool[0] || (win.TEST_TEAMS||[])[0];
+    const allTest = evalIn(win, "(typeof TEST_TEAMS!=='undefined'?TEST_TEAMS:null)") || [];
+    const pool = allTest.filter(x=>x.abbr===team.code);
+    const target = pool[0] || allTest[0];
     if(!target) return {status:"warn", msg:"scorebug crest OK, no TEST_TEAMS entry to fire"};
     win.fireTest(target, "goal");
     await sleep(900);
@@ -367,8 +375,9 @@ registerFamily({
     const broken1=brokenImages(doc);
     if(broken1.length) return {status:"fail", msg:broken1.length+" broken image(s) in persistent scorebug"};
     if(typeof win.fireTest!=="function") return {status:"warn", msg:"crest OK, fireTest() harness missing"};
-    const pool=(win.TEST_TEAMS||[]).filter(x=>x.abbr===team.code);
-    const target=pool[0]||(win.TEST_TEAMS||[])[0];
+    const allTest = evalIn(win, "(typeof TEST_TEAMS!=='undefined'?TEST_TEAMS:null)") || [];
+    const pool=allTest.filter(x=>x.abbr===team.code);
+    const target=pool[0]||allTest[0];
     if(!target) return {status:"warn", msg:"crest OK, no TEST_TEAMS entry to fire"};
     win.fireTest(target,"goal");
     await sleep(900);
