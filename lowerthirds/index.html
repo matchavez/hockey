@@ -126,6 +126,7 @@ footer{margin-top:26px;font-size:12px;color:#525a66;text-align:center;line-heigh
 <div id="matchup" class="matchup">Loading tonight's game…</div>
 <div id="notice" class="notice" style="display:none"></div>
 <div id="emptyState" class="emptyState" style="display:none"></div>
+<div id="loadFail" class="notice err" style="display:none"></div>
 
 <div id="mainUI" style="display:none">
   <div class="previewWrap">
@@ -214,8 +215,21 @@ function properCase(s){s=String(s||"");if(!s)return s;
   return s.toLowerCase().replace(/(^|[\s\-'.(])([a-z])/g,(m,p1,p2)=>p1+p2.toUpperCase());}
 const ordinal=n=>{n=+n||0;const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
 const SHIM=u=>WORKER?(WORKER.replace(/\/$/,"")+"?url="+encodeURIComponent(u)):null;
-async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
-async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
+function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function safeSet(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+async function fetchWithTimeout(url, opts={}, ms=9000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms);
+  try{ return await fetch(url, {...opts, signal: ctrl.signal}); }
+  finally{ clearTimeout(t); }
+}
+async function withTimeout(promise, ms){
+  let t;
+  const timeout = new Promise((_,reject)=>{ t=setTimeout(()=>reject(new Error("timeout")), ms); });
+  try{ return await Promise.race([promise, timeout]); } finally{ clearTimeout(t); }
+}
+async function getJSON(u, ms){const r=await fetchWithTimeout(u,{cache:"no-store"}, ms||9000);if(!r.ok)throw 0;return r.json();}
+async function getText(u, ms){const r=await fetchWithTimeout(SHIM(u),{cache:"no-store"}, ms||10000);if(!r.ok)throw 0;return r.text();}
 
 // SINGLE SOURCE OF TRUTH (2026-07-13): fetched from nzihl-broadcast-assets'
 // name-overrides.json by loadNameOverrides() (awaited at the top of start()).
@@ -510,10 +524,10 @@ async function computeFact(identity){
 /* ====================== CONTROL CHANNEL ====================== */
 async function postControl(action, extra){
   try{
-    const r=await fetch(`${WORKER}/control/${GAME.channelSlug}`,{
+    const r=await fetchWithTimeout(`${WORKER}/control/${GAME.channelSlug}`,{
       method:"POST", cache:"no-store", headers:{"Content-Type":"application/json"},
       body:JSON.stringify(Object.assign({action, token:CONTROL_TOKEN}, extra||{})),
-    });
+    }, 8000);
     const j=await r.json();
     if(j.error){ handleControlError(j); return null; }
     setWorkerNotice(false);
@@ -524,7 +538,7 @@ async function postControl(action, extra){
 async function pollState(){
   if(!GAME) return;
   try{
-    const r=await fetch(`${WORKER}/control/${GAME.channelSlug}`,{cache:"no-store"});
+    const r=await fetchWithTimeout(`${WORKER}/control/${GAME.channelSlug}`,{cache:"no-store"}, 8000);
     const j=await r.json();
     if(j.error){ handleControlError(j); return; }
     setWorkerNotice(false);
@@ -651,7 +665,15 @@ document.getElementById("factToggle").addEventListener("change", ()=>{ scheduleP
 });
 
 /* ====================== INIT ====================== */
+function showLoadFail(msg){
+  const el = document.getElementById("loadFail");
+  el.innerHTML = esc(msg) + ' <button id="retryBtn" style="margin-left:8px;font:800 12px Inter,sans-serif;' +
+    'color:#fff;background:rgba(255,255,255,.18);border:none;border-radius:7px;padding:5px 11px;cursor:pointer;">Retry</button>';
+  el.style.display = "block";
+  document.getElementById("retryBtn").onclick = ()=>{ location.reload(); };
+}
 async function start(){
+  document.getElementById("loadFail").style.display = "none";
   await loadNameOverrides();
   const teamSlug = slug(Q.get("team")||"");
   const footer=document.getElementById("footer");
@@ -662,7 +684,12 @@ async function start(){
     document.getElementById("emptyState").textContent="Add ?team=<slug> to the URL — e.g. ?team=pure-nz-admirals";
     return;
   }
-  GAME = await resolveGame(teamSlug);
+  try{
+    GAME = await withTimeout(resolveGame(teamSlug), 12000);
+  }catch(e){
+    showLoadFail("Couldn\'t resolve tonight\'s game in time — check your connection.");
+    return;
+  }
   if(!GAME){
     document.getElementById("matchup").textContent="";
     document.getElementById("emptyState").style.display="block";
@@ -675,11 +702,21 @@ async function start(){
     (GAME.datetime ? (" — " + new Date(GAME.datetime).toLocaleString("en-NZ",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit",timeZone:"Pacific/Auckland"})) : "");
   document.getElementById("mainUI").style.display="block";
 
-  await Promise.all([
-    loadTeamData(GAME.league, GAME.awayCode).then(d=>TEAM_DATA[GAME.awayCode]=d),
-    loadTeamData(GAME.league, GAME.homeCode).then(d=>TEAM_DATA[GAME.homeCode]=d),
-    refreshTonightBoxscore(),
-  ]);
+  try{
+    await withTimeout(Promise.all([
+      loadTeamData(GAME.league, GAME.awayCode).then(d=>TEAM_DATA[GAME.awayCode]=d),
+      loadTeamData(GAME.league, GAME.homeCode).then(d=>TEAM_DATA[GAME.homeCode]=d),
+      refreshTonightBoxscore(),
+    ]), 15000);
+  }catch(e){
+    showLoadFail("Couldn\'t load rosters in time — check your connection.");
+    return;
+  }
+  if(!(TEAM_DATA[GAME.awayCode]&&TEAM_DATA[GAME.awayCode].items.length) &&
+     !(TEAM_DATA[GAME.homeCode]&&TEAM_DATA[GAME.homeCode].items.length)){
+    showLoadFail("Rosters came back empty — the data source may be down.");
+    return;
+  }
   renderPills();
 
   await pollState();   // adopt any already-queued/fired player from another device
@@ -701,14 +738,14 @@ function unlockGate(){
   document.getElementById("gate").style.display = "none";
   start();
 }
-if(localStorage.getItem(GATE_KEY)==="1"){
+if(safeGet(GATE_KEY)==="1"){
   unlockGate();
 } else {
   const gateBtn=document.getElementById("gateBtn"), gatePw=document.getElementById("gatePw"),
         gateErr=document.getElementById("gateErr");
   function tryUnlock(){
     if((gatePw.value||"").trim().toLowerCase()===GATE_PASSWORD){
-      localStorage.setItem(GATE_KEY,"1");
+      safeSet(GATE_KEY,"1");
       unlockGate();
     } else {
       gateErr.style.display="block";

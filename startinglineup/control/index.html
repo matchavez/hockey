@@ -110,6 +110,7 @@ footer{margin-top:26px;font-size:12px;color:#525a66;text-align:center;line-heigh
 <h1>Starting Lineup</h1>
 <div class="teamLine" id="teamLine">Loading…</div>
 <div id="notice" class="notice"></div>
+<div id="loadFail" class="notice err" style="display:none"></div>
 
 <div class="previewWrap">
   <div class="previewFrameHolder"><iframe id="previewFrame" src="about:blank" title="Starting lineup preview"></iframe></div>
@@ -175,10 +176,23 @@ function properCase(s){s=String(s||"");if(!s)return s;
 // non-breaking space so the Starting Lineup card's word-wrap can only
 // break between first name and surname, never inside the surname itself.
 function nbspSurname(s){ return String(s||"").replace(/ /g,"\u00A0"); }
-async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
+function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function safeSet(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+async function fetchWithTimeout(url, opts={}, ms=8000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms);
+  try{ return await fetch(url, {...opts, signal: ctrl.signal}); }
+  finally{ clearTimeout(t); }
+}
+async function withTimeout(promise, ms){
+  let t;
+  const timeout = new Promise((_,reject)=>{ t=setTimeout(()=>reject(new Error("timeout")), ms); });
+  try{ return await Promise.race([promise, timeout]); } finally{ clearTimeout(t); }
+}
+async function getJSON(u, ms){const r=await fetchWithTimeout(u,{cache:"no-store"}, ms||9000);if(!r.ok)throw 0;return r.json();}
 
 /* ====================== STATE ====================== */
-let TEAM_SLUG = slugify(Q.get("team")||"") || localStorage.getItem(LAST_TEAM_KEY) || "pure-nz-admirals";
+let TEAM_SLUG = slugify(Q.get("team")||"") || safeGet(LAST_TEAM_KEY) || "pure-nz-admirals";
 if(!TEAMS[TEAM_SLUG]) TEAM_SLUG = "pure-nz-admirals";
 const T = TEAMS[TEAM_SLUG];
 let ROSTER = [];              // [{number,name,position,role,photo}]
@@ -230,7 +244,7 @@ function workerNotice(kind){
 }
 async function fetchLineup(){
   try{
-    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store"});
+    const r = await fetchWithTimeout(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store"}, 8000);
     const txt = await r.text();
     let j; try{ j = JSON.parse(txt); }catch(e){ workerNotice("notdeployed"); return; }
     if(j.error){ workerNotice(j.code==="NO_DO_BINDING"?"notdeployed":"net"); return; }
@@ -245,10 +259,10 @@ async function saveSlot(slot, player){
   if(workerBroken){ setSaved("err","preview only"); return; }
   setSaved("saving","saving…");
   try{
-    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`,{
+    const r = await fetchWithTimeout(`${WORKER}/lineup/${TEAM_SLUG}`,{
       method:"POST", cache:"no-store", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({action:"set_slot", token:CONTROL_TOKEN, slot, player}),
-    });
+    }, 8000);
     const txt = await r.text();
     let j; try{ j = JSON.parse(txt); }catch(e){ workerNotice("notdeployed"); setSaved("err","preview only"); return; }
     if(j.error){ setSaved("err","save failed"); return; }
@@ -260,10 +274,10 @@ async function clearAll(){
   renderTable(); renderPills(); updatePreview();
   if(workerBroken) return;
   try{
-    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`,{
+    const r = await fetchWithTimeout(`${WORKER}/lineup/${TEAM_SLUG}`,{
       method:"POST", cache:"no-store", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({action:"clear", token:CONTROL_TOKEN}),
-    });
+    }, 8000);
     const j = JSON.parse(await r.text());
     if(!j.error){ LINEUP = j; setSaved("ok","cleared"); }
   }catch(e){ /* preview already updated */ }
@@ -335,7 +349,7 @@ function renderSwitcher(){
     const b = document.createElement("button");
     b.className = "teamBtn" + (s===TEAM_SLUG?" current":"");
     b.textContent = t.name;
-    b.onclick = ()=>{ localStorage.setItem(LAST_TEAM_KEY, s); location.search = "?team="+s; };
+    b.onclick = ()=>{ safeSet(LAST_TEAM_KEY, s); location.search = "?team="+s; };
     wrap.appendChild(b);
   });
 }
@@ -346,26 +360,44 @@ document.getElementById("clearAllBtn").onclick = ()=>{
 };
 
 /* ====================== INIT ====================== */
+function showLoadFail(msg){
+  const el = document.getElementById("loadFail");
+  el.innerHTML = esc(msg) + ' <button id="retryBtn" style="margin-left:8px;font:800 12px Inter,sans-serif;' +
+    'color:#fff;background:rgba(255,255,255,.18);border:none;border-radius:7px;padding:5px 11px;cursor:pointer;">Retry</button>';
+  el.style.display = "block";
+  document.getElementById("retryBtn").onclick = ()=>{ location.reload(); };
+}
 async function start(){
-  localStorage.setItem(LAST_TEAM_KEY, TEAM_SLUG);
+  safeSet(LAST_TEAM_KEY, TEAM_SLUG);
   document.getElementById("teamLine").textContent = T.name + " — starting six";
   document.getElementById("displayUrl").textContent =
     location.origin + location.pathname.replace(/control\/?(index\.html)?$/,"") + "?team=" + TEAM_SLUG;
   renderSwitcher();
-  await Promise.all([loadRoster(), fetchLineup()]);
+  document.getElementById("loadFail").style.display = "none";
+  try{
+    await withTimeout(Promise.all([loadRoster(), fetchLineup()]), 15000);
+  }catch(e){
+    showLoadFail("Couldn\'t load in time — check your connection.");
+    return;
+  }
+  if(!ROSTER.length){
+    showLoadFail("Roster came back empty — the data source may be down.");
+    return;
+  }
   renderTable(); renderPicker(); updatePreview();
 }
 /* ====================== PASSWORD GATE (shared key with the L3 page) ====================== */
 const GATE_PASSWORD = "domigan";
 const GATE_KEY = "l3_gate_ok";
 function unlockGate(){ document.getElementById("gate").style.display="none"; start(); }
-if(localStorage.getItem(GATE_KEY)==="1"){ unlockGate(); }
+if(safeGet(GATE_KEY)==="1"){ unlockGate(); }
 else{
   const gateBtn=document.getElementById("gateBtn"), gatePw=document.getElementById("gatePw"),
         gateErr=document.getElementById("gateErr");
   function tryUnlock(){
     if((gatePw.value||"").trim().toLowerCase()===GATE_PASSWORD){
-      localStorage.setItem(GATE_KEY,"1"); unlockGate();
+      safeSet(GATE_KEY,"1");
+      unlockGate();
     } else { gateErr.style.display="block"; gatePw.value=""; gatePw.focus(); }
   }
   gateBtn.addEventListener("click", tryUnlock);
