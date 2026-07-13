@@ -47,13 +47,21 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
   white-space:nowrap;}
 #hdrTeam{font-size:25px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   margin-top:3px;white-space:nowrap;}
-#hdrLeague{flex:0 0 auto;height:75px;max-width:210px;object-fit:contain;opacity:.95;
-  /* 75px (was 70px), 2026-07-13: NZIHL-White-2000.png's own artwork only fills ~63% of its
-     2000x1143 canvas height (has a subtitle line baked in below the wordmark) vs NZWIHL-Logo-
-     White-1000px.png's ~88% fill of its 1000x255 canvas, so at equal box heights NZIHL's actual
-     visible mark rendered ~8px shorter than NZWIHL's. Bumping height 70->75 makes NZIHL's
-     trimmed-artwork height match NZWIHL's (~47px) without touching NZWIHL, which is already
-     width-capped by max-width:210px well before height becomes its limiting factor. */
+#hdrLeague{flex:0 0 auto;height:94px;max-width:207px;object-fit:contain;opacity:.95;
+  /* 2026-07-13, two passes. Pass 1 (70->75px): NZIHL-White-2000.png's own artwork only fills
+     ~63% of its 2000x1143 canvas height (has a subtitle line baked in below the wordmark) vs
+     NZWIHL-Logo-White-1000px.png's ~88% fill of its 1000x255 canvas, so at equal box heights
+     NZIHL rendered visibly shorter -- 75px matched their trimmed-artwork HEIGHTS (~35px each).
+     Pass 2 (Mat, same day): matching height still left NZWIHL 61% wider / ~60% more visual
+     area than NZIHL, since NZIHL is a compact two-line lockup and NZWIHL a long single-line
+     wordmark -- different shapes read as different "size" even at equal height. Mat chose to
+     match visual AREA instead and grow NZIHL 25% in the same pass: height 75->94 (NZIHL +25%,
+     stays height-constrained here since 94*1.749=164 < max-width), max-width 210->207 (nudges
+     NZWIHL's already-width-capped render down ~1.5% so its area lands within ~1% of NZIHL's
+     new, bigger area instead of ~2.4% over). Both logos are independently governed by whichever
+     constraint (height vs max-width) they actually hit -- verify with canvas alpha-bbox
+     measurement, not naturalWidth/Height, since both PNGs carry internal padding/extra
+     elements that make raw canvas dimensions a poor proxy for visible ink size. */
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
 
 /* ---------- ice ---------- */
