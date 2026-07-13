@@ -126,9 +126,34 @@ function fmtAgo(hours){
   if(hours<48) return Math.round(hours)+" h";
   return Math.round(hours/24)+" d";
 }
+// Unauthenticated GitHub API calls are capped at 60/hour per IP -- these freshness checks
+// now hit BOTH the Actions runs endpoint and the commits endpoint per data file, and the
+// same (repo, workflow) pair is often needed by more than one card (e.g. boxscores.json AND
+// stats.json both come from build-rosters.yml). Memoize in-page (dedupes repeat callers in
+// one load) AND in sessionStorage with a short TTL (survives a "Re-run checks" click or a
+// reload without re-hitting the API) -- ran into the rate limit directly while building this
+// (see console: "API rate limit exceeded"), so this isn't precautionary, it's a fix for an
+// observed failure.
+const CACHE_TTL_MS = 5*60*1000;
+const _apiCache = new Map();
+async function cachedGetJSON(url){
+  if(_apiCache.has(url)) return _apiCache.get(url);
+  const key="pf.cache."+url;
+  try{
+    const raw=sessionStorage.getItem(key);
+    if(raw){
+      const {t,v}=JSON.parse(raw);
+      if(Date.now()-t<CACHE_TTL_MS){ _apiCache.set(url,v); return v; }
+    }
+  }catch(e){}
+  const v=await getJSON(url);
+  _apiCache.set(url,v);
+  try{ sessionStorage.setItem(key, JSON.stringify({t:Date.now(), v})); }catch(e){}
+  return v;
+}
 async function fetchLatestRun(repo, workflowFile){
   try{
-    const j=await getJSON(`https://api.github.com/repos/matchavez/${repo}/actions/workflows/${workflowFile}/runs?per_page=1&status=completed`);
+    const j=await cachedGetJSON(`https://api.github.com/repos/matchavez/${repo}/actions/workflows/${workflowFile}/runs?per_page=1&status=completed`);
     const r=(j.workflow_runs||[])[0];
     if(!r) return null;
     return {when:new Date(r.created_at), conclusion:r.conclusion, url:r.html_url};
@@ -136,7 +161,7 @@ async function fetchLatestRun(repo, workflowFile){
 }
 async function fetchLastCommit(repo, path){
   try{
-    const c=await getJSON(`https://api.github.com/repos/matchavez/${repo}/commits?path=${path}&per_page=1`);
+    const c=await cachedGetJSON(`https://api.github.com/repos/matchavez/${repo}/commits?path=${path}&per_page=1`);
     return new Date(c[0].commit.committer.date);
   }catch(e){ return null; }
 }
