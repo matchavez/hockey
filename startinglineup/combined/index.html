@@ -78,10 +78,16 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 #hdr{position:absolute;left:0;top:0;right:0;height:128px;overflow:hidden;}
 .hdrHalf{position:absolute;left:0;top:0;width:1840px;height:128px;min-width:0;
   box-sizing:border-box;display:flex;align-items:center;gap:18px;}
-.hdrHalf.home{padding-left:32px;justify-content:flex-start;
-  clip-path:polygon(0 0, 943.49px 0, 896.51px 100%, 0 100%);}
-.hdrHalf.away{padding-right:32px;justify-content:flex-end;
-  clip-path:polygon(943.49px 0, 100% 0, 100% 100%, 896.51px 100%);}
+/* 2026-07-14: seam straightened to a plain vertical line at x=920 (dead
+   center of the 1840px panel) -- the angled -0.3671 slope only worked
+   visually on the Up Next overlay because of the NZIHL mark's lean sitting
+   on top of it; without that mark here the angle just looked off. Padding
+   bumped 32->52px on both sides (name/logo nudged inward) for balance
+   against the now-straight seam and its blur zone (#hdrSeamBlur, below). */
+.hdrHalf.home{padding-left:52px;justify-content:flex-start;
+  clip-path:polygon(0 0, 920px 0, 920px 100%, 0 100%);}
+.hdrHalf.away{padding-right:52px;justify-content:flex-end;
+  clip-path:polygon(920px 0, 100% 0, 100% 100%, 920px 100%);}
 /* ^ 2026-07-14 fix: .hdrHalf didn't set box-sizing, so it defaulted to
    content-box -- width:1840px was the CONTENT box, and padding-right
    added 32px OUTSIDE it (border-box ballooned to 1872px). flex-end
@@ -119,12 +125,22 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 .hdrTeamL1{font-size:33px;color:#fff;-webkit-text-stroke:2px #08080A;paint-order:stroke fill;}
 .hdrTeamL2{font-size:33px;-webkit-text-stroke:2px #08080A;paint-order:stroke fill;}
 .hdrAccent{position:absolute;left:0;top:123px;width:1840px;height:5px;z-index:1;}
-.hdrAccent.home{clip-path:polygon(0 0, 898.34px 0, 896.51px 100%, 0 100%);}
-.hdrAccent.away{clip-path:polygon(898.34px 0, 100% 0, 100% 100%, 896.51px 100%);}
-/* font-weight 600 (was 900) + letter-spacing .1875em (was .05em) to match
-   overlay.py's f_upnext = load_var(INTER,64,600), tracking=12 -> 12/64. */
+.hdrAccent.home{clip-path:polygon(0 0, 920px 0, 920px 100%, 0 100%);}
+.hdrAccent.away{clip-path:polygon(920px 0, 100% 0, 100% 100%, 920px 100%);}
+/* 2026-07-14: soften the now-straight seam so the two team-colour halves
+   don't meet on an abrupt hard edge -- a transparent strip straddling the
+   seam (x=880..960, i.e. 40px either side of x=920) with backdrop-filter
+   blur, so it blurs whatever's rendered behind it (the two solid-colour
+   .hdrHalf backgrounds) rather than blurring its own (nonexistent)
+   content. Sits above both .hdrHalf backgrounds in paint order (later in
+   DOM, z-index:auto) but below .hdrAccent (z-index:1) and #hdrTitle
+   (z-index:2), so the accent stripe and headline stay crisp. */
+#hdrSeamBlur{position:absolute;left:880px;top:0;width:80px;height:128px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);pointer-events:none;}
+/* font-weight 700 (was 600), font-size 50px (was 48px, ~+5%) per Mat's
+   2026-07-14 ask. */
 #hdrTitle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-size:48px;font-weight:600;letter-spacing:.1875em;color:#fff;white-space:nowrap;
+  font-size:50px;font-weight:700;letter-spacing:.1875em;color:#fff;white-space:nowrap;
   text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
     0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
   z-index:2;pointer-events:none;}
@@ -159,15 +175,25 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 .card.shown{opacity:1;transform:scale(1);}
 .card.pulse{animation:cardPulse .45s ease;}
 @keyframes cardPulse{0%{transform:scale(1);}40%{transform:scale(1.045);}100%{transform:scale(1);}}
-.cphoto{flex:0 0 auto;width:135px;height:135px;position:relative;overflow:hidden;
+/* 2026-07-14: photo narrowed from square (135x135) to a 4:5 ratio
+   (108x135, height unchanged) per Mat's ask for more text room -- pill
+   overall size (390x135) is untouched, cbody just gains the freed 27px.
+   This shifts the photo/cbody border left by 27px. */
+.cphoto{flex:0 0 auto;width:108px;height:135px;position:relative;overflow:hidden;
   background:#1b2029;}
 .cphoto img.head{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
 .cphoto .crest{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
 .cphoto .crest img{max-width:72%;max-height:72%;object-fit:contain;}
 .cphoto .sil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
 .cphoto .sil svg{width:66%;height:66%;opacity:.4;}
+/* 2026-07-14: away cards mirror photo-then-text to text-then-photo (photo
+   on the right) via row-reverse; the coloured accent border moves from
+   cbody's left edge to its right edge to match (both sides declared here
+   as transparent, JS picks which one gets the team colour -- see
+   renderSlot()'s borderSide). */
+.card[id^="slot_away_"]{flex-direction:row-reverse;}
 .cbody{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
-  padding:0 14px;border-left:4px solid transparent;}
+  padding:0 14px;border-left:4px solid transparent;border-right:4px solid transparent;}
 .cnameline{white-space:normal;overflow-wrap:break-word;word-break:normal;line-height:1.08;}
 .cname{font-size:31.5px;font-weight:800;color:#fff;letter-spacing:.005em;}
 .cmetaline{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px;}
@@ -198,6 +224,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         </div>
         <img class="hdrLogo" id="hdrLogoAway" alt="">
       </div>
+      <div id="hdrSeamBlur"></div>
       <div class="hdrAccent home" id="hdrAccentHome"></div>
       <div class="hdrAccent away" id="hdrAccentAway"></div>
       <div id="hdrTitle">STARTING LINEUPS</div>
@@ -283,18 +310,20 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
            transposing startinglineup/'s single-team layout (see header
            comment); the two CF cards are nudged apart from the pure
            transpose so they clear each other across the centre seam. -->
+      <!-- 2026-07-14: LD/RD nudged 15px closer to their GK vertically and
+           20px closer to centre ice horizontally per Mat's ask. -->
       <div class="card" id="slot_home_LF" style="left:500px; top:68.5px;"></div>
-      <div class="card" id="slot_home_LD" style="left:55px;  top:103.5px;"></div>
+      <div class="card" id="slot_home_LD" style="left:75px;  top:118.5px;"></div>
       <div class="card" id="slot_home_GK" style="left:20px;  top:368.5px;"></div>
       <div class="card" id="slot_home_CF" style="left:500px; top:368.5px;"></div>
-      <div class="card" id="slot_home_RD" style="left:55px;  top:633.5px;"></div>
+      <div class="card" id="slot_home_RD" style="left:75px;  top:618.5px;"></div>
       <div class="card" id="slot_home_RF" style="left:500px; top:668.5px;"></div>
 
       <div class="card" id="slot_away_LF" style="left:950px; top:68.5px;"></div>
-      <div class="card" id="slot_away_LD" style="left:1395px;top:103.5px;"></div>
+      <div class="card" id="slot_away_LD" style="left:1375px;top:118.5px;"></div>
       <div class="card" id="slot_away_GK" style="left:1430px;top:368.5px;"></div>
       <div class="card" id="slot_away_CF" style="left:950px; top:368.5px;"></div>
-      <div class="card" id="slot_away_RD" style="left:1395px;top:633.5px;"></div>
+      <div class="card" id="slot_away_RD" style="left:1375px;top:618.5px;"></div>
       <div class="card" id="slot_away_RF" style="left:950px; top:668.5px;"></div>
     </div>
   </div>
@@ -434,9 +463,12 @@ function renderSlot(side, slot, player, animate){
     photoHtml = `<div class="sil">${SIL_SVG}</div>`;
   }
   el.className = "card" + (player ? "" : " empty");
+  // away side is row-reverse (photo on the right, see .card[id^="slot_away_"])
+  // so the accent border moves to cbody's right edge to stay photo-adjacent.
+  const borderSide = side.key === "away" ? "border-right-color" : "border-left-color";
   el.innerHTML =
     `<div class="cphoto">${photoHtml}</div>
-     <div class="cbody" style="border-left-color:${ink}">
+     <div class="cbody" style="${borderSide}:${ink}">
        <div class="cnameline">
          <span class="cname">${player?esc(player.name):"&mdash;"}</span>
        </div>
