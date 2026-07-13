@@ -47,7 +47,13 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
   white-space:nowrap;}
 #hdrTeam{font-size:25px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   margin-top:3px;white-space:nowrap;}
-#hdrLeague{flex:0 0 auto;height:70px;max-width:210px;object-fit:contain;opacity:.95;
+#hdrLeague{flex:0 0 auto;height:75px;max-width:210px;object-fit:contain;opacity:.95;
+  /* 75px (was 70px), 2026-07-13: NZIHL-White-2000.png's own artwork only fills ~63% of its
+     2000x1143 canvas height (has a subtitle line baked in below the wordmark) vs NZWIHL-Logo-
+     White-1000px.png's ~88% fill of its 1000x255 canvas, so at equal box heights NZIHL's actual
+     visible mark rendered ~8px shorter than NZWIHL's. Bumping height 70->75 makes NZIHL's
+     trimmed-artwork height match NZWIHL's (~47px) without touching NZWIHL, which is already
+     width-capped by max-width:210px well before height becomes its limiting factor. */
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
 
 /* ---------- ice ---------- */
