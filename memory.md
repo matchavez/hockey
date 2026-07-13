@@ -494,15 +494,16 @@ separate one):
    (one per file per club) — tripped the 60/hr/IP unauthenticated cap and surfaced as false
    FAIL/WARN 403s. Replaced with a single `git/trees/main?recursive=1` fetch (sessionStorage-cached
    10 min) that all 20 per-club checks read from client-side.
-4. **Genuine, still-open finding (not fixed here, flagged to Mat):** `startinglineup/index.html`'s
-   internal `TEAMS` registry is missing `auckland-mako` entirely (only 9 of 10 clubs) — a
-   `?preview=` test for Mako renders all 6 slots empty because `T` resolves to `null` and the page
-   silently no-ops rather than throwing. Every other Mako-facing surface (DVD Bounce, UP-NEXT,
-   portal roster list, Summary/Leaders' explicit stand-down handling) already accounts for Mako
-   being stood down; Starting Lineup's roster table is the one place that doesn't, and unlike the
-   game-dependent graphics there's no obvious reason a lineup graphic *couldn't* work for Mako if
-   it were ever needed (alumni piece, preseason feature, etc.) — worth a deliberate call, not a
-   silent add of guessed colours.
+4. **Genuine finding, RESOLVED 2026-07-14 (not fixed here, flagged to Mat at the time):**
+   `startinglineup/index.html`'s internal `TEAMS` registry was missing `auckland-mako` entirely
+   (only 9 of 10 clubs) — a `?preview=` test for Mako rendered all 6 slots empty because `T`
+   resolved to `null` and the page silently no-opped rather than throwing. Every other
+   Mako-facing surface (DVD Bounce, UP-NEXT, portal roster list, Summary/Leaders' explicit
+   stand-down handling) already accounted for Mako being stood down; Starting Lineup's roster
+   table was the one place that didn't. Fixed as part of the Combined Starting Lineups build (see
+   below) — Mako added to both `startinglineup/index.html`'s and the new `startinglineup/
+   combined/`'s TEAMS registries. `lineup` family re-run 2026-07-14: 10/10 PASS (was 9 pass/1
+   warn).
 
 **Design notes for future maintenance:**
 - Test iframes are mounted directly into their visible (scaled, e.g. 0.16×) thumbnail slot at
@@ -558,3 +559,75 @@ changes to `worker.js`/`ControlChannel` DO — client-side only.
   grids for both teams, existing queued state intact) with zero console errors.
 
 Commit `e160011`. See also [[nzihl-starting-lineup]], [[nzihl-player-lower-thirds]].
+
+---
+## Combined Starting Lineups (2026-07-14)
+Built from a Sonnet handoff prompt (`Prompts/sonnet-prompt-11-combined-starting-lineups.md` in
+the Claude project folder), spec locked the day before. `startinglineup/combined/?home=<slug>
+&away=<slug>` — both teams' starting six on one full landscape rink, home left / away right.
+Deliberately reuses the per-team page's own `/lineup/<slug>` worker channels (two independent
+polls, one per side) — **zero worker or control-page changes**, this was a hard constraint from
+the spec and held throughout.
+
+Build notes worth keeping beyond the README:
+- **Card layout** (12 cards, 1-2-3-3-2-1) was derived by affine-transposing the per-team page's
+  vertical single-team layout (GK/D/F positions) into a horizontal one, then manually pulling the
+  two CF cards (home's and away's) further from the centre seam than a pure transpose gave —
+  the raw transpose put both CF centres only 180px apart, which collides at any card width worth
+  using. Final: 420×90 cards, home columns at x≈{230(GK),560(D),690(F)}, away mirrored, full
+  position table in the file's own header comment.
+- **Rink SVG** is NOT a rescaled copy of the half-rink — the per-team page's half-rink maps
+  "width" to the rink's actual width and "height" to length-from-centre, so a literal transpose
+  of that geometry (swap x/y) actually corrects itself into good full-rink geometry for the
+  circles' hash-mark/bracket detail (verified by hand: the transposed brackets land
+  toward/away-centre-ice, i.e. left/right of each dot, and hash marks land toward the side
+  boards, i.e. top/bottom of each circle — matches real rink convention). One symmetric local
+  template (hash ticks + brackets) is reused via `<g transform="translate(...)">` at all 4
+  circle centres rather than duplicated/mirrored by hand.
+- **Two real bugs found only by Chrome-screenshotting the first build** (both fixed, both
+  Chrome-reverified before shipping): (1) the away header half used
+  `flex-direction:row-reverse` + `justify-content:flex-end`, which (row-reverse's main-end is the
+  LEFT) packed the away team name toward centre, colliding with the centred "STARTING LINEUPS"
+  title — fixed by dropping row-reverse entirely and just swapping the away half's DOM order
+  (name before logo) with plain `justify-content:flex-end`. (2) `.hdrTeam`'s `max-width:300px`
+  was overly conservative and ellipsis-truncated "Dunedin Thunder Women" — there's ~600px of
+  real clearance before the title's footprint on each side; widened to 480px. **Lesson: don't
+  trust hand-reasoned CSS flex math on a split/mirrored header without an actual screenshot —
+  both bugs were invisible from reading the code.**
+- Mako QA finding fixed in the same commit: `startinglineup/index.html`'s TEAMS registry was
+  missing `auckland-mako` entirely (flagged 2026-07-13 in the Graphics QA build, see below) —
+  added to both the per-team page and the new combined page's TEAMS copy, ink/dark pulled from
+  the hex-cheat-sheet-derived values already used by scorebug/activity-banner's Mako entries
+  (`#62656A`/`#202222`), logo filename from the same registries.
+- Portal's new "Combined Starting Lineups" mini-grid deliberately sources `nzihl-season-data`'s
+  `upcoming` field (teamID-keyed) rather than `boxscores.json` like the rest of the portal's
+  schedule sections — avoids the raw-name ambiguity (`upcoming` entries say "Red Devils" and, in
+  NZWIHL, "Dunedin Thunder" for the women's team) the same way `team/index.html`'s schedule
+  widget already does. Window = next 4 days (`daysPast` in [-4,0]), matching the portal's usual
+  lookahead. Verified against the real 2026-07-14 fixture list: home/away resolve correctly
+  (home -> `home=` param, renders left) with no reversal.
+
+**Verified live in Chrome (not just reasoned about):** preview renders for one NZIHL matchup
+(Admirals/Swarm) and one NZWIHL matchup (Steel/Inferno), plus a long-name stress test on Dunedin
+Thunder Women/Wakatipu Wild (29-char single-line name, two 2-line-wrap names) — all 12 cards
+legible, no clipping, no overlaps. Cross-league pair and an unknown slug both render a fully
+empty `document.body` (confirmed via `body.innerHTML.trim().length === 0`), no JS errors. Full
+live round trip: set Botany Swarm's LF via the real control page (gate password `domigan`,
+already known from prior sessions), confirmed it on the combined page's INITIAL load; then, with
+the combined page already open, POSTed a second change directly to the worker and watched it land
+in place within one ~10s poll cycle with no reload — proves the per-side independent polling
+actually works, not just the happy-path first paint. Test data cleared from Botany Swarm's live
+channel afterward. Per-team regression: `?team=pure-nz-admirals` unchanged (same real six as
+before), `?team=auckland-mako` now renders instead of blanking. Graphics QA page: new `combined`
+family 2/2 PASS; `lineup` family now 10/10 PASS (was 9 pass/1 warn — the Mako gap is gone).
+
+Deliberately NOT done (left for a visual-tweak round, per the spec's own expectation — the
+per-team graphic went through several before landing): card shadow/entrance-bounce tuning to
+match the per-team page's later polish rounds (this build used the per-team page's ORIGINAL
+values, scaled down, not its final post-polish ones); position labels are LW/C/RW/LD/RD/G
+(abbreviated, spec explicitly allowed this) rather than the per-team page's FORWARD/DEFENSE/
+GOALTENDER — not reconciled, may be worth Mat's call either way.
+
+Commits: `9b6e365` (initial build), `681ea44` (header row-reverse fix), `357620c` (header
+max-width fix). See also [[nzihl-starting-lineup]], [[nzihl-graphics-qa-project]],
+[[nzihl-season-data-warehouse]], [[nzihl-team-page-schedule-widget]].

@@ -30,6 +30,7 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | `lowerthirds/` | **Player Lower Thirds** (producer tool, not an overlay): phone control page — tap a tonight's-roster jersey pill, preview (shares the `activity-banner/?preview=` renderer), edit/toggle an auto-computed fact, Fire through a Cloudflare Worker Durable Object control channel to the `activity-banner/` already on air | `?team=` |
 | `startinglineup/` | **Starting Lineup** broadcast graphic: 1840×1000 opaque panel (transparent surround) on the bottom half of a vertical rink — six starters (LF/CF/RF/LD/RD/GK) as horizontal cards in an inverted pyramid. Evergreen browser source: state persists in the worker's `/lineup/<slug>` channel, polls every 10 s | `?team=` `?preview=` |
 | `startinglineup/control/` | **Starting Lineup control** (producer tool, not an overlay): director's picker — six slot buttons, tap a slot then a jersey pill, live preview iframe (the display page itself in `?preview=` mode), team switcher, domigan gate | `?team=` |
+| `startinglineup/combined/` | **Combined Starting Lineups**: both teams' starting six on ONE full landscape rink (home left / away right, home defends the left end), 12 compact cards, 1-2-3-3-2-1 — reads the same two `/lineup/<slug>` worker channels as the per-team page/control (no worker or control-page changes). Bad/unknown slug for either param, or a cross-league pair, renders nothing | `?home=` `?away=` `?worker=` `?previewHome=` `?previewAway=` |
 | `assets/fonts/` | InterVariable (+Italic) woff2 — the 2026 house font | — |
 
 Common params across live pages: `?team=<slug>` picks the club's live/next game from the roster
@@ -344,6 +345,27 @@ director changes it minutes before puck drop.
   `{slots:{LF..GK:{number,name,position,photo}}, updated_at}`. Photo is resolved to a
   `nzihl-player-photos` manifest path at pick time so the display page never needs the
   manifest. Writes token-gated with the same CONTROL_TOKEN; reads open.
+
+### startinglineup/combined/ — Combined Starting Lineups (2026-07-14)
+
+Both teams' starting six on one full landscape rink (`?home=<slug>&away=<slug>`), evergreen,
+polling the SAME two `/lineup/<slug>` worker channels the per-team page and control/ already
+read/write — no worker or control-page changes. Home defends the left end, away the right;
+header is split (home's half-dark gradient left, away's mirrored right, title centred between).
+Twelve compact ~420×90 cards (photo/crest/silhouette, same fallback convention as the per-team
+page) in 1-2-3-3-2-1 reading left to right: GK / D pair (stacked) / F trio (stacked) per side,
+positions derived by transposing the per-team page's vertical layout into a horizontal one (see
+`nzihl_combined_lineups.md` in the Claude memory for the full derivation). `?previewHome=`/
+`?previewAway=` mirror the per-team page's `?preview=` (same JSON shape, one `JSON.parse` per
+side, never double-decoded). Bad/unknown slug for either param, or a cross-league pair, renders
+nothing (transparent source). Each side polls and resiliences independently — one team's
+unset/failed channel never blanks the other's six cards. `startinglineup/index.html`'s TEAMS
+registry gained `auckland-mako` in the same commit (was missing entirely, a 2026-07-13 QA
+finding — see Broadcast Graphics QA below); the combined page's own TEAMS copy includes it too.
+Portal gained a schedule-driven "Combined Starting Lineups" mini-grid under the Starting Lineup
+section, sourced from `nzihl-season-data`'s `upcoming` field (teamID-keyed, next 4 days) — a
+deliberately different source than the rest of the portal's schedule sections (`boxscores.json`),
+matching `team/index.html`'s schedule widget's reasoning (see Shared infrastructure above).
 
 ## summary/
 
