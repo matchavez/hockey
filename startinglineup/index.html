@@ -100,8 +100,8 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
       <svg id="rink" viewBox="0 0 1840 872" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
         <!-- centre red line (top of the visible half-rink) -->
         <rect x="0" y="46" width="1840" height="16" fill="#C8102E"/>
-        <!-- lower half of the centre faceoff circle, clipped by the red line -->
-        <path d="M 740 54 A 180 180 0 0 0 1100 54" fill="none" stroke="#1B5FAA" stroke-width="6" opacity=".85"/>
+        <!-- centre faceoff circle, bisected by the red line (top cap peeks above it) -->
+        <circle cx="920" cy="54" r="180" fill="none" stroke="#1B5FAA" stroke-width="6" opacity=".85"/>
         <circle cx="920" cy="54" r="11" fill="#1B5FAA" opacity=".85"/>
         <!-- blue line -->
         <rect x="0" y="306" width="1840" height="16" fill="#1B5FAA"/>
@@ -116,33 +116,31 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
           <circle cx="330" cy="606" r="158"/>
           <circle cx="1510" cy="606" r="158"/>
         </g>
-        <g stroke="#C8102E" stroke-width="6" opacity=".9" fill="none">
+        <g stroke="#C8102E" stroke-width="6" opacity=".9" fill="none" stroke-linejoin="miter">
           <!-- left circle: side-board hash marks (9 + 3 o'clock, straddling the boundary) -->
           <line x1="150" y1="584" x2="178" y2="584"/><line x1="150" y1="628" x2="178" y2="628"/>
           <line x1="482" y1="584" x2="510" y2="584"/><line x1="482" y1="628" x2="510" y2="628"/>
-          <!-- left circle: dot restraining lines, above -->
-          <line x1="316" y1="546" x2="316" y2="585"/><line x1="344" y1="546" x2="344" y2="585"/>
-          <line x1="290" y1="585" x2="316" y2="585"/><line x1="344" y1="585" x2="370" y2="585"/>
+          <!-- left circle: dot restraining lines, above (single path per bracket so the
+               90° corner is one continuous miter join, not two butt-capped lines meeting
+               with a visible notch) -->
+          <path d="M 316 546 L 316 585 L 290 585"/>
+          <path d="M 344 546 L 344 585 L 370 585"/>
           <!-- left circle: dot restraining lines, below -->
-          <line x1="316" y1="627" x2="316" y2="666"/><line x1="344" y1="627" x2="344" y2="666"/>
-          <line x1="290" y1="627" x2="316" y2="627"/><line x1="344" y1="627" x2="370" y2="627"/>
+          <path d="M 316 666 L 316 627 L 290 627"/>
+          <path d="M 344 666 L 344 627 L 370 627"/>
           <!-- right circle: side-board hash marks -->
           <line x1="1330" y1="584" x2="1358" y2="584"/><line x1="1330" y1="628" x2="1358" y2="628"/>
           <line x1="1662" y1="584" x2="1690" y2="584"/><line x1="1662" y1="628" x2="1690" y2="628"/>
           <!-- right circle: dot restraining lines, above -->
-          <line x1="1496" y1="546" x2="1496" y2="585"/><line x1="1524" y1="546" x2="1524" y2="585"/>
-          <line x1="1470" y1="585" x2="1496" y2="585"/><line x1="1524" y1="585" x2="1550" y2="585"/>
+          <path d="M 1496 546 L 1496 585 L 1470 585"/>
+          <path d="M 1524 546 L 1524 585 L 1550 585"/>
           <!-- right circle: dot restraining lines, below -->
-          <line x1="1496" y1="627" x2="1496" y2="666"/><line x1="1524" y1="627" x2="1524" y2="666"/>
-          <line x1="1470" y1="627" x2="1496" y2="627"/><line x1="1524" y1="627" x2="1550" y2="627"/>
+          <path d="M 1496 666 L 1496 627 L 1470 627"/>
+          <path d="M 1524 666 L 1524 627 L 1550 627"/>
         </g>
-        <!-- striped faceoff dots (red with an ice-coloured horizontal band) -->
-        <clipPath id="dotL"><circle cx="330" cy="606" r="13"/></clipPath>
-        <clipPath id="dotR"><circle cx="1510" cy="606" r="13"/></clipPath>
+        <!-- solid faceoff dots (Mat, 2026-07-13: dropped the ice-coloured stripe) -->
         <circle cx="330" cy="606" r="13" fill="#C8102E" opacity=".9"/>
-        <rect x="315" y="602" width="30" height="8" fill="#f1f5f9" clip-path="url(#dotL)"/>
         <circle cx="1510" cy="606" r="13" fill="#C8102E" opacity=".9"/>
-        <rect x="1495" y="602" width="30" height="8" fill="#f1f5f9" clip-path="url(#dotR)"/>
         <!-- goal crease (bulges up toward centre ice) + goal line -->
         <path d="M 810 836 A 110 110 0 0 1 1030 836 Z" fill="#7FB6E6" fill-opacity=".45" stroke="#C8102E" stroke-width="6"/>
         <rect x="0" y="836" width="1840" height="7" fill="#C8102E"/>
