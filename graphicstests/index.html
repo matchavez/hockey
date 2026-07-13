@@ -154,12 +154,30 @@ function overflowing(doc, sel){
 }
 
 /* ====================== iframe test harness ====================== */
-function makeFrame(url, w, h){
+function makeFrame(url, w, h, thumbSlot, scale){
+  // Off-screen (position:fixed;left:-99999px) iframes get deprioritized by the browser's
+  // resource scheduler -- verified live: a manual click on the REAL activity-banner page
+  // rendered the goal banner with both crests every time, but firing the identical
+  // fireTest() call programmatically inside an off-screen test iframe produced "3-4 broken
+  // images" on every club, because the page's own loadImage() has a hardcoded ~1.8s timeout
+  // and gives up rather than blocking the broadcast forever on a slow fetch -- off-screen
+  // deprioritization was enough to trip that timeout even though the same request succeeds
+  // well within budget in a normal visible tab. Fix: mount the iframe INSIDE its visible
+  // (if small/scaled) thumbnail slot from the moment it's created, never off-screen, and
+  // never re-parented later (moving an iframe after the fact risks a reload of its own).
   const f=document.createElement("iframe");
-  f.src=url; f.width=w; f.height=h;
+  f.width=w; f.height=h;
   f.style.width=w+"px"; f.style.height=h+"px"; f.style.border="0";
-  f.style.position="fixed"; f.style.left="-99999px"; f.style.top="0";
-  document.body.appendChild(f);
+  f.style.position="absolute"; f.style.left="0"; f.style.top="0";
+  f.style.transform="scale("+scale+")"; f.style.transformOrigin="top left";
+  thumbSlot.innerHTML="";
+  const wrap=document.createElement("div");
+  wrap.className="thumbwrap";
+  wrap.style.width=Math.round(w*scale)+"px";
+  wrap.style.height=Math.round(h*scale)+"px";
+  wrap.appendChild(f);
+  thumbSlot.appendChild(wrap);
+  f.src=url;   // set src AFTER attaching to the visible DOM so the load is never off-screen
   return f;
 }
 function waitLoad(f, timeoutMs){
@@ -182,16 +200,9 @@ function freeze(f){
   // DOM stays visible, only NEW fetches from here on are swallowed.
   try{ f.contentWindow.fetch=()=>Promise.reject(new Error("gqa: frozen after check")); }catch(e){}
 }
-function placeThumb(container, f, nativeW, nativeH, scale){
-  const wrap=document.createElement("div");
-  wrap.className="thumbwrap";
-  wrap.style.width=Math.round(nativeW*scale)+"px";
-  wrap.style.height=Math.round(nativeH*scale)+"px";
-  f.style.position="absolute"; f.style.left="0"; f.style.top="0";
-  f.style.transform="scale("+scale+")";
-  wrap.appendChild(f);
-  container.appendChild(wrap);
-}
+// (placeThumb removed — makeFrame() now mounts directly into the visible thumb slot;
+// keeping the iframe in place for its whole lifecycle avoids both the off-screen network
+// deprioritization above and any risk of a re-parenting reload.)
 
 /* ====================== card rendering ====================== */
 const SUMMARY_TOTALS={pass:0,warn:0,fail:0};
@@ -259,7 +270,8 @@ function registerFamily(cfg){
     const rec=cards.get(team.slug);
     rec.status=setCardStatus(rec.card, rec.status, "run", "running…", null, null);
     const url=cfg.buildUrl(team);
-    const f=makeFrame(url, cfg.w, cfg.h);
+    const slot=rec.card.querySelector(".thumbslot");
+    const f=makeFrame(url, cfg.w, cfg.h, slot, cfg.scale);
     const loaded=await waitLoad(f, 9000);
     let result;
     if(!loaded){
@@ -274,11 +286,7 @@ function registerFamily(cfg){
         result = {status:"fail", msg:"check threw: "+(e&&e.message||e)};
       }
     }
-    // thumbnail: keep the rendered frame visible (frozen) in the card
-    const slot=rec.card.querySelector(".thumbslot");
-    slot.innerHTML="";
-    freeze(f);
-    placeThumb(slot, f, cfg.w, cfg.h, cfg.scale);
+    freeze(f);   // stop further live polling now that the check is done; thumbnail stays as-is, already in place
     rec.status=setCardStatus(rec.card, rec.status, result.status, result.msg, url, ()=>runOne(team));
     return result.status;
   }
