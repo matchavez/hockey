@@ -151,16 +151,26 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 #rink{position:absolute;inset:0;width:100%;height:100%;}
 
 /* ---------- player cards — history: 520x120 (single-team match) -> 312x150
-   (25% taller/40% narrower) -> 2026-07-14 now 390x135 (that 312x150 size,
-   10% shorter / 25% wider, per Mat's cleanup pass). Photo stays square at
-   the new height (135x135). Slot grid is a straightforward 4-col x 3-row
-   layout: inner column (GK/D, x=20 home / x=1430 away) and outer column
-   (F/CF, x=500 home / x=950 away) at three Y-bands (top=68.5 LD+LF,
-   mid=368.5 GK+CF, bottom=668.5 RD+RF) -- tightest gap is the two CF cards
-   at centre ice, ~60px clear. Mat flagged this as transitional ("we'll
+   (25% taller/40% narrower) -> 390x135 (10% shorter/25% wider) -> now
+   410x135 (2026-07-15, ~5% wider, per Mat's ask -- see .card rule below and
+   the slot-position comment further down for current X values). Photo
+   stays a fixed 108x135 (4:5) regardless of total card width. Slot grid is
+   a straightforward 4-col x 3-row layout: inner column (GK/D, x=20 home /
+   x=1410 away) and outer column (F/CF, x=500 home / x=930 away) at three
+   Y-bands (top=118.5 LD/68.5 LF, mid=368.5 GK+CF, bottom=618.5 RD/668.5 RF)
+   -- tightest gap is the two CF cards at centre ice, ~20px clear (D/F
+   pillars touch with zero gap, by design, see the LD/RD comment below).
+   Mat flagged this as transitional ("we'll
    reposition next") so this reflow is the minimum needed to keep all 12
    cards on-panel with no overlap, not a final layout pass. ---------- */
-.card{position:absolute;width:390px;height:135px;border-radius:18px;display:flex;
+/* 2026-07-15: width 390->410 (~5%) per Mat's ask. Home cards keep their
+   `left` anchored (grow rightward, toward centre); away cards keep their
+   right edge anchored (their `left` shifts down by the same 20px, growing
+   leftward, toward centre) -- this is why GK's `left`/right-edge values
+   below are unchanged from before: the goaltender pill's margin to the
+   panel edge (20px, both sides) is preserved exactly, only its far edge
+   (facing inward) extends further into the ice. */
+.card{position:absolute;width:410px;height:135px;border-radius:18px;display:flex;
   align-items:stretch;overflow:hidden;box-shadow:0 42px 102px rgba(8,12,20,.93);
   opacity:0;transform:scale(.86);}
 .card.show{animation:cardIn .5s ease-out forwards;}
@@ -312,19 +322,27 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
            transpose so they clear each other across the centre seam. -->
       <!-- 2026-07-14: LD/RD nudged 15px closer to their GK vertically and
            20px closer to centre ice horizontally per Mat's ask. -->
+      <!-- 2026-07-15: width bump (390->410) shifted these again -- home
+           anchors left (LF/CF/RF/GK `left` unchanged), away anchors right
+           (LF/CF/RF/GK `left` down 20px so their right edge is unchanged).
+           LD/RD got a further +15px toward centre (home: +15 right; away:
+           -15 left) so the D pillar's inner edge now sits exactly flush
+           against the F pillar's inner edge (zero gap, was 15px) -- e.g.
+           home LD's new right edge (90+410=500) lands exactly on home
+           LF/CF/RF's left edge (500). -->
       <div class="card" id="slot_home_LF" style="left:500px; top:68.5px;"></div>
-      <div class="card" id="slot_home_LD" style="left:75px;  top:118.5px;"></div>
+      <div class="card" id="slot_home_LD" style="left:90px;  top:118.5px;"></div>
       <div class="card" id="slot_home_GK" style="left:20px;  top:368.5px;"></div>
       <div class="card" id="slot_home_CF" style="left:500px; top:368.5px;"></div>
-      <div class="card" id="slot_home_RD" style="left:75px;  top:618.5px;"></div>
+      <div class="card" id="slot_home_RD" style="left:90px;  top:618.5px;"></div>
       <div class="card" id="slot_home_RF" style="left:500px; top:668.5px;"></div>
 
-      <div class="card" id="slot_away_LF" style="left:950px; top:68.5px;"></div>
-      <div class="card" id="slot_away_LD" style="left:1375px;top:118.5px;"></div>
-      <div class="card" id="slot_away_GK" style="left:1430px;top:368.5px;"></div>
-      <div class="card" id="slot_away_CF" style="left:950px; top:368.5px;"></div>
-      <div class="card" id="slot_away_RD" style="left:1375px;top:618.5px;"></div>
-      <div class="card" id="slot_away_RF" style="left:950px; top:668.5px;"></div>
+      <div class="card" id="slot_away_LF" style="left:930px; top:68.5px;"></div>
+      <div class="card" id="slot_away_LD" style="left:1340px;top:118.5px;"></div>
+      <div class="card" id="slot_away_GK" style="left:1410px;top:368.5px;"></div>
+      <div class="card" id="slot_away_CF" style="left:930px; top:368.5px;"></div>
+      <div class="card" id="slot_away_RD" style="left:1340px;top:618.5px;"></div>
+      <div class="card" id="slot_away_RF" style="left:930px; top:668.5px;"></div>
     </div>
   </div>
 </div>
