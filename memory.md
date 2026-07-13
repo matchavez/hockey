@@ -415,3 +415,67 @@ findings table. Changes made in this repo:
 
 ## Sync note
 Keep this file and README.md in sync with every meaningful change. If they drift, flag it to Mat and get approval before publishing the sync rather than doing it silently.
+
+## Broadcast Graphics QA (2026-07-13)
+New sibling page to `preflight/`: `graphicstests/index.html`. Preflight answers "will the data
+resolve tonight" (worker/manifest/pipeline health); this answers "does each GRAPHIC actually
+render correctly, right now, for every club" by loading the real overlay URL in a live iframe per
+club and checking the rendered DOM (broken images, empty/placeholder undefined-NaN text, layout
+overflow) rather than just checking that data resolved.
+
+**Per-family test mechanism** (reuses each page's own existing test harness rather than building a
+separate one):
+- `activity-banner/`, `scorebug/`, `scorebug-l3/`: `?team=<slug>&test=1`, then calls the page's own
+  `fireTest()`/`TEST_TEAMS` via `contentWindow.eval()` (NOT `win.TEST_TEAMS` directly — top-level
+  `const`/`let` never attach to `window`, only function declarations do; this cost a full false-FAIL
+  debugging cycle before landing on eval).
+- Player Lower Thirds (rendered via `activity-banner/`'s `#l3`, no separate page): drives it with
+  `?team=<slug>&preview=<json>` — a synthetic `{player:{team_code,name,number,role,position},
+  fact,include_fact}` payload, same shape the phone control page (`lowerthirds/`) sends live.
+- `ticker/`: `?team=<slug>&test=1` — real prior game (2519940) through the live parser, `?team=`
+  still drives that club's crest/colour.
+- `summary/`, `scoringleaders/`: plain `?team=<slug>&bg=opaque` — both already have a `LAST_GAME`
+  fallback so they render real data with no test flag needed. Auckland Mako has no `LAST_GAME`
+  entry (stood down) so its "no game found" is scored as an expected PASS, not a failure.
+- `startinglineup/`: `?team=<slug>&preview=<json>` synthetic 6-slot lineup.
+- `team/`, `league/`: plain URL, checked for `#idcard`/`#games-grid` population.
+- Static assets (Standings PNGs, DVD Bounce corner mp4s+zips, UP-NEXT galleries): direct
+  `Image()`/GitHub-tree checks, no iframe.
+
+**Real bugs found and fixed while building this (all verified live, not just in theory):**
+1. `win.TEST_TEAMS`/`win.ACTIVE_TEST_TEAMS` read as `undefined` from outside the iframe (the
+   const/let-doesn't-attach-to-window issue above) — every club showed a false "no TEST_TEAMS"
+   FAIL regardless of the actual page. Fixed with `contentWindow.eval()`.
+2. `imgOk()` originally flagged ANY `<img>` in the whole document with no loaded `naturalWidth`,
+   including elements that are blank BY DESIGN when inactive (`l3img`/`l3logo`/`gavImg` before any
+   L3/rare-state fires) — not just genuinely failed loads. This was the actual root cause of a
+   "broken images" false-FAIL wall across Activity Banner/Scorebug/Scorebug+L3, confirmed by
+   checking `naturalWidth` directly via the console on the real page (banner crests loaded fine,
+   naturalWidth 2114; only the by-design-empty ones read 0). Fixed: an `<img>` with no `src` ever
+   assigned is treated as inactive-by-design, not broken.
+3. Static-asset checks originally fired ~30 unauthenticated `contents/<path>` GitHub API calls
+   (one per file per club) — tripped the 60/hr/IP unauthenticated cap and surfaced as false
+   FAIL/WARN 403s. Replaced with a single `git/trees/main?recursive=1` fetch (sessionStorage-cached
+   10 min) that all 20 per-club checks read from client-side.
+4. **Genuine, still-open finding (not fixed here, flagged to Mat):** `startinglineup/index.html`'s
+   internal `TEAMS` registry is missing `auckland-mako` entirely (only 9 of 10 clubs) — a
+   `?preview=` test for Mako renders all 6 slots empty because `T` resolves to `null` and the page
+   silently no-ops rather than throwing. Every other Mako-facing surface (DVD Bounce, UP-NEXT,
+   portal roster list, Summary/Leaders' explicit stand-down handling) already accounts for Mako
+   being stood down; Starting Lineup's roster table is the one place that doesn't, and unlike the
+   game-dependent graphics there's no obvious reason a lineup graphic *couldn't* work for Mako if
+   it were ever needed (alumni piece, preseason feature, etc.) — worth a deliberate call, not a
+   silent add of guessed colours.
+
+**Design notes for future maintenance:**
+- Test iframes are mounted directly into their visible (scaled, e.g. 0.16×) thumbnail slot at
+  creation and never moved or rendered off-screen — an earlier off-screen (`left:-99999px`)
+  version was suspected of browser-throttling image loads (a red herring in the end, but keeping
+  iframes visible from creation is still the more correct design regardless).
+- Each family is opt-in ("Run" button) rather than auto-running on load like Preflight's system
+  cards — ~98 checks across live iframes is much heavier than Preflight's handful of fetches, so
+  auto-running everything on every page view would be irresponsible. Static-asset checks (cheap:
+  4 Image() loads + 1 tree fetch) DO auto-run on load, matching Preflight's philosophy for
+  lightweight checks.
+- Portal footer links `graphicstests/` next to `preflight/` in both the top pill-row and the
+  bottom beta-links list.
