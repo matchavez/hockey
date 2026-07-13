@@ -127,7 +127,17 @@ const TEAMS = [
 ];
 
 /* ====================== generic DOM check helpers ====================== */
-function imgOk(img){ return !!img && img.complete && img.naturalWidth>0; }
+function imgOk(img){
+  // An <img> with no src ever assigned (empty string) is an intentionally-inactive UI element
+  // (e.g. the Player L3 photo/logo before any L3 has fired, or a rarely-used state icon) --
+  // NOT a broken image. Verified live via the console: firing a real goal banner loaded the
+  // actual banner crests (blogoL/blogoR) perfectly (naturalWidth 2114) while this check was
+  // still flagging l3img/l3logo/gavImg as "broken" purely because they're blank-by-design in
+  // that state. Only count it broken if the page actually TRIED to load something and failed.
+  if(!img) return false;
+  if(!img.src) return true;
+  return img.complete && img.naturalWidth>0;
+}
 function brokenImages(doc){ return Array.from(doc.images||[]).filter(im=>!imgOk(im)); }
 function waitImages(doc, timeoutMs){
   // A snapshot check right after firing an event conflates "still loading" with "actually
