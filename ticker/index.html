@@ -212,7 +212,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;","
 // (case-insensitive, decamel'd). Mirrors the roster pipeline's overrides.py.
 // 2026-07-11: de Jonge (Pure NZ Admirals #26) added after Michael reported the
 // Activity Banner showing "Jonge" instead of "de Jonge" mid-broadcast.
-const SURNAME_OVERRIDES={"de jonge":"De Jonge"};
+const SURNAME_OVERRIDES={"de jonge":"De Jonge","hayward jones":"Hayward Jones"};
 const surnameOverride=n=>SURNAME_OVERRIDES[decamel(n).trim().replace(/\s+/g," ").toLowerCase()]||null;
 const surnameUC=n=>{const forced=surnameOverride(n);if(forced)return forced.toUpperCase();const w=decamel(n).trim().split(/\s+/);return (w[w.length-1]||"").toUpperCase();};
 // possessive: "SkyCity Stampede's", but "Pure NZ Admirals'"
