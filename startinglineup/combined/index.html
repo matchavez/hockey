@@ -77,21 +77,41 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
      seamX(y) = 920 + (-0.3671)*(y-64)  ->  top x=943.49, bottom x=896.51. */
 #hdr{position:absolute;left:0;top:0;right:0;height:128px;overflow:hidden;}
 .hdrHalf{position:absolute;left:0;top:0;width:1840px;height:128px;min-width:0;
-  display:flex;align-items:center;gap:18px;}
+  box-sizing:border-box;display:flex;align-items:center;gap:18px;}
 .hdrHalf.home{padding-left:32px;justify-content:flex-start;
   clip-path:polygon(0 0, 943.49px 0, 896.51px 100%, 0 100%);}
 .hdrHalf.away{padding-right:32px;justify-content:flex-end;
   clip-path:polygon(943.49px 0, 100% 0, 100% 100%, 896.51px 100%);}
+/* ^ 2026-07-14 fix: .hdrHalf didn't set box-sizing, so it defaulted to
+   content-box -- width:1840px was the CONTENT box, and padding-right
+   added 32px OUTSIDE it (border-box ballooned to 1872px). flex-end
+   alignment (and the clip-path's "100%" keyword) both resolve against
+   that box, so the away side's content aligned flush to x=1840 (the
+   padding sat off in the void past the panel edge) while the home side's
+   padding-left correctly inset flex-start content -- that asymmetry was
+   the "right logo hangs" bug. border-box makes width:1840px the OUTER
+   edge (padding included, matching the home side's effective behaviour),
+   so both sides now inset by the same 32px from the panel edge.
+   ^ 2026-07-14 also: team names switched from a single line to the same
+   two-line treatment as the Up Next overlay (city/league line white,
+   club-name line in the team's colour) -- these are hardcoded per team
+   in TEAMS[...].lines, copied verbatim from Up Next Overlay/overlay.py's
+   own TEAMS registry so the wording/line-breaks match exactly (e.g.
+   "Dunedin Thunder Women" -> DUNEDIN / THUNDER, dropping "Women", same
+   as the overlay). */
 .hdrLogo{width:72px;height:72px;object-fit:contain;flex:0 0 auto;
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
-.hdrTeam{font-size:22px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:480px;}
-.hdrHalf.away .hdrTeam{text-align:right;}
+.hdrTeam{display:flex;flex-direction:column;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:480px;line-height:1.12;}
+.hdrHalf.away .hdrTeam{text-align:right;align-items:flex-end;}
+.hdrTeamL1{font-size:33px;color:#fff;}
+.hdrTeamL2{font-size:33px;}
 .hdrAccent{position:absolute;left:0;top:123px;width:1840px;height:5px;z-index:1;}
 .hdrAccent.home{clip-path:polygon(0 0, 898.34px 0, 896.51px 100%, 0 100%);}
 .hdrAccent.away{clip-path:polygon(898.34px 0, 100% 0, 100% 100%, 896.51px 100%);}
 #hdrTitle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-size:32px;font-weight:900;letter-spacing:.05em;color:#fff;white-space:nowrap;
+  font-size:48px;font-weight:900;letter-spacing:.05em;color:#fff;white-space:nowrap;
   text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
     0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
   z-index:2;pointer-events:none;}
@@ -101,16 +121,17 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
   background:linear-gradient(180deg,#d0dee9 0%,#dce8f0 40%,#c8d9e6 100%);}
 #rink{position:absolute;inset:0;width:100%;height:100%;}
 
-/* ---------- player cards — 2026-07-14: restored to the EXACT single-team
-   dimensions/type sizes (520x120, same photo/font sizes as startinglineup/
-   index.html) per Mat's ask ("they look too small" at the compact 420x90
-   size). To fit twelve full-size cards without collisions, every slot now
-   gets its OWN dedicated row (6 rows total, symmetric about the vertical
-   centre) — each row holds exactly one home card + its mirrored away card,
-   never more, so there's no same-row crowding the way the old compact
-   layout's shared centre row (GK/CF from both sides) needed careful
-   nudging to avoid. See the position table in the header comment. ---------- */
-.card{position:absolute;width:312px;height:150px;border-radius:18px;display:flex;
+/* ---------- player cards — history: 520x120 (single-team match) -> 312x150
+   (25% taller/40% narrower) -> 2026-07-14 now 390x135 (that 312x150 size,
+   10% shorter / 25% wider, per Mat's cleanup pass). Photo stays square at
+   the new height (135x135). Slot grid is a straightforward 4-col x 3-row
+   layout: inner column (GK/D, x=20 home / x=1430 away) and outer column
+   (F/CF, x=500 home / x=950 away) at three Y-bands (top=68.5 LD+LF,
+   mid=368.5 GK+CF, bottom=668.5 RD+RF) -- tightest gap is the two CF cards
+   at centre ice, ~60px clear. Mat flagged this as transitional ("we'll
+   reposition next") so this reflow is the minimum needed to keep all 12
+   cards on-panel with no overlap, not a final layout pass. ---------- */
+.card{position:absolute;width:390px;height:135px;border-radius:18px;display:flex;
   align-items:stretch;overflow:hidden;box-shadow:0 42px 102px rgba(8,12,20,.93);
   opacity:0;transform:scale(.86);}
 .card.show{animation:cardIn .5s ease-out forwards;}
@@ -125,7 +146,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 .card.shown{opacity:1;transform:scale(1);}
 .card.pulse{animation:cardPulse .45s ease;}
 @keyframes cardPulse{0%{transform:scale(1);}40%{transform:scale(1.045);}100%{transform:scale(1);}}
-.cphoto{flex:0 0 auto;width:150px;height:150px;position:relative;overflow:hidden;
+.cphoto{flex:0 0 auto;width:135px;height:135px;position:relative;overflow:hidden;
   background:#1b2029;}
 .cphoto img.head{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
 .cphoto .crest{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
@@ -152,10 +173,16 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
     <div id="hdr">
       <div class="hdrHalf home">
         <img class="hdrLogo" id="hdrLogoHome" alt="">
-        <div class="hdrTeam" id="hdrTeamHome"></div>
+        <div class="hdrTeam" id="hdrTeamHome">
+          <div class="hdrTeamL1" id="hdrTeamHomeL1"></div>
+          <div class="hdrTeamL2" id="hdrTeamHomeL2"></div>
+        </div>
       </div>
       <div class="hdrHalf away">
-        <div class="hdrTeam" id="hdrTeamAway"></div>
+        <div class="hdrTeam" id="hdrTeamAway">
+          <div class="hdrTeamL1" id="hdrTeamAwayL1"></div>
+          <div class="hdrTeamL2" id="hdrTeamAwayL2"></div>
+        </div>
         <img class="hdrLogo" id="hdrLogoAway" alt="">
       </div>
       <div class="hdrAccent home" id="hdrAccentHome"></div>
@@ -243,19 +270,19 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
            transposing startinglineup/'s single-team layout (see header
            comment); the two CF cards are nudged apart from the pure
            transpose so they clear each other across the centre seam. -->
-      <div class="card" id="slot_home_LF" style="left:550px; top:61px; "></div>
-      <div class="card" id="slot_home_LD" style="left:110px; top:61px; "></div>
-      <div class="card" id="slot_home_GK" style="left:20px;  top:361px;"></div>
-      <div class="card" id="slot_home_CF" style="left:550px; top:361px;"></div>
-      <div class="card" id="slot_home_RD" style="left:110px; top:661px;"></div>
-      <div class="card" id="slot_home_RF" style="left:550px; top:661px;"></div>
+      <div class="card" id="slot_home_LF" style="left:500px; top:68.5px;"></div>
+      <div class="card" id="slot_home_LD" style="left:20px;  top:68.5px;"></div>
+      <div class="card" id="slot_home_GK" style="left:20px;  top:368.5px;"></div>
+      <div class="card" id="slot_home_CF" style="left:500px; top:368.5px;"></div>
+      <div class="card" id="slot_home_RD" style="left:20px;  top:668.5px;"></div>
+      <div class="card" id="slot_home_RF" style="left:500px; top:668.5px;"></div>
 
-      <div class="card" id="slot_away_LF" style="left:978px; top:61px; "></div>
-      <div class="card" id="slot_away_LD" style="left:1418px;top:61px; "></div>
-      <div class="card" id="slot_away_GK" style="left:1508px;top:361px;"></div>
-      <div class="card" id="slot_away_CF" style="left:978px; top:361px;"></div>
-      <div class="card" id="slot_away_RD" style="left:1418px;top:661px;"></div>
-      <div class="card" id="slot_away_RF" style="left:978px; top:661px;"></div>
+      <div class="card" id="slot_away_LF" style="left:950px; top:68.5px;"></div>
+      <div class="card" id="slot_away_LD" style="left:1430px;top:68.5px;"></div>
+      <div class="card" id="slot_away_GK" style="left:1430px;top:368.5px;"></div>
+      <div class="card" id="slot_away_CF" style="left:950px; top:368.5px;"></div>
+      <div class="card" id="slot_away_RD" style="left:1430px;top:668.5px;"></div>
+      <div class="card" id="slot_away_RF" style="left:950px; top:668.5px;"></div>
     </div>
   </div>
 </div>
@@ -271,17 +298,21 @@ const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-pho
 // from startinglineup/'s TEAMS entirely — see nzihl_graphics_qa_project.md).
 // Kept in sync manually, same accepted sibling-drift tradeoff as the rest
 // of the estate.
+// lines: [line1, line2] for the split-colour header treatment -- copied verbatim
+// from Graphics/Up Next Overlay/overlay.py's own TEAMS registry (that's the
+// canonical source for how each club's name breaks across two lines, incl.
+// "Dunedin Thunder Women" deliberately dropping "Women" to fit).
 const TEAMS = {
- "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
- "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
- "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF"},
- "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19"},
- "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
- "auckland-mako":         {code:"MKO", league:"nzihl",  name:"Auckland Mako",         ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png"},
- "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
- "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13"},
- "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", textInk:"#FDAD19"},
- "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
+ "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      lines:["PURE NZ","ADMIRALS"],   ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
+ "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          lines:["BOTANY","SWARM"],       ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
+ "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", lines:["CANTERBURY","RED DEVILS"], ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF"},
+ "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19"},
+ "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
+ "auckland-mako":         {code:"MKO", league:"nzihl",  name:"Auckland Mako",         lines:["AUCKLAND","MAKO"],      ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png"},
+ "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        lines:["AUCKLAND","STEEL"],     ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
+ "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    lines:["CANTERBURY","INFERNO"], ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13"},
+ "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", textInk:"#FDAD19"},
+ "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         lines:["WAKATIPU","WILD"],      ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
 };
 
 const SLOTS = ["LF","CF","RF","LD","RD","GK"];
@@ -444,10 +475,12 @@ function start(){
   document.getElementById("hdrAccentAway").style.background = TA.ink;
   document.getElementById("hdrLogoHome").src = LOGO + encodeURIComponent(TH.logo);
   document.getElementById("hdrLogoAway").src = LOGO + encodeURIComponent(TA.logo);
-  document.getElementById("hdrTeamHome").textContent = TH.name;
-  document.getElementById("hdrTeamHome").style.color = TH.textInk || TH.ink;
-  document.getElementById("hdrTeamAway").textContent = TA.name;
-  document.getElementById("hdrTeamAway").style.color = TA.textInk || TA.ink;
+  document.getElementById("hdrTeamHomeL1").textContent = TH.lines[0];
+  document.getElementById("hdrTeamHomeL2").textContent = TH.lines[1];
+  document.getElementById("hdrTeamHomeL2").style.color = TH.textInk || TH.ink;
+  document.getElementById("hdrTeamAwayL1").textContent = TA.lines[0];
+  document.getElementById("hdrTeamAwayL2").textContent = TA.lines[1];
+  document.getElementById("hdrTeamAwayL2").style.color = TA.textInk || TA.ink;
   panel.classList.add("show");
 
   if(PREVIEW_HOME){
