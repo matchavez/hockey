@@ -475,6 +475,27 @@ registerFamily({
 const GH="https://api.github.com/repos/matchavez/nzihl-broadcast-assets";
 async function ghJSON(u){ const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
 function loadImg(src){ return new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src+"?v="+Date.now(); }); }
+
+// Single repo-tree fetch backs BOTH the DVD Bounce and UP-NEXT checks (20 teams' worth of
+// file-existence lookups) instead of one contents-API call per file. The unauthenticated
+// GitHub API cap is 60 req/hour/IP -- 20+ concurrent per-file calls tripped that limit and
+// produced false FAILs/WARNs (confirmed live: "API rate limit exceeded" 403s) the first time
+// this page ran end-to-end. One tree fetch, cached in sessionStorage for 10 min so repeated
+// "Re-check" clicks don't re-spend the budget either.
+let _treeCache=null;
+async function getAssetsTree(){
+  if(_treeCache) return _treeCache;
+  const key="gqa.tree.nzihl-broadcast-assets";
+  try{
+    const raw=sessionStorage.getItem(key);
+    if(raw){ const {t,v}=JSON.parse(raw); if(Date.now()-t<10*60*1000){ _treeCache=new Set(v); return _treeCache; } }
+  }catch(e){}
+  const j=await ghJSON("https://api.github.com/repos/matchavez/nzihl-broadcast-assets/git/trees/main?recursive=1");
+  const paths=(j.tree||[]).map(x=>x.path);
+  _treeCache=new Set(paths);
+  try{ sessionStorage.setItem(key, JSON.stringify({t:Date.now(), v:paths})); }catch(e){}
+  return _treeCache;
+}
 function assetCard(container, title){
   const d=document.createElement("div"); d.className="asset-card";
   d.innerHTML=`<div class="t">${esc(title)} <span class="chip idle" style="margin-left:4px">checking…</span></div><div class="d"></div>`;
@@ -507,34 +528,42 @@ async function checkStandings(){
 
 async function checkDVD(){
   const grid=document.getElementById("assets-dvd"); grid.innerHTML="";
-  const results=await Promise.all(TEAMS.map(async t=>{
+  let paths;
+  try{ paths=await getAssetsTree(); }
+  catch(e){
+    const card=assetCard(grid,"DVD Bounce Loops (all clubs)");
+    setAsset(card,"fail","couldn't list repo tree: "+(e.message||e));
+    return ["fail"];
+  }
+  return TEAMS.map(t=>{
     const card=assetCard(grid,t.name+" — DVD Bounce");
-    try{
-      const files=await ghJSON(`${GH}/contents/${encodeURIComponent("DVD Bounce Loops/"+t.dvd)}`);
-      const mp4s=files.filter(f=>/\.mp4$/i.test(f.name));
-      const zip=await ghJSON(`${GH}/contents/${encodeURIComponent("DVD Bounce Loops/zips/"+t.dvdzip)}`).catch(()=>null);
-      if(mp4s.length<4) { setAsset(card,"warn",mp4s.length+"/4 corner mp4s found"); return "warn"; }
-      if(!zip){ setAsset(card,"warn","4 mp4s OK, but zip missing: "+t.dvdzip); return "warn"; }
-      setAsset(card,"pass","4 corner mp4s + zip present");
-      return "pass";
-    }catch(e){ setAsset(card,"fail","folder not found / API error: "+(e.message||e)); return "fail"; }
-  }));
-  return results;
+    const corners=["TL","TR","BL","BR"];
+    const have=corners.filter(c=>paths.has(`DVD Bounce Loops/${t.dvd}/${t.dvd}_DVDBounce_${c}_325pxs_1080p50.mp4`));
+    const zipOk=paths.has(`DVD Bounce Loops/zips/${t.dvdzip}`);
+    if(have.length<4){ setAsset(card,"warn",have.length+"/4 corner mp4s found"); return "warn"; }
+    if(!zipOk){ setAsset(card,"warn","4 mp4s OK, but zip missing: "+t.dvdzip); return "warn"; }
+    setAsset(card,"pass","4 corner mp4s + zip present");
+    return "pass";
+  });
 }
 
 async function checkUpNext(){
   const grid=document.getElementById("assets-upnext"); grid.innerHTML="";
-  const results=await Promise.all(TEAMS.map(async t=>{
+  let paths;
+  try{ paths=await getAssetsTree(); }
+  catch(e){
+    const card=assetCard(grid,"UP NEXT (all clubs)");
+    setAsset(card,"fail","couldn't list repo tree: "+(e.message||e));
+    return ["fail"];
+  }
+  return TEAMS.map(t=>{
     const card=assetCard(grid,t.name+" — UP NEXT");
-    try{
-      const files=await ghJSON(`${GH}/contents/${encodeURIComponent("up-next/"+t.up)}`);
-      const pngs=files.filter(f=>/\.png$/i.test(f.name));
-      if(!pngs.length){ setAsset(card,"fail","folder exists but has 0 PNGs"); return "fail"; }
-      setAsset(card,"pass",pngs.length+" graphic(s) present");
-      return "pass";
-    }catch(e){ setAsset(card,"fail","folder not found / API error: "+(e.message||e)); return "fail"; }
-  }));
-  return results;
+    const prefix=`up-next/${t.up}/`;
+    const count=[...paths].filter(p=>p.startsWith(prefix)&&p.toLowerCase().endsWith(".png")).length;
+    if(!count){ setAsset(card,"fail","folder has 0 PNGs (or not found)"); return "fail"; }
+    setAsset(card,"pass",count+" graphic(s) present");
+    return "pass";
+  });
 }
 
 async function runStaticAssets(){
