@@ -894,7 +894,7 @@ async function buildL3Data(identity){
   if(identity.role==="coach"){
     const row = await standingsRowFor(league, identity.team_code);
     if(row) statParts = [
-      {val:`${row.w}-${row.l}-${row.otw}-${row.otl}`, unit:"RECORD"},
+      {val:`${row.w}-${row.otw}-${row.otl}-${row.l}`, unit:"RECORD"},
       {val:ordinal(row.pos), unit:`IN ${league.toUpperCase()}`},
     ];
     const person = Object.values(teamPeople).find(p=>p.role==="coach" && normName(p.name)===normName(identity.name));
