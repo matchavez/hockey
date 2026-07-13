@@ -86,6 +86,7 @@ tr.hidden{display:none;}
                    color:var(--dim);}
 .pname{font-size:11.5px;margin-top:5px;line-height:1.25;}
 .pnum{color:var(--dim);font-size:10.5px;}
+.pstat{color:var(--acc);font-size:10.5px;margin-top:3px;line-height:1.25;}
 .inactive{opacity:.4;}
 #foot{margin-top:34px;color:var(--dim);font-size:12.5px;line-height:1.6;}
 #foot a{color:var(--acc);}
@@ -114,14 +115,16 @@ tr.hidden{display:none;}
 <div id="games-root"><p class="empty-note">Loading season data…</p></div>
 
 <h2 id="photos">Player Photo Warehouse <span class="n" id="photos-count-total"></span></h2>
-<p class="sub">Every rostered player &amp; coach, grouped by team, sorted by jersey number. Missing-photo counts double as a chase-list.</p>
+<p class="sub">Every rostered player &amp; coach, grouped by team, sorted by jersey number. Active skaters/goalies show a small stat line. Missing-photo counts double as a chase-list.</p>
 <div id="photos-root"><p class="empty-note">Loading photo manifest…</p></div>
 
 <div id="foot">
   Game data: <a href="https://github.com/matchavez/nzihl-season-data" target="_blank" rel="noopener">matchavez/nzihl-season-data</a> (nightly).
   Photos: <a href="https://github.com/matchavez/nzihl-player-photos" target="_blank" rel="noopener">matchavez/nzihl-player-photos</a> (weekly) —
-  also browsable on its own <a href="https://matchavez.com/nzihl-player-photos/" target="_blank" rel="noopener">standalone gallery</a>.
-  This page just fetches both repos' committed JSON/images live client-side; nothing is copied or cached here.
+  stat lines pulled from <a href="https://github.com/matchavez/nzihl-broadcast-rosters" target="_blank" rel="noopener">nzihl-broadcast-rosters</a> /
+  <a href="https://github.com/matchavez/nzwihl-broadcast-rosters" target="_blank" rel="noopener">nzwihl-broadcast-rosters</a>' stats.json.
+  This page just fetches all repos' committed JSON/images live client-side; nothing is copied or cached here. This is now the
+  only browsable photo warehouse view -- the old standalone gallery page has been retired.
 </div>
 
 <script>
@@ -312,6 +315,34 @@ async function loadGames(){
 }
 
 /* ============================== PHOTOS ============================== */
+const STATS_URLS = {
+  nzihl: "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/stats.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/stats.json",
+};
+// Small stat line under each active player's photo -- G/A/PTS for skaters,
+// W-L/GAA/SV% for goalies. Joined on (league, team short code, jersey number),
+// same key stats.json itself uses, not name (sidesteps the whole
+// name-override problem). A player with gp===0 gets no line at all.
+let statsIndex = {};
+function skaterLine(s){ return s.gp ? `${s.pts} PTS (${s.g}G ${s.a}A)` : null; }
+function goalieLine(g){ return g.gp ? `${g.w}-${g.l}, ${g.gaa} GAA, ${g.sv_pct} SV%` : null; }
+async function fetchStatsIndex(){
+  const idx = {};
+  await Promise.all(Object.entries(STATS_URLS).map(async ([leagueKey, url]) => {
+    try{
+      const res = await fetch(url, {cache:"no-store"});
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      Object.entries(data.teams || {}).forEach(([code, tb]) => {
+        (tb.skaters||[]).forEach(s => { const line = skaterLine(s); if(line && s.number) idx[`${leagueKey}|${code}|${s.number}`] = line; });
+        (tb.goalies||[]).forEach(g => { const line = goalieLine(g); if(line && g.number) idx[`${leagueKey}|${code}|${g.number}`] = line; });
+      });
+    }catch(e){
+      console.warn(`stats.json fetch failed for ${leagueKey}:`, e); // that league's cards just get no stat lines
+    }
+  }));
+  return idx;
+}
 function jerseySortKey(p){
   const n = parseInt(p.number, 10);
   return Number.isFinite(n) ? n : 9999;
@@ -321,15 +352,17 @@ function roleSortKey(p){
   return (p.position||"").toLowerCase() === "head coach" ? 1 : 2;
 }
 
-function personCard(p){
+function personCard(p, leagueKey, teamCode){
   const active = p.active !== false;
   const sub = p.number ? `#${esc(p.number)}` : esc((p.position||"").toUpperCase());
   const img = p.photo
     ? `<img class="thumb" loading="lazy" src="${PHOTO_BASE}${esc(p.photo)}" alt="${esc(p.name)}">`
     : `<div class="thumb placeholder">${esc(initials(p.name))}</div>`;
+  const statLine = (p.role === "player" && p.number) ? statsIndex[`${leagueKey}|${teamCode}|${p.number}`] : null;
+  const statHtml = statLine ? `<div class="pstat">${esc(statLine)}</div>` : "";
   return `<div class="person${active ? "" : " inactive"}">${img}
     <div class="pname">${esc(p.name)}${active ? "" : " <span style='color:var(--bad)'>(inactive)</span>"}</div>
-    <div class="pnum">${sub}</div></div>`;
+    <div class="pnum">${sub}</div>${statHtml}</div>`;
 }
 
 function renderPhotoTeam(leagueKey, teamMeta, teamData){
@@ -348,7 +381,7 @@ function renderPhotoTeam(leagueKey, teamMeta, teamData){
       <div class="id"><img src="${logoUrl(teamMeta.logo)}" alt=""><span class="nm">${esc(teamMeta.nm)}<span class="code">${teamMeta.code}</span></span></div>
       <span class="${badgeCls}">${missing} missing photo${missing!==1?"s":""} · ${activePeople.length} total</span>
     </div>
-    ${people.length ? `<div class="roster-grid">${people.map(personCard).join("")}</div>` : `<p class="empty-note">No roster data.</p>`}`;
+    ${people.length ? `<div class="roster-grid">${people.map(p => personCard(p, leagueKey, teamMeta.code)).join("")}</div>` : `<p class="empty-note">No roster data.</p>`}`;
 }
 
 function renderPhotoLeague(leagueKey, leagueLabel, leagueBlock){
@@ -363,8 +396,12 @@ function renderPhotoLeague(leagueKey, leagueLabel, leagueBlock){
 async function loadPhotos(){
   const root = document.getElementById('photos-root');
   try{
-    const res = await fetch("https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json", {cache:"no-store"});
+    const [res, idx] = await Promise.all([
+      fetch("https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json", {cache:"no-store"}),
+      fetchStatsIndex(),
+    ]);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    statsIndex = idx;
     const manifest = await res.json();
     const leagues = manifest.leagues || {};
 
