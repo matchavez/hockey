@@ -330,7 +330,16 @@ const TEAMS = {
  "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          lines:["BOTANY","SWARM"],       ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png", hdrAccent:"#F7AF28", hdrLine2:"#F7BA40"},
  "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", lines:["CANTERBURY","RED DEVILS"], ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF", hdrAccent:"#DC0000", hdrLine2:"#F02626"},
  "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
- "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", hdrAccent:"#0C1B3A", hdrLine2:"#0C1B3A", hdrLine2Stroke:"#FFFFFF"},
+ "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", hdrAccent:"#0C1B3A", hdrLine2:"#FAC805"},
+ // ^ hdrLine2 deliberately overridden to Stampede Yellow (#FAC805, the club's own
+ // primary per the Style Guide hex cheat sheet) INSTEAD of overlay.py's navy
+ // `name` value -- Mat's explicit ask, this graphic only, not a fix to
+ // overlay.py itself. overlay.py's navy fill + white stroke2 was tuned to
+ // read against ITS gold header-half background; this page's Stampede
+ // header half uses the navy `dark` wash instead (see the "known but not
+ // fixed" note below), so navy-on-navy read as hollow outlined text. Yellow
+ // fill needs no stroke override -- reverted hdrLine2Stroke to the shared
+ // default (black), matching every other team's convention.
  "auckland-mako":         {code:"MKO", league:"nzihl",  name:"Auckland Mako",         lines:["AUCKLAND","MAKO"],      ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png", hdrAccent:"#BEC8D2", hdrLine2:"#CAD4DE"},
  "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        lines:["AUCKLAND","STEEL"],     ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png", hdrAccent:"#96A6BC", hdrLine2:"#B2C0D2"},
  "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    lines:["CANTERBURY","INFERNO"], ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13", hdrAccent:"#FFB347", hdrLine2:"#FFBA5C"},
