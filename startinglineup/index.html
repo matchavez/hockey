@@ -70,12 +70,20 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 /* ---------- player cards ---------- */
 .card{position:absolute;width:520px;height:120px;border-radius:18px;display:flex;
   align-items:stretch;overflow:hidden;box-shadow:0 42px 102px rgba(8,12,20,.93);
-  opacity:0;transform:scale(.86);}
-.card.show{animation:cardIn .5s ease-out forwards;}
+  opacity:0;transform:scale(.5);}
+.card.show{animation:cardIn .46s ease-out forwards;}
+/* Punchier spring: launches from further back (.5 vs the old .86) on a sharp
+   "back-out" curve so it arrives FAST, then two decaying oscillations
+   (114%->95%->102.5%->99%->100%) instead of one symmetric overshoot/
+   undershoot -- real springs ring more than once, and the varied per-segment
+   easing (declared per-keyframe, applies to the segment INTO the next
+   keyframe) is what reads as physical rather than mechanical. */
 @keyframes cardIn{
-  0%{opacity:0;transform:scale(.86);}
-  55%{opacity:1;transform:scale(1.06);}
-  78%{transform:scale(.97);}
+  0%{opacity:0;transform:scale(.5);animation-timing-function:cubic-bezier(.15,1.05,.28,1.4);}
+  38%{opacity:1;transform:scale(1.14);animation-timing-function:cubic-bezier(.4,0,.2,1);}
+  58%{transform:scale(.95);animation-timing-function:cubic-bezier(.4,0,.2,1);}
+  76%{transform:scale(1.025);animation-timing-function:cubic-bezier(.4,0,.2,1);}
+  90%{transform:scale(.99);animation-timing-function:ease-out;}
   100%{opacity:1;transform:scale(1);}
 }
 /* .shown = static visible state for post-reveal swaps (opacity is NOT part of
