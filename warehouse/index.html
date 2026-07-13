@@ -319,12 +319,12 @@ const STATS_URLS = {
   nzihl: "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/stats.json",
   nzwihl: "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/stats.json",
 };
-// Small stat line under each active player's photo -- G/A/PTS for skaters,
+// Small stat line under each active player's photo -- G/A/PIM/GP for skaters,
 // W-L/GAA/SV% for goalies. Joined on (league, team short code, jersey number),
 // same key stats.json itself uses, not name (sidesteps the whole
 // name-override problem). A player with gp===0 gets no line at all.
 let statsIndex = {};
-function skaterLine(s){ return s.gp ? `${s.pts} PTS (${s.g}G ${s.a}A)` : null; }
+function skaterLine(s){ return s.gp ? `${s.g}G ${s.a}A ${s.pim}PIM ${s.gp}GP` : null; }
 function goalieLine(g){ return g.gp ? `${g.w}-${g.l}, ${g.gaa} GAA, ${g.sv_pct} SV%` : null; }
 async function fetchStatsIndex(){
   const idx = {};
