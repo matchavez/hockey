@@ -805,6 +805,7 @@ FONTS.then(()=>{ if(items.length){ dirty=true; if(holding)enterHold(); else if(!
 
 /* ====================== LIVE DETECTION ====================== */
 let TARGET=null, lastSig="";
+let lastGoodAwayTot=0, lastGoodHomeTot=0, lastGoodEvCount=0;   // sanity guard against a short/bad esportsdesk read
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
 function boxURL(m,gid){return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
@@ -887,6 +888,13 @@ async function tickPoll(){
     // just no longer used to decide WHEN a divider fires.)
     PERSDONE=Math.max(1,...lastEv.map(e=>PNUM[e.per]||0));
   }
+  // esportsdesk occasionally returns 200 OK with a short/incomplete page (documented
+  // flakiness -- see nzihl-roster-scraper-robustness / nzihl-player-photo-warehouse memory).
+  // A real game's score/event count can only grow. If a poll comes back LOWER than the last
+  // accepted good read, treat it as a bad/truncated page and skip this tick entirely -- keep
+  // whatever's already on screen rather than flashing a regressed/wrong score live.
+  if(!TESTMODE && (AWAYTOT<lastGoodAwayTot || HOMETOT<lastGoodHomeTot || lastEv.length<lastGoodEvCount)) return;
+  if(!TESTMODE){ lastGoodAwayTot=AWAYTOT; lastGoodHomeTot=HOMETOT; lastGoodEvCount=lastEv.length; }
   const all=lastEv.concat(extras);
   const sig=AWAYTOT+"-"+HOMETOT+"~P"+PERSDONE+"~S"+SOGA.join(".")+"/"+SOGH.join(".")
     +"~G"+GLS.map(g=>g.name+g.sv+"/"+g.sa).join(",")+"~"

@@ -690,6 +690,7 @@ async function resolve(){
 }
 
 let TARGET=null, renderedOnce=false, CID=null, LID=null;
+let lastGoodAwayTot=0, lastGoodHomeTot=0, lastGoodGoalCount=0, lastGoodPenCount=0;   // sanity guard against a short/bad esportsdesk read
 async function tick(){
   if(!TARGET) return;
   if(!WORKER){ showMsg("Live data endpoint not set. Deploy worker.js and paste its URL into summary.html (WORKER = …)."); return; }
@@ -702,6 +703,16 @@ async function tick(){
   try{
     const html=await getText(boxURL(TARGET.m,TARGET.gid));
     const P=parse(html);
+    // esportsdesk occasionally returns 200 OK with a short/incomplete page (documented
+    // flakiness -- see nzihl-roster-scraper-robustness / nzihl-player-photo-warehouse memory).
+    // A real game's score/event counts can only grow. If this read comes back LOWER than the
+    // last accepted good render, treat it as a bad/truncated page: skip this tick and keep the
+    // last good render on screen (retry on the next 15s poll) rather than flash a regressed score.
+    const awayTot=P.away.tot||0, homeTot=P.home.tot||0, goalCount=(P.goals||[]).length, penCount=(P.pens||[]).length;
+    if(renderedOnce && (awayTot<lastGoodAwayTot || homeTot<lastGoodHomeTot || goalCount<lastGoodGoalCount || penCount<lastGoodPenCount)){
+      return;
+    }
+    lastGoodAwayTot=awayTot; lastGoodHomeTot=homeTot; lastGoodGoalCount=goalCount; lastGoodPenCount=penCount;
     VENUE = TARGET.venue || vis(P.home.teamID).venue || "";
     LEAGUE_NAME = TARGET.leagueName;
     hideMsg(); render(P); renderedOnce=true; fitWindow();

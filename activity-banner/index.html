@@ -683,6 +683,7 @@ function firePen(p, awayID, homeID){
 const sigGoal=g=>`G|${g.teamID}|${g.p}|${g.t}|${g.no}|${surnameUC(g.who)}`;
 const sigPen =p=>`P|${p.teamID}|${p.p}|${p.t}|${p.no}|${surnameUC(p.who)}|${p.inf}`;
 const seen=new Set(); let baselined=false;
+let lastGoalCount=0, lastPenCount=0;   // sanity guard against a short/bad esportsdesk read (see tick())
 let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="", CID=null, LID=null;
 let PREGAME=null;   // {away,home,venue,date,time,datetime} for the resolved target game, used by the pre-game confidence alert only
 
@@ -740,6 +741,14 @@ async function tick(){
   if(!TARGET||!WORKER) return;
   CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
   let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
+  // esportsdesk occasionally returns 200 OK with a short/incomplete page (documented
+  // flakiness -- see nzihl-roster-scraper-robustness / nzihl-player-photo-warehouse memory).
+  // A genuine box score's goal/penalty counts can only grow during a game. If this poll comes
+  // back with FEWER than the last accepted count, treat it as a bad read: skip the whole tick
+  // (don't touch seen/baselined), keep whatever's already on screen, and let the next poll
+  // retry -- rather than risking baseline corruption or a burst of stale "new" events later.
+  if(baselined && (P.goals.length<lastGoalCount || P.pens.length<lastPenCount)) return;
+  lastGoalCount=P.goals.length; lastPenCount=P.pens.length;
   if(typeof LAST_PARSE!=="undefined") LAST_PARSE=P;   // feeds the Player Lower Thirds TONIGHT chip
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   // tag each goal with a display name (its own team)

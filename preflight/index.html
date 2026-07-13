@@ -160,6 +160,45 @@ async function checkStatsJson(m){
     setCard(d,nTeams?cls:"warn",nTeams+" teams scraped",when);
   }catch(e){setCard(d,"bad","FAILED — no stats.json yet?",String(e.message||e));}
 }
+// Season data warehouse (matchavez/nzihl-season-data) -- nightly nzihl.json/nzwihl.json,
+// feeds the ticker's last-meeting/H2H lines and the team-page schedule widget's "upcoming"
+// list. Same "pipeline ran Xh ago" freshness check as the manifests above (nightly cron,
+// same 36h warn threshold).
+async function checkSeasonData(lg){
+  const d=card("c-season-"+lg,lg.toUpperCase()+" season data");
+  const url=`https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/${lg}.json`;
+  try{
+    const j=await getJSON(url);
+    const nGames=(j.games||[]).length, nUp=(j.upcoming||[]).length;
+    let when="", cls="ok";
+    try{const c=await getJSON(`https://api.github.com/repos/matchavez/nzihl-season-data/commits?path=${lg}.json&per_page=1`);
+      const ts=new Date(c[0].commit.committer.date), h=(Date.now()-ts)/36e5;
+      when="pipeline ran "+(h<1?Math.round(h*60)+" min":Math.round(h)+" h")+" ago";
+      if(h>36)cls="warn";
+    }catch(e){when="(commit time unavailable)";}
+    setCard(d,cls,nGames+" games · "+nUp+" upcoming",when);
+  }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
+}
+// Player photo warehouse (matchavez/nzihl-player-photos) -- weekly manifest.json. Weekly
+// cadence means a much wider warn threshold than the nightly checks above (>10 days, not
+// >36h) -- the cron only just started firing (repo created 2026-07-11) so this also
+// surfaces if the Thursday 19:00 UTC schedule trigger never actually fires.
+async function checkPhotoManifest(){
+  const d=card("c-photos","Photo warehouse");
+  const url="https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/manifest.json";
+  try{
+    const j=await getJSON(url);
+    let nPeople=0;
+    Object.values(j.leagues||{}).forEach(lg=>Object.values(lg.teams||{}).forEach(t=>{nPeople+=Object.keys(t.people||{}).length;}));
+    let when="", cls="ok";
+    try{const c=await getJSON("https://api.github.com/repos/matchavez/nzihl-player-photos/commits?path=manifest.json&per_page=1");
+      const ts=new Date(c[0].commit.committer.date), days=(Date.now()-ts)/864e5;
+      when="last run "+(days<1?Math.round(days*24)+" h":Math.round(days)+" d")+" ago";
+      if(days>10)cls="warn";   // weekly cron (~7d) + buffer
+    }catch(e){when="(commit time unavailable)";}
+    setCard(d,nPeople?cls:"warn",nPeople+" people tracked",when);
+  }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
+}
 // Player Lower Thirds control channel — GET is enough to prove the Durable
 // Object binding is deployed (a fresh/idle instance still returns 200 +
 // {status:"idle",...}; NO_DO_BINDING/501 means Mat hasn't run wrangler
@@ -339,9 +378,10 @@ function buildBoard(){
 async function run(){
   sys.innerHTML=""; MDATA={};
   document.getElementById("now").textContent=new Date().toLocaleString("en-NZ");
-  checkWorker(); checkSources(); checkControlChannel(); checkLineupChannel();
+  checkWorker(); checkSources(); checkControlChannel(); checkLineupChannel(); checkPhotoManifest();
   await Promise.all(MANIFESTS.map(checkManifest));
   await Promise.all(MANIFESTS.map(checkStatsJson));
+  await Promise.all(["nzihl","nzwihl"].map(checkSeasonData));
   buildBoard();
 }
 document.getElementById("rerun").onclick=run;

@@ -1,0 +1,27 @@
+name: Check overlay consistency
+
+# hockey/ has no build step -- these are 5 independent static HTML pages with no
+# shared module for the SURNAME_OVERRIDES map (see memory: nzihl-player-name-overrides).
+# It has already drifted once in practice (4 files -> 5 when scorebug-l3 was created as
+# a copy of scorebug). This workflow diffs them on every push so a future edit to just
+# one file fails loudly (red X in Actions) instead of silently drifting on-air surname
+# rendering between overlay pages.
+on:
+  push:
+    paths:
+      - "activity-banner/index.html"
+      - "scorebug/index.html"
+      - "scorebug-l3/index.html"
+      - "summary/index.html"
+      - "ticker/index.html"
+      - "scripts/check-surname-overrides.js"
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  check-surname-overrides:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diff SURNAME_OVERRIDES across all live-overlay pages
+        run: node scripts/check-surname-overrides.js
