@@ -39,7 +39,7 @@ Legend: **RT** = real-time (must stay on the no-cache `admin.esportsdesk.com` wo
 | hockey/scoringleaders (top-3 selection + season totals) | live `stats_1team.cfm` via Worker | No (season-view) | **Verified, kept as-is — see Findings** | Discrepancy found in warehouse-derived totals for at least one team; per your instruction, did not switch. |
 | hockey/lowerthirds (fact engine: streaks, H2H, last-meeting, league rank) | `nzihl-season-data` `player_game_logs`/`head_to_head`/`streak` | No | No change | Already fully warehouse-sourced, whole-season. |
 | hockey/lowerthirds / activity-banner (`stats.json` season stat line: GP/G/A/PTS/PIM, goalie GA/SO/W/L) | `stats.json` (own nightly scrape of `stats_1team.cfm` + `personnel.cfm`, built into both roster repos) | No | **Investigated, left as-is** | See Findings below — genuinely duplicate-in-spirit but not consolidated this pass. |
-| hockey/activity-banner, scorebug-l3, ticker (pregame team-standing-position banner text) | live `standings.cfm` via no-cache worker, fetched once pregame | No (pre-game, one-shot) | **Found, not migrated** | Genuine migration candidate — see Findings. |
+| hockey/activity-banner, scorebug-l3, ticker (pregame team-standing-position banner text) | ~~live `standings.cfm` via no-cache worker, fetched once pregame~~ **nzihl-season-data `derived.standings`** | No (pre-game, one-shot) | **Migrated 2026-07-13** | See Findings #3 — resolved, no longer a candidate. |
 | hockey/preflight (producer health-check board) | live `standings.cfm`/`schedules.cfm`/`stats_hockey.cfm`/`hockey_boxscores.cfm`, worker reachability | N/A | No change (by design) | This tool exists specifically to test the live scrape path's health — migrating it to the warehouse would defeat its purpose. |
 | hockeyrosters | `boxscores.json` (11-day window, roster-PDF release matching only) | N/A | No change | Not a season-stat consumer — this window is for "which PDF release is current," a legitimate near-term use, not season data. |
 | nzihl-broadcast-rosters / nzwihl-broadcast-rosters (roster PDFs, `boxscores.json`) | own nightly `stats_1team.cfm`/`schedules.cfm` scrape | N/A | No change (optional) | Nightly, polite, stable — no forced migration per your "don't churn stable pipelines" rule. |
@@ -74,14 +74,19 @@ Legend: **RT** = real-time (must stay on the no-cache `admin.esportsdesk.com` wo
    finding #1, so deriving goalie/skater stats from it isn't safe until that's fixed, and (c)
    your rule is this kind of consolidation is optional unless it deletes code — worth
    revisiting once #1 is fixed.
-3. **Team-standing-position text (pregame banners) is a real, un-actioned migration
-   candidate.** `activity-banner`, `scorebug-l3`, and `ticker` each do a one-shot live
-   `standings.cfm` fetch purely for the pregame "sits Nth" banner line. This is genuinely
-   pre-game/season-view and belongs on `nzihl-season-data` — but that repo doesn't currently
-   store a standings table, only raw games. Computing one client-side (W/L/OTW/OTL/PTS + rank)
-   is straightforward in principle but I didn't want to guess NZIHL's points system without
-   verifying it against a live standings page the same way I verified scoring totals — flagging
-   as a scoped follow-up rather than shipping unverified.
+3. **Team-standing-position text (pregame banners) — RESOLVED 2026-07-13.**
+   `activity-banner`, `scorebug-l3`, and `ticker` each did a one-shot live `standings.cfm`
+   fetch purely for the pregame "sits Nth" banner line. Rather than guessing NZIHL's
+   points-per-result rules client-side (the risk flagged below when this was first found),
+   `nzihl-season-data` grew a `standings.py` scraper that captures the `standings.cfm` table
+   esportsdesk already computed **verbatim** (rank + W/L/OTW/OTL/PTS as scraped, never
+   recomputed) into a new `derived.standings` field. All three pages here now fetch that
+   instead of live `standings.cfm`; verified live in Chrome for one team per league on all
+   three, and `derived.standings` was spot-checked against a fresh live `standings.cfm` fetch
+   for every team in both leagues (not just a 2-team sample) with an exact match. Full detail
+   in both repos' `memory.md`. Known tradeoff: nightly cadence, so a game played earlier the
+   same broadcast day may lag by one day until the next 16:30 UTC run (or a manual
+   `workflow_dispatch`) — same freshness profile already accepted for H2H/last-meeting.
 4. ~~`reddevils-nzihl-integration`~~ — **retired 2026-07-12.** Mat confirmed it's a dead
    one-off that probably never got used and is no longer his problem. Dropped from tracking
    entirely; local deliverable files (folder, zip, plan doc) left untouched in the project

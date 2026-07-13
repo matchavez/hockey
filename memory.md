@@ -368,6 +368,43 @@ longer my problem") and asked it dropped from tracking entirely. Local deliverab
 folder, zip, and plan doc in the project folder) left untouched at his request -- just no
 longer audited or referenced anywhere in this repo or memory going forward.
 
+## Pregame standings migrated to nzihl-season-data (2026-07-13)
+
+Closed out the migration candidate flagged in the 2026-07-12 warehouse audit above
+(`warehouse-audit.md` finding #3). `activity-banner/` + `scorebug-l3/`'s
+`standingsRowFor(league, code)` and `ticker/`'s `fetchStandings()`/`STAND`/`standOf()` each did
+a one-shot live `standings.cfm` fetch purely for pregame banner text (coach Player L3
+record+rank stat line; ticker's pregame "sits Nth" confidence line). [[nzihl-season-data]]
+grew a `standings.py` scraper (`derived.standings`) that captures the table esportsdesk already
+computed VERBATIM -- rank order + W/L/OTW/OTL/PTS as scraped, deliberately not recomputed
+client-side (NZIHL/NZWIHL's exact points-per-result rules aren't reliably known here, and
+getting that math wrong on a live broadcast graphic is a bad failure mode).
+
+All three pages now fetch `SEASON_DATA_URL[league]` instead. Return shapes unchanged, so
+`buildL3Data()`/`pregameItems()` needed zero changes. `activity-banner`/`scorebug-l3`
+simplified further: since `derived.standings` entries carry our canonical `code` directly, the
+old `TEAM_DISPLAY_NAMES` fused-name-matching table (needed to match standings.cfm's concatenated
+"TeamNameTLA" cell text) is gone as dead code -- direct code match instead. Same
+graceful-omit-on-failure behavior in all three (no esportsdesk fallback tier -- not
+real-time-critical the way the box-score poll is).
+
+**Verified 2026-07-13:** `derived.standings` spot-checked against a fresh live `standings.cfm`
+fetch for every team in both leagues (5 NZIHL + 4 NZWIHL, not just a sample) -- exact match on
+rank order and every column. Live-verified in Chrome: `activity-banner/?team=pure-nz-admirals`
+coach L3 rendered "7-6-1-0 RECORD · 2nd IN NZIHL" (matches warehouse exactly);
+`scorebug-l3/?team=auckland-steel` coach L3 rendered "8-0-0-0 RECORD · 1st IN NZWIHL";
+`ticker`'s `fetchStandings()`/`standOf()` confirmed correct for both leagues via direct console
+calls (pregame line text unchanged in format, just a different source). Grepped all three files
+post-migration: no live `standings.cfm` fetch remains anywhere in them. Real-time behavior
+(goal/pen banners, live ticker recap, box score) untouched -- only the one-shot pregame fetch
+moved.
+
+**Known tradeoff (flagged to Mat, not blocking):** `nzihl-season-data` only updates nightly
+(16:30 UTC) -- a game played earlier the same day as tonight's broadcast may not be reflected in
+`derived.standings` yet, same freshness profile already accepted for H2H/last-meeting/streaks
+elsewhere in this repo. `workflow_dispatch` on that repo forces a same-day refresh if a specific
+broadcast needs tighter freshness.
+
 ## Recent focus (as of 2026-07-10/11)
 Team Scoring Leaders (`scoringleaders/`) just went through five iteration rounds ending in a Chrome-screenshot-confirmed final layout (fitPlayerText, styling, descriptor variety). Team page just gained a schedule/results widget (top-right of idcard). If resuming Scoring Leaders work, re-verify current live state first — this went through a lot of back-and-forth before landing.
 
