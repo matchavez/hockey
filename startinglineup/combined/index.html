@@ -47,7 +47,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 #hdr{position:absolute;left:0;top:0;right:0;height:128px;display:flex;}
 .hdrHalf{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:18px;position:relative;overflow:hidden;}
 .hdrHalf.home{padding:0 26px 0 32px;justify-content:flex-start;}
-.hdrHalf.away{padding:0 32px 0 26px;justify-content:flex-end;flex-direction:row-reverse;}
+.hdrHalf.away{padding:0 32px 0 26px;justify-content:flex-end;}
 .hdrLogo{width:72px;height:72px;object-fit:contain;flex:0 0 auto;
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
 .hdrTeam{font-size:22px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
@@ -108,8 +108,8 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         <div class="hdrTeam" id="hdrTeamHome"></div>
       </div>
       <div class="hdrHalf away">
-        <img class="hdrLogo" id="hdrLogoAway" alt="">
         <div class="hdrTeam" id="hdrTeamAway"></div>
+        <img class="hdrLogo" id="hdrLogoAway" alt="">
       </div>
       <div id="hdrTitle">STARTING LINEUPS</div>
     </div>
