@@ -75,8 +75,8 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 .cphoto .sil svg{width:66%;height:66%;opacity:.4;}
 .cbody{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
   padding:0 22px;border-left:4px solid transparent;}
-.cline1{display:flex;align-items:baseline;gap:11px;white-space:nowrap;overflow:visible;}
-.cnum{font-size:29px;font-weight:800;flex:0 0 auto;}
+.cline1{white-space:normal;overflow-wrap:break-word;word-break:normal;line-height:1.08;}
+.cnum{font-size:29px;font-weight:800;margin-right:11px;}
 .cname{font-size:35px;font-weight:800;color:#fff;letter-spacing:.005em;}
 .crole{font-size:18px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
   color:rgba(255,255,255,.62);margin-top:5px;}
@@ -212,11 +212,18 @@ window.addEventListener("resize", fitWindow); fitWindow();
 
 /* ====================== TEXT FIT (shrink, never ellipsis) ====================== */
 function fitLine(el, base, min){
-  el.style.fontSize = base+"px";
-  const box = el.parentElement;
+  // .cline1 wraps normally now (hanging indent so wrapped lines align under
+  // the name, not under the #number) — shrinking only kicks in if the name
+  // still needs 3+ lines to fit, so short/medium names render unchanged.
+  const line = el.parentElement;
+  const numEl = line.querySelector(".cnum");
+  const hang = numEl ? (numEl.offsetWidth + 11) : 0; // 11 = old flex gap, now cnum margin-right
+  line.style.paddingLeft = hang+"px";
+  line.style.textIndent = (-hang)+"px";
+  const MAX_LINE_H = 80; // px budget that comfortably fits 2 lines at full size
   let size = base;
-  // parent is flex row; measure overflow against the card body width
-  while(size > min && box.scrollWidth > box.clientWidth){
+  el.style.fontSize = size+"px";
+  while(size > min && line.scrollHeight > MAX_LINE_H){
     size -= 1; el.style.fontSize = size+"px";
   }
 }
@@ -263,13 +270,13 @@ function renderSlot(slot, player, animate){
     // force reflow so the animation restarts cleanly
     void el.offsetWidth;
     el.classList.add("show");
-    setTimeout(()=>fitLine(nameEl, 35, 20), REVEAL_MS[slot]+40);
+    setTimeout(()=>fitLine(nameEl, 35, 15), REVEAL_MS[slot]+40);
   } else {
     el.style.animationDelay = "0ms";
     el.classList.add("shown");
     void el.offsetWidth;               // restart the pulse cleanly
     el.classList.add("pulse");
-    fitLine(nameEl, 35, 20);
+    fitLine(nameEl, 35, 15);
   }
 }
 
