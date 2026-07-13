@@ -531,9 +531,12 @@ async function checkDVD(){
   let paths;
   try{ paths=await getAssetsTree(); }
   catch(e){
+    const rl=/403/.test(String(e.message||e));
     const card=assetCard(grid,"DVD Bounce Loops (all clubs)");
-    setAsset(card,"fail","couldn't list repo tree: "+(e.message||e));
-    return ["fail"];
+    setAsset(card, rl?"warn":"fail", rl
+      ? "GitHub API rate-limited (unauthenticated cap is 60/hr/IP) — this is NOT a real asset problem, just try Re-check again shortly"
+      : "couldn't list repo tree: "+(e.message||e));
+    return [rl?"warn":"fail"];
   }
   return TEAMS.map(t=>{
     const card=assetCard(grid,t.name+" — DVD Bounce");
@@ -552,9 +555,12 @@ async function checkUpNext(){
   let paths;
   try{ paths=await getAssetsTree(); }
   catch(e){
+    const rl=/403/.test(String(e.message||e));
     const card=assetCard(grid,"UP NEXT (all clubs)");
-    setAsset(card,"fail","couldn't list repo tree: "+(e.message||e));
-    return ["fail"];
+    setAsset(card, rl?"warn":"fail", rl
+      ? "GitHub API rate-limited (unauthenticated cap is 60/hr/IP) — this is NOT a real asset problem, just try Re-check again shortly"
+      : "couldn't list repo tree: "+(e.message||e));
+    return [rl?"warn":"fail"];
   }
   return TEAMS.map(t=>{
     const card=assetCard(grid,t.name+" — UP NEXT");
