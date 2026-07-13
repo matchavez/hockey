@@ -134,17 +134,21 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 /* 2026-07-14: soften the now-straight seam so the two team-colour halves
    don't meet on an abrupt hard edge -- a transparent strip straddling the
    seam (x=880..960, i.e. 40px either side of x=920) with backdrop-filter
-   blur, so it blurs whatever's rendered behind it (the two solid-colour
-   .hdrHalf backgrounds -- the alternate-colour borderline itself) rather
-   than blurring its own (nonexistent) content. 2026-07-15: briefly
-   extended (z-index:1, moved after .hdrAccent in the DOM) to also catch
-   the accent stripe's hard colour split -- ROLLED BACK same day per Mat's
-   ask: back to z-index:auto, sitting BELOW .hdrAccent (z-index:1) in
-   paint order, so the blur is scoped to exactly the alternate-colour
-   borderline (the two .hdrHalf backgrounds) and the accent stripe stays
-   crisp, same as #hdrTitle (z-index:2). Width/placement unchanged --
-   still the same 40px either side of x=920. */
-#hdrSeamBlur{position:absolute;left:880px;top:0;width:80px;height:128px;
+   blur, so it blurs whatever's rendered behind it rather than blurring
+   its own (nonexistent) content. History: 2026-07-15 extended it to also
+   cover .hdrAccent (z-index:1, moved after .hdrAccent in the DOM) so the
+   accent stripe's colour split got caught too; later that day ROLLED BACK
+   to exclude the accent stripe (thinking the .hdrHalf backgrounds alone
+   were "the borderline"). 2026-07-16: Mat flagged with a screenshot that
+   the accent stripe's hard red/yellow seam (right where the vertical
+   centre-ice line crosses it) was still jarring even with the halves
+   blurred -- RESTORED the accent-inclusion: z-index:1 again, DOM position
+   after the .hdrAccent divs (see markup below), so ALL the header's
+   alternate-team-colour boundaries (both the dark-gradient halves and the
+   accent stripe) blur together as one soft seam. Still below #hdrTitle
+   (z-index:2), so the headline stays crisp. Width/placement unchanged --
+   still 40px either side of x=920. */
+#hdrSeamBlur{position:absolute;left:880px;top:0;width:80px;height:128px;z-index:1;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);pointer-events:none;}
 /* font-weight 700 (was 600), font-size 50px (was 48px, ~+5%) per Mat's
    2026-07-14 ask.
@@ -259,9 +263,9 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         </div>
         <img class="hdrLogo" id="hdrLogoAway" alt="">
       </div>
-      <div id="hdrSeamBlur"></div>
       <div class="hdrAccent home" id="hdrAccentHome"></div>
       <div class="hdrAccent away" id="hdrAccentAway"></div>
+      <div id="hdrSeamBlur"></div>
       <div id="hdrTitle">STARTING LINEUPS</div>
     </div>
     <div id="ice">
