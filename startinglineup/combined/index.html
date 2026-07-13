@@ -101,17 +101,30 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    as the overlay). */
 .hdrLogo{width:72px;height:72px;object-fit:contain;flex:0 0 auto;
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
-.hdrTeam{display:flex;flex-direction:column;font-weight:800;letter-spacing:.08em;
+/* 2026-07-15: text treatment corrected to REPLICATE overlay.py's
+   make_text_sprite(), not approximate it -- font-weight 700 (was 800,
+   overlay.py loads Inter at NAME_WEIGHT=700), letter-spacing ~0.04em
+   (overlay.py's tracking=2px at a ~53.6px cap-height-39 em size -> 2/53.6,
+   was .08em, over-tracked), and -webkit-text-stroke added -- overlay.py's
+   make_text_sprite() draws every character with stroke_w=3 (a real
+   outline), which the previous pass dropped entirely. Stroke colour is
+   black (INK #08080A) by default, matching overlay.py's default
+   stroke_fill; per-team stroke2 overrides (white, for stampede/wild --
+   their hdrLine2 is a dark navy that a black outline would swallow) are
+   applied to line 2 only via JS, exactly like overlay.py's stroke2. */
+.hdrTeam{display:flex;flex-direction:column;font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:480px;line-height:1.12;}
 .hdrHalf.away .hdrTeam{text-align:right;align-items:flex-end;}
-.hdrTeamL1{font-size:33px;color:#fff;}
-.hdrTeamL2{font-size:33px;}
+.hdrTeamL1{font-size:33px;color:#fff;-webkit-text-stroke:2px #08080A;paint-order:stroke fill;}
+.hdrTeamL2{font-size:33px;-webkit-text-stroke:2px #08080A;paint-order:stroke fill;}
 .hdrAccent{position:absolute;left:0;top:123px;width:1840px;height:5px;z-index:1;}
 .hdrAccent.home{clip-path:polygon(0 0, 898.34px 0, 896.51px 100%, 0 100%);}
 .hdrAccent.away{clip-path:polygon(898.34px 0, 100% 0, 100% 100%, 896.51px 100%);}
+/* font-weight 600 (was 900) + letter-spacing .1875em (was .05em) to match
+   overlay.py's f_upnext = load_var(INTER,64,600), tracking=12 -> 12/64. */
 #hdrTitle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-size:48px;font-weight:900;letter-spacing:.05em;color:#fff;white-space:nowrap;
+  font-size:48px;font-weight:600;letter-spacing:.1875em;color:#fff;white-space:nowrap;
   text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
     0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
   z-index:2;pointer-events:none;}
@@ -302,17 +315,27 @@ const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-pho
 // from Graphics/Up Next Overlay/overlay.py's own TEAMS registry (that's the
 // canonical source for how each club's name breaks across two lines, incl.
 // "Dunedin Thunder Women" deliberately dropping "Women" to fit).
+// hdrAccent/hdrLine2/hdrLine2Stroke: pulled VERBATIM (not re-derived) from
+// Graphics/Up Next Overlay/overlay.py's own TEAMS registry -- that file's
+// `accent` (the top-of-band rule/stripe colour) and `name` (the coloured
+// second name-line, WITH its own stroke override for stampede/wild) fields.
+// These are deliberately NOT the same as this page's pre-existing `ink`
+// field (used elsewhere, e.g. the card's left-border accent) -- overlay.py
+// treats "accent" and "name" as two distinct, independently-tuned colours
+// per team, and several of them diverge meaningfully from `ink` (e.g. mako
+// ink #62656A vs overlay accent #BEC8D2 -- reusing `ink` here was the
+// mismatch Mat flagged as "missed colours").
 const TEAMS = {
- "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      lines:["PURE NZ","ADMIRALS"],   ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
- "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          lines:["BOTANY","SWARM"],       ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
- "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", lines:["CANTERBURY","RED DEVILS"], ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF"},
- "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19"},
- "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
- "auckland-mako":         {code:"MKO", league:"nzihl",  name:"Auckland Mako",         lines:["AUCKLAND","MAKO"],      ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png"},
- "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        lines:["AUCKLAND","STEEL"],     ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
- "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    lines:["CANTERBURY","INFERNO"], ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13"},
- "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", textInk:"#FDAD19"},
- "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         lines:["WAKATIPU","WILD"],      ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
+ "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      lines:["PURE NZ","ADMIRALS"],   ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", hdrAccent:"#F7BE11", hdrLine2:"#FFCD2E"},
+ "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          lines:["BOTANY","SWARM"],       ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png", hdrAccent:"#F7AF28", hdrLine2:"#F7BA40"},
+ "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", lines:["CANTERBURY","RED DEVILS"], ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF", hdrAccent:"#DC0000", hdrLine2:"#F02626"},
+ "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
+ "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", hdrAccent:"#0C1B3A", hdrLine2:"#0C1B3A", hdrLine2Stroke:"#FFFFFF"},
+ "auckland-mako":         {code:"MKO", league:"nzihl",  name:"Auckland Mako",         lines:["AUCKLAND","MAKO"],      ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png", hdrAccent:"#BEC8D2", hdrLine2:"#CAD4DE"},
+ "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        lines:["AUCKLAND","STEEL"],     ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png", hdrAccent:"#96A6BC", hdrLine2:"#B2C0D2"},
+ "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    lines:["CANTERBURY","INFERNO"], ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13", hdrAccent:"#FFB347", hdrLine2:"#FFBA5C"},
+ "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
+ "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         lines:["WAKATIPU","WILD"],      ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png", hdrAccent:"#1D3056", hdrLine2:"#1D3056", hdrLine2Stroke:"#FFFFFF"},
 };
 
 const SLOTS = ["LF","CF","RF","LD","RD","GK"];
@@ -471,16 +494,18 @@ function start(){
     `linear-gradient(90deg, ${TH.dark} 0%, ${TH.dark} 72%, rgba(255,255,255,.06) 100%), ${TH.dark}`;
   document.getElementById("hdr").querySelector(".hdrHalf.away").style.background =
     `linear-gradient(270deg, ${TA.dark} 0%, ${TA.dark} 72%, rgba(255,255,255,.06) 100%), ${TA.dark}`;
-  document.getElementById("hdrAccentHome").style.background = TH.ink;
-  document.getElementById("hdrAccentAway").style.background = TA.ink;
+  document.getElementById("hdrAccentHome").style.background = TH.hdrAccent;
+  document.getElementById("hdrAccentAway").style.background = TA.hdrAccent;
   document.getElementById("hdrLogoHome").src = LOGO + encodeURIComponent(TH.logo);
   document.getElementById("hdrLogoAway").src = LOGO + encodeURIComponent(TA.logo);
   document.getElementById("hdrTeamHomeL1").textContent = TH.lines[0];
   document.getElementById("hdrTeamHomeL2").textContent = TH.lines[1];
-  document.getElementById("hdrTeamHomeL2").style.color = TH.textInk || TH.ink;
+  document.getElementById("hdrTeamHomeL2").style.color = TH.hdrLine2;
+  document.getElementById("hdrTeamHomeL2").style.webkitTextStroke = `2px ${TH.hdrLine2Stroke || "#08080A"}`;
   document.getElementById("hdrTeamAwayL1").textContent = TA.lines[0];
   document.getElementById("hdrTeamAwayL2").textContent = TA.lines[1];
-  document.getElementById("hdrTeamAwayL2").style.color = TA.textInk || TA.ink;
+  document.getElementById("hdrTeamAwayL2").style.color = TA.hdrLine2;
+  document.getElementById("hdrTeamAwayL2").style.webkitTextStroke = `2px ${TA.hdrLine2Stroke || "#08080A"}`;
   panel.classList.add("show");
 
   if(PREVIEW_HOME){
