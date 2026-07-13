@@ -155,6 +155,7 @@ const TEAMS = {
  "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         ink:"#FAC805"},
 };
 const SLOTS = ["LF","CF","RF","LD","RD","GK"];
+const SLOT_LABEL = {LF:"LF", CF:"CF", RF:"RF", LD:"LD", RD:"RD", GK:"G"};
 const GREY = "#1b2029";
 const LAST_TEAM_KEY = "sl_last_team";
 
@@ -196,11 +197,11 @@ async function loadRoster(){
   const items = [];
   (teamStats && teamStats.skaters || []).forEach(r=>items.push({
     role:"player", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
-    position:r.position, photo: photoByNum[String(r.number)] || null,
+    position:r.position, photo: photoByNum[String(r.number)] || null, flag:r.flag||"",
   }));
   (teamStats && teamStats.goalies || []).forEach(r=>items.push({
     role:"goalie", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
-    position:"G", photo: photoByNum[String(r.number)] || null,
+    position:"G", photo: photoByNum[String(r.number)] || null, flag:r.flag||"",
   }));
   items.sort((a,b)=>(parseInt(a.number,10)||999)-(parseInt(b.number,10)||999));
   ROSTER = items;
@@ -277,7 +278,7 @@ function renderTable(){
     const row = document.createElement("div"); row.className = "slotRow";
     const btn = document.createElement("button");
     btn.className = "slotBtn" + (ACTIVE_SLOT===slot ? " active" : "");
-    btn.textContent = slot;
+    btn.textContent = SLOT_LABEL[slot] || slot;
     btn.onclick = ()=>{ ACTIVE_SLOT = (ACTIVE_SLOT===slot ? null : slot); renderTable(); renderPicker(); };
     const val = document.createElement("div"); val.className = "slotVal";
     if(p){
@@ -298,7 +299,7 @@ function renderPicker(){
   const picker = document.getElementById("picker"), hint = document.getElementById("pickerHint");
   if(!ACTIVE_SLOT){ picker.style.display="none"; hint.style.display="block"; return; }
   picker.style.display="block"; hint.style.display="none";
-  document.getElementById("pickerTitle").textContent = `Pick ${ACTIVE_SLOT} — ${T.name}`;
+  document.getElementById("pickerTitle").textContent = `Pick ${SLOT_LABEL[ACTIVE_SLOT]||ACTIVE_SLOT} — ${T.name}`;
   renderPills();
 }
 function renderPills(){
@@ -315,7 +316,7 @@ function renderPills(){
     btn.innerHTML = esc(p.number) + (p.role==="goalie"?'<span class="g">G</span>':"");
     btn.onclick = ()=>{
       if(!ACTIVE_SLOT) return;
-      saveSlot(ACTIVE_SLOT, {number:p.number, name:p.name, position:p.position, photo:p.photo});
+      saveSlot(ACTIVE_SLOT, {number:p.number, name:p.name, position:p.position, photo:p.photo, flag:p.flag});
       ACTIVE_SLOT = null;
       renderTable(); renderPicker();
     };
