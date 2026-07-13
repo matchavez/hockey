@@ -516,3 +516,45 @@ separate one):
   lightweight checks.
 - Portal footer links `graphicstests/` next to `preflight/` in both the top pill-row and the
   bottom beta-links list.
+
+## Control-page load resilience fix (2026-07-14)
+Mat reported `startinglineup/control/?team=...` (and "any other control page") sometimes doesn't
+load. Code review (not a live repro) found two real, unguarded failure modes in both
+`startinglineup/control/index.html` and `lowerthirds/index.html`: (1) every `localStorage`
+call was unwrapped — `startinglineup/control`'s very first executable statement was
+`localStorage.getItem(LAST_TEAM_KEY)`, so a throw there (Safari Private Browsing forces
+`setItem` to throw via `QuotaExceededError`; some Safari versions have thrown on `getItem` too)
+killed the entire inline `<script>` before even the gate's button handlers were bound — page
+shows the gate forever, does nothing. Both files' `tryUnlock()` also called
+`localStorage.setItem(GATE_KEY,"1")` *before* `unlockGate()`, so a throw there silently blocked
+unlock even with the correct password. (2) No timeout on any fetch — worker GET/POST,
+`stats.json`, `manifest.json`, control-channel GET/POST, season-data lookups — so a hung
+endpoint left `start()` awaiting forever with no error and no retry.
+
+Fixed in both files: `safeGet`/`safeSet` wrappers around every `localStorage` call (try/catch,
+never throw), `tryUnlock()` now calls `unlockGate()` unconditionally regardless of whether the
+write succeeded. `fetchWithTimeout()` (AbortController, 8-10s per endpoint) wraps every fetch;
+an outer `withTimeout()` watchdog around `start()`'s init sequence (15s) plus a `ROSTER.length`/
+`TEAM_DATA` emptiness check surfaces a new `#loadFail` notice (reuses `.notice`/`.notice.err`
+styling) with a Retry button (`location.reload()`) if init still fails or comes back empty. No
+changes to `worker.js`/`ControlChannel` DO — client-side only.
+
+**Verified live (not just reasoned about), via `Prompts/sonnet-prompt-10-...md`:**
+- localStorage failure mode: overrode `Storage.prototype.getItem`/`setItem` to throw (simulating
+  worse than real Private Browsing, which normally only throws on `setItem`) via a fresh-realm
+  `document.write()` harness (needed since JS globals persist across repeated `document.write`
+  calls in the same window — a same-window redeclaration `SyntaxError` was a red herring on the
+  first attempt, not a real bug). OLD code: password entered correctly, Unlock clicked/called
+  directly — nothing happens, gate stays up forever (confirmed dead). NEW code: unlocks and loads
+  the full roster despite both calls throwing.
+- Fetch-timeout failure mode: `?worker=<hanging endpoint>` (httpbin.org/delay/60, query-string
+  trick to dodge httpbin's route matching) on the real live page — old code would have hung
+  `Promise.all` forever; new code's `fetchWithTimeout` aborted at ~8s, surfaced the existing
+  "can't reach the control worker" notice, and the roster/preview still rendered fully.
+- Happy path regression, both pages, live in Chrome: real password unlock, roster/pill grid
+  loads, a real slot pick (LD → Owen Gouin) saved and previewed correctly, then reverted back to
+  the real Admirals lineup (Justin Daigle #47) to leave production state untouched.
+  `lowerthirds/?team=pure-nz-admirals` also confirmed loading cleanly (matchup resolved, pill
+  grids for both teams, existing queued state intact) with zero console errors.
+
+Commit `e160011`. See also [[nzihl-starting-lineup]], [[nzihl-player-lower-thirds]].
