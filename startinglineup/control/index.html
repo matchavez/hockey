@@ -170,6 +170,11 @@ function properCase(s){s=String(s||"");if(!s)return s;
   const allLower=letters===letters.toLowerCase()&&letters!==letters.toUpperCase();
   if(!allUpper&&!allLower)return s;
   return s.toLowerCase().replace(/(^|[\s\-'.(])([a-z])/g,(m,p1,p2)=>p1+p2.toUpperCase());}
+// A player's last name is one atomic surname even when it's two words
+// (e.g. "Hayward Jones", "De Jonge") -- swap internal spaces for a
+// non-breaking space so the Starting Lineup card's word-wrap can only
+// break between first name and surname, never inside the surname itself.
+function nbspSurname(s){ return String(s||"").replace(/ /g,"\u00A0"); }
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
 
 /* ====================== STATE ====================== */
@@ -196,11 +201,11 @@ async function loadRoster(){
   });
   const items = [];
   (teamStats && teamStats.skaters || []).forEach(r=>items.push({
-    role:"player", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
+    role:"player", number:r.number, name:(r.first+" "+nbspSurname(properCase(r.last))).trim(),
     position:r.position, photo: photoByNum[String(r.number)] || null, flag:r.flag||"",
   }));
   (teamStats && teamStats.goalies || []).forEach(r=>items.push({
-    role:"goalie", number:r.number, name:(r.first+" "+properCase(r.last)).trim(),
+    role:"goalie", number:r.number, name:(r.first+" "+nbspSurname(properCase(r.last))).trim(),
     position:"G", photo: photoByNum[String(r.number)] || null, flag:r.flag||"",
   }));
   items.sort((a,b)=>(parseInt(a.number,10)||999)-(parseInt(b.number,10)||999));
