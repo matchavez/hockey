@@ -112,6 +112,56 @@ const boxURL=(m,gid)=>`https://admin.esportsdesk.com/leagues/hockey_boxscores.cf
 async function shimText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return r.text();}
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
 
+/* ====================== pipeline freshness (accurate status, not just data-age) ======================
+   "Data hasn't changed in Xh" and "the pipeline is broken" look identical if you only check the
+   last commit to a data file -- a healthy daily cron that genuinely found nothing new (e.g.
+   NZWIHL's boxscores.json sitting unchanged for days while NZIHL's churns, because NZWIHL simply
+   has no games close enough to trigger a change yet) reads exactly like a silently-stopped cron.
+   Mat flagged this looking like a discrepancy 2026-07-13 when it wasn't one -- these checks now
+   look at the ACTUAL LAST WORKFLOW RUN (did it run recently, did it succeed) separately from
+   whether the data file it produces actually changed, so a quiet-but-healthy pipeline reads as
+   OK while a truly overdue or failed one reads as a real warning/failure. */
+function fmtAgo(hours){
+  if(hours<1) return Math.round(hours*60)+" min";
+  if(hours<48) return Math.round(hours)+" h";
+  return Math.round(hours/24)+" d";
+}
+async function fetchLatestRun(repo, workflowFile){
+  try{
+    const j=await getJSON(`https://api.github.com/repos/matchavez/${repo}/actions/workflows/${workflowFile}/runs?per_page=1&status=completed`);
+    const r=(j.workflow_runs||[])[0];
+    if(!r) return null;
+    return {when:new Date(r.created_at), conclusion:r.conclusion, url:r.html_url};
+  }catch(e){ return null; }
+}
+async function fetchLastCommit(repo, path){
+  try{
+    const c=await getJSON(`https://api.github.com/repos/matchavez/${repo}/commits?path=${path}&per_page=1`);
+    return new Date(c[0].commit.committer.date);
+  }catch(e){ return null; }
+}
+async function pipelineFreshness(repo, workflowFile, commitPath, cadenceHours){
+  const [runInfo, commitTime] = await Promise.all([
+    fetchLatestRun(repo, workflowFile),
+    fetchLastCommit(repo, commitPath),
+  ]);
+  if(!runInfo) return {cls:"warn", st:"pipeline status unknown", dt:"couldn't reach the Actions API"};
+  const runAgeH=(Date.now()-runInfo.when)/36e5;
+  if(runInfo.conclusion!=="success"){
+    return {cls:"bad", st:"⚠ last run FAILED", dt:fmtAgo(runAgeH)+" ago"};
+  }
+  if(runAgeH>cadenceHours){
+    return {cls:"warn", st:"⚠ pipeline overdue", dt:"last ran "+fmtAgo(runAgeH)+" ago (expected every ~"+Math.round(cadenceHours)+"h)"};
+  }
+  if(commitTime){
+    const commitAgeH=(Date.now()-commitTime)/36e5;
+    const sameRun=Math.abs(runInfo.when-commitTime)<15*60*1000;
+    if(sameRun) return {cls:"ok", st:"pipeline healthy", dt:"updated "+fmtAgo(commitAgeH)+" ago"};
+    return {cls:"ok", st:"pipeline healthy", dt:"no new data — unchanged "+fmtAgo(commitAgeH)+" ago (ran "+fmtAgo(runAgeH)+" ago)"};
+  }
+  return {cls:"ok", st:"pipeline healthy", dt:"ran "+fmtAgo(runAgeH)+" ago"};
+}
+
 /* ====================== system checks ====================== */
 const sys=document.getElementById("sys");
 function card(id,nm){const d=document.createElement("div");d.className="chk";d.id=id;
@@ -134,13 +184,11 @@ async function checkManifest(m){
   try{
     const j=await getJSON(m.url); MDATA[m.league]=j;
     const n=(j.games||[]).filter(g=>g.gameid).length;
-    let when="", cls="ok";
-    try{const c=await getJSON(`https://api.github.com/repos/matchavez/${m.repo}/commits?path=boxscores.json&per_page=1`);
-      const ts=new Date(c[0].commit.committer.date), h=(Date.now()-ts)/36e5;
-      when="pipeline ran "+(h<1?Math.round(h*60)+" min":Math.round(h)+" h")+" ago";
-      if(h>36)cls="warn";
-    }catch(e){when="(commit time unavailable)";}
-    setCard(d,n?cls:"warn",(j.games||[]).length+" games · "+n+" with gameid",when);
+    const f=await pipelineFreshness(m.repo, "build-rosters.yml", "boxscores.json", 36);
+    // data content (games/gameids) only downgrades the card if the pipeline itself is
+    // otherwise healthy -- a real pipeline failure/overdue state always wins the colour.
+    const cls = f.cls==="ok" ? (n?"ok":"warn") : f.cls;
+    setCard(d,cls,(j.games||[]).length+" games · "+n+" with gameid",f.dt+" — "+f.st);
   }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
 }
 // Player Lower Thirds: stats.json freshness per league (same repos, same
@@ -151,13 +199,9 @@ async function checkStatsJson(m){
   try{
     const j=await getJSON(url);
     const nTeams=Object.keys(j.teams||{}).length;
-    let when="", cls="ok";
-    try{const c=await getJSON(`https://api.github.com/repos/matchavez/${m.repo}/commits?path=stats.json&per_page=1`);
-      const ts=new Date(c[0].commit.committer.date), h=(Date.now()-ts)/36e5;
-      when="pipeline ran "+(h<1?Math.round(h*60)+" min":Math.round(h)+" h")+" ago";
-      if(h>36)cls="warn";
-    }catch(e){when="(commit time unavailable)";}
-    setCard(d,nTeams?cls:"warn",nTeams+" teams scraped",when);
+    const f=await pipelineFreshness(m.repo, "build-rosters.yml", "stats.json", 36);
+    const cls = f.cls==="ok" ? (nTeams?"ok":"warn") : f.cls;
+    setCard(d,cls,nTeams+" teams scraped",f.dt+" — "+f.st);
   }catch(e){setCard(d,"bad","FAILED — no stats.json yet?",String(e.message||e));}
 }
 // Season data warehouse (matchavez/nzihl-season-data) -- nightly nzihl.json/nzwihl.json,
@@ -170,13 +214,8 @@ async function checkSeasonData(lg){
   try{
     const j=await getJSON(url);
     const nGames=(j.games||[]).length, nUp=(j.upcoming||[]).length;
-    let when="", cls="ok";
-    try{const c=await getJSON(`https://api.github.com/repos/matchavez/nzihl-season-data/commits?path=${lg}.json&per_page=1`);
-      const ts=new Date(c[0].commit.committer.date), h=(Date.now()-ts)/36e5;
-      when="pipeline ran "+(h<1?Math.round(h*60)+" min":Math.round(h)+" h")+" ago";
-      if(h>36)cls="warn";
-    }catch(e){when="(commit time unavailable)";}
-    setCard(d,cls,nGames+" games · "+nUp+" upcoming",when);
+    const f=await pipelineFreshness("nzihl-season-data", "build.yml", `${lg}.json`, 36);
+    setCard(d,f.cls,nGames+" games · "+nUp+" upcoming",f.dt+" — "+f.st);
   }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
 }
 // Player photo warehouse (matchavez/nzihl-player-photos) -- weekly manifest.json. Weekly
@@ -190,13 +229,10 @@ async function checkPhotoManifest(){
     const j=await getJSON(url);
     let nPeople=0;
     Object.values(j.leagues||{}).forEach(lg=>Object.values(lg.teams||{}).forEach(t=>{nPeople+=Object.keys(t.people||{}).length;}));
-    let when="", cls="ok";
-    try{const c=await getJSON("https://api.github.com/repos/matchavez/nzihl-player-photos/commits?path=manifest.json&per_page=1");
-      const ts=new Date(c[0].commit.committer.date), days=(Date.now()-ts)/864e5;
-      when="last run "+(days<1?Math.round(days*24)+" h":Math.round(days)+" d")+" ago";
-      if(days>10)cls="warn";   // weekly cron (~7d) + buffer
-    }catch(e){when="(commit time unavailable)";}
-    setCard(d,nPeople?cls:"warn",nPeople+" people tracked",when);
+    // weekly cron -- cadence threshold is days not hours (~8 days = 192h, cron + buffer)
+    const f=await pipelineFreshness("nzihl-player-photos", "build-photos.yml", "manifest.json", 192);
+    const cls = f.cls==="ok" ? (nPeople?"ok":"warn") : f.cls;
+    setCard(d,cls,nPeople+" people tracked",f.dt+" — "+f.st);
   }catch(e){setCard(d,"bad","FAILED",String(e.message||e));}
 }
 // Player Lower Thirds control channel — GET is enough to prove the Durable
