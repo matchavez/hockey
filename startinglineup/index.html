@@ -175,11 +175,11 @@ const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-pho
 const TEAMS = {
  "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
  "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
- "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png"},
+ "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF"},
  "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png"},
  "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
  "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
- "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png"},
+ "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FFFFFF"},
  "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png"},
  "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
 };
@@ -238,7 +238,7 @@ function playerKey(p){ return p ? [p.number,p.name,p.photo||""].join("|") : ""; 
 
 function renderSlot(slot, player, animate){
   const el = document.getElementById("slot_"+slot);
-  const dark = T.dark, ink = T.ink;
+  const dark = T.dark, ink = T.ink, textInk = T.textInk || T.ink;
   el.style.background = `linear-gradient(135deg, ${dark} 0%, ${dark} 78%, rgba(255,255,255,.07) 100%), ${dark}`;
   let photoHtml;
   if(player && player.photo){
@@ -259,7 +259,7 @@ function renderSlot(slot, player, animate){
          <span class="cname">${player?esc(player.name):"&mdash;"}</span>
        </div>
        <div class="cmetaline">
-         ${player&&player.number!=null?`<span class="cnum" style="color:${ink}">#${esc(player.number)}</span>`:""}
+         ${player&&player.number!=null?`<span class="cnum" style="color:${textInk}">#${esc(player.number)}</span>`:""}
          <span class="crole">${ROLE_LABEL[slot]}</span>
        </div>
      </div>`;
@@ -318,7 +318,7 @@ function start(){
     `linear-gradient(90deg, ${T.dark} 0%, ${T.dark} 72%, rgba(255,255,255,.06) 100%), ${T.dark}`;
   document.getElementById("hdrLogo").src = LOGO + encodeURIComponent(T.logo);
   document.getElementById("hdrTeam").textContent = T.name;
-  document.getElementById("hdrTeam").style.color = T.ink;
+  document.getElementById("hdrTeam").style.color = T.textInk || T.ink;
   document.getElementById("hdrLeague").src = LEAGUE_LOGO_BASE + encodeURIComponent(LEAGUE_LOGO[T.league]);
   panel.classList.add("show");
 
