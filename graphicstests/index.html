@@ -129,6 +129,21 @@ const TEAMS = [
 /* ====================== generic DOM check helpers ====================== */
 function imgOk(img){ return !!img && img.complete && img.naturalWidth>0; }
 function brokenImages(doc){ return Array.from(doc.images||[]).filter(im=>!imgOk(im)); }
+function waitImages(doc, timeoutMs){
+  // A snapshot check right after firing an event conflates "still loading" with "actually
+  // broken" (img.complete is false for both until the browser finishes the request) --
+  // verified live: every Activity Banner team showed "N broken images" that were really just
+  // crest/logo requests that hadn't resolved within a 900ms settle window yet. Wait for every
+  // <img> to finish (load or error) before judging, capped so a truly hung request can't stall
+  // the whole run.
+  const imgs=Array.from(doc.images||[]);
+  const pending=imgs.filter(im=>!im.complete);
+  if(!pending.length) return Promise.resolve();
+  return Promise.race([
+    Promise.all(pending.map(im=>new Promise(res=>{ im.addEventListener("load",res,{once:true}); im.addEventListener("error",res,{once:true}); }))),
+    sleep(timeoutMs)
+  ]);
+}
 function txt(doc,id){ const el=doc.getElementById(id); return el?el.textContent.trim():""; }
 function hasPlaceholderText(doc){
   const t=(doc.body&&doc.body.innerText)||"";
@@ -253,6 +268,7 @@ function registerFamily(cfg){
       await sleep(cfg.settleMs!=null?cfg.settleMs:600);
       try{
         const doc=f.contentDocument, win=f.contentWindow;
+        await waitImages(doc, 2500);
         result = await cfg.check(doc, win, team);
       }catch(e){
         result = {status:"fail", msg:"check threw: "+(e&&e.message||e)};
@@ -296,6 +312,7 @@ registerFamily({
     if(!pool || !pool[0]) return {status:"fail", msg:"no ACTIVE_TEST_TEAMS/TEST_TEAMS for this club"};
     win.fireTest(pool[0], "goal");
     await sleep(900);
+    await waitImages(doc, 2500);
     const broken = brokenImages(doc);
     const btxt = txt(doc,"btxt");
     if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) after firing goal banner"};
@@ -357,6 +374,7 @@ registerFamily({
     if(!target) return {status:"warn", msg:"scorebug crest OK, no TEST_TEAMS entry to fire"};
     win.fireTest(target, "goal");
     await sleep(900);
+    await waitImages(doc, 2500);
     const broken2=brokenImages(doc);
     const btxt=txt(doc,"btxt");
     if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
@@ -381,6 +399,7 @@ registerFamily({
     if(!target) return {status:"warn", msg:"crest OK, no TEST_TEAMS entry to fire"};
     win.fireTest(target,"goal");
     await sleep(900);
+    await waitImages(doc, 2500);
     const broken2=brokenImages(doc);
     const btxt=txt(doc,"btxt");
     if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
