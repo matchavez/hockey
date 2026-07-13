@@ -135,15 +135,16 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    don't meet on an abrupt hard edge -- a transparent strip straddling the
    seam (x=880..960, i.e. 40px either side of x=920) with backdrop-filter
    blur, so it blurs whatever's rendered behind it (the two solid-colour
-   .hdrHalf backgrounds) rather than blurring its own (nonexistent)
-   content. 2026-07-15: originally sat BELOW .hdrAccent in paint order
-   (z-index:auto vs .hdrAccent's z-index:1), so the accent stripe's own
-   hard home/away colour split wasn't caught by the blur -- Mat flagged
-   that boundary as still harsh. Now z-index:1 too, and moved after the
-   .hdrAccent divs in the DOM, so same-z-index tie-break (later DOM order
-   wins) puts it on top of the stripe as well -- still below #hdrTitle
-   (z-index:2), so the headline itself stays crisp. */
-#hdrSeamBlur{position:absolute;left:880px;top:0;width:80px;height:128px;z-index:1;
+   .hdrHalf backgrounds -- the alternate-colour borderline itself) rather
+   than blurring its own (nonexistent) content. 2026-07-15: briefly
+   extended (z-index:1, moved after .hdrAccent in the DOM) to also catch
+   the accent stripe's hard colour split -- ROLLED BACK same day per Mat's
+   ask: back to z-index:auto, sitting BELOW .hdrAccent (z-index:1) in
+   paint order, so the blur is scoped to exactly the alternate-colour
+   borderline (the two .hdrHalf backgrounds) and the accent stripe stays
+   crisp, same as #hdrTitle (z-index:2). Width/placement unchanged --
+   still the same 40px either side of x=920. */
+#hdrSeamBlur{position:absolute;left:880px;top:0;width:80px;height:128px;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);pointer-events:none;}
 /* font-weight 700 (was 600), font-size 50px (was 48px, ~+5%) per Mat's
    2026-07-14 ask.
@@ -258,9 +259,9 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         </div>
         <img class="hdrLogo" id="hdrLogoAway" alt="">
       </div>
+      <div id="hdrSeamBlur"></div>
       <div class="hdrAccent home" id="hdrAccentHome"></div>
       <div class="hdrAccent away" id="hdrAccentAway"></div>
-      <div id="hdrSeamBlur"></div>
       <div id="hdrTitle">STARTING LINEUPS</div>
     </div>
     <div id="ice">
@@ -358,18 +359,32 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
            so away LD/RD's `left:1340px` happens to be unchanged either
            way. GK and LF/CF/RF revert to their pre-width-bump values (home
            unchanged throughout; away back to 950/1430). -->
+      <!-- 2026-07-16: LD/RD moved again per Mat's ask -- 15px further
+           toward their GK vertically (same direction as the 2026-07-14
+           move, stacking on top of it), and 20px AWAY from centre ice
+           horizontally this time (reverses the prior "closer to centre"
+           direction). This intentionally breaks the zero-gap D/F touch
+           invariant noted above -- there's now a 20px gap between each D
+           pill and its F column. Home: left 110->90 (right edge 500->480,
+           20px clear of LF/CF/RF's left edge at 500); LD top 118.5->133.5,
+           RD top 618.5->603.5 (both 15px closer to GK's vertical centre at
+           y=436). Away: left 1340->1360 (left edge now 20px clear of
+           LF/CF/RF's right edge at 1340); LD/RD top values move the same
+           as home (mirrored on Y already). Checked clearances: D pills
+           stay ~100px clear of GK vertically and have no X overlap with
+           F/GK at their new positions -- no collisions. -->
       <div class="card" id="slot_home_LF" style="left:500px; top:68.5px;"></div>
-      <div class="card" id="slot_home_LD" style="left:110px; top:118.5px;"></div>
+      <div class="card" id="slot_home_LD" style="left:90px;  top:133.5px;"></div>
       <div class="card" id="slot_home_GK" style="left:20px;  top:368.5px;"></div>
       <div class="card" id="slot_home_CF" style="left:500px; top:368.5px;"></div>
-      <div class="card" id="slot_home_RD" style="left:110px; top:618.5px;"></div>
+      <div class="card" id="slot_home_RD" style="left:90px;  top:603.5px;"></div>
       <div class="card" id="slot_home_RF" style="left:500px; top:668.5px;"></div>
 
       <div class="card" id="slot_away_LF" style="left:950px; top:68.5px;"></div>
-      <div class="card" id="slot_away_LD" style="left:1340px;top:118.5px;"></div>
+      <div class="card" id="slot_away_LD" style="left:1360px;top:133.5px;"></div>
       <div class="card" id="slot_away_GK" style="left:1430px;top:368.5px;"></div>
       <div class="card" id="slot_away_CF" style="left:950px; top:368.5px;"></div>
-      <div class="card" id="slot_away_RD" style="left:1340px;top:618.5px;"></div>
+      <div class="card" id="slot_away_RD" style="left:1360px;top:603.5px;"></div>
       <div class="card" id="slot_away_RF" style="left:950px; top:668.5px;"></div>
     </div>
   </div>
