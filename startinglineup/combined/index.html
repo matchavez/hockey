@@ -28,18 +28,21 @@
    mirror image sits in the right half. See memory.md /
    nzihl_combined_lineups.md for the full position-derivation history.
 
-   2026-07-14, FINAL revision: cards restored to the single-team page's
-   exact 520x120 size (Mat: the compact 420x90 cards "looked too small").
-   At that size, four cards can no longer share one centre row (2080px
-   needed, only 1840 available), so every slot now gets its OWN row --
-   six rows total, symmetric about the vertical centre (cy = 94, 230,
-   368, 504, 642, 778), each holding exactly one home card + its
-   mirrored away card. Row assignment top-to-bottom: LF, LD, GK, CF, RD,
-   RF. Column X (home, left-edge): GK=20, D=110, F=340 -- D sits about
-   23% of the way from GK toward the blue line (x=690), i.e. backed up
-   25% from an earlier "right next to GK" placement per Mat's feedback,
-   not at its original near-the-blue-line spot. Away mirrors via
-   away_left = 1320 - home_left (1320 = 1840 - CARD_W).
+   2026-07-14: cards were briefly restored to the single-team page's exact
+   520x120 size (six rows, one per slot). Then resized again per Mat's ask
+   -- 25% taller, 40% narrower (520x120 -> 312x150), headshot kept SQUARE
+   at the new height (150x150, was 120x120), names now routinely stack to
+   2 lines given the much narrower text column. At 312 wide, 4 cards can
+   no longer occupy one row edge-to-edge across 1840px width the way the
+   520-wide layout could still (barely) avoid, but 2-per-row DOES fit, so
+   this reverted to a 3-Y-band scheme (like the very first compact-card
+   layout): "top"/"mid"/"bottom" bands at cy = 136, 436, 736, each shared
+   by exactly 2 cards per side via X-separation (LD+LF share "top",
+   GK+CF share "mid", RD+RF share "bottom" -- reads D-F ... F-D per band,
+   GK-F ... F-GK for the middle band). Column X (home, left-edge): GK=20,
+   D=110, F=550. Away mirrors via away_left = 1528 - home_left
+   (1528 = 1840 - CARD_W). Gaps between every same-row pair are
+   116-218px, well clear.
    ============================================================ */
 html,body{margin:0;padding:0;background:transparent;overflow:hidden;
   font-family:Inter,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
@@ -81,7 +84,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    never more, so there's no same-row crowding the way the old compact
    layout's shared centre row (GK/CF from both sides) needed careful
    nudging to avoid. See the position table in the header comment. ---------- */
-.card{position:absolute;width:520px;height:120px;border-radius:18px;display:flex;
+.card{position:absolute;width:312px;height:150px;border-radius:18px;display:flex;
   align-items:stretch;overflow:hidden;box-shadow:0 42px 102px rgba(8,12,20,.93);
   opacity:0;transform:scale(.86);}
 .card.show{animation:cardIn .5s ease-out forwards;}
@@ -96,7 +99,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 .card.shown{opacity:1;transform:scale(1);}
 .card.pulse{animation:cardPulse .45s ease;}
 @keyframes cardPulse{0%{transform:scale(1);}40%{transform:scale(1.045);}100%{transform:scale(1);}}
-.cphoto{flex:0 0 auto;width:120px;height:120px;position:relative;overflow:hidden;
+.cphoto{flex:0 0 auto;width:150px;height:150px;position:relative;overflow:hidden;
   background:#1b2029;}
 .cphoto img.head{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
 .cphoto .crest{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
@@ -104,10 +107,10 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 .cphoto .sil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
 .cphoto .sil svg{width:66%;height:66%;opacity:.4;}
 .cbody{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
-  padding:0 22px;border-left:4px solid transparent;}
+  padding:0 14px;border-left:4px solid transparent;}
 .cnameline{white-space:normal;overflow-wrap:break-word;word-break:normal;line-height:1.08;}
 .cname{font-size:35px;font-weight:800;color:#fff;letter-spacing:.005em;}
-.cmetaline{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.cmetaline{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px;}
 .cnum{font-size:26px;font-weight:800;}
 .crole{font-size:22px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
   color:rgba(255,255,255,.62);}
@@ -212,19 +215,19 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
            transposing startinglineup/'s single-team layout (see header
            comment); the two CF cards are nudged apart from the pure
            transpose so they clear each other across the centre seam. -->
-      <div class="card" id="slot_home_LF" style="left:340px; top:34px; "></div>
-      <div class="card" id="slot_home_LD" style="left:110px; top:170px;"></div>
-      <div class="card" id="slot_home_GK" style="left:20px;  top:308px;"></div>
-      <div class="card" id="slot_home_CF" style="left:340px; top:444px;"></div>
-      <div class="card" id="slot_home_RD" style="left:110px; top:582px;"></div>
-      <div class="card" id="slot_home_RF" style="left:340px; top:718px;"></div>
+      <div class="card" id="slot_home_LF" style="left:550px; top:61px; "></div>
+      <div class="card" id="slot_home_LD" style="left:110px; top:61px; "></div>
+      <div class="card" id="slot_home_GK" style="left:20px;  top:361px;"></div>
+      <div class="card" id="slot_home_CF" style="left:550px; top:361px;"></div>
+      <div class="card" id="slot_home_RD" style="left:110px; top:661px;"></div>
+      <div class="card" id="slot_home_RF" style="left:550px; top:661px;"></div>
 
-      <div class="card" id="slot_away_LF" style="left:980px; top:34px; "></div>
-      <div class="card" id="slot_away_LD" style="left:1210px;top:170px;"></div>
-      <div class="card" id="slot_away_GK" style="left:1300px;top:308px;"></div>
-      <div class="card" id="slot_away_CF" style="left:980px; top:444px;"></div>
-      <div class="card" id="slot_away_RD" style="left:1210px;top:582px;"></div>
-      <div class="card" id="slot_away_RF" style="left:980px; top:718px;"></div>
+      <div class="card" id="slot_away_LF" style="left:978px; top:61px; "></div>
+      <div class="card" id="slot_away_LD" style="left:1418px;top:61px; "></div>
+      <div class="card" id="slot_away_GK" style="left:1508px;top:361px;"></div>
+      <div class="card" id="slot_away_CF" style="left:978px; top:361px;"></div>
+      <div class="card" id="slot_away_RD" style="left:1418px;top:661px;"></div>
+      <div class="card" id="slot_away_RF" style="left:978px; top:661px;"></div>
     </div>
   </div>
 </div>
@@ -300,7 +303,7 @@ window.addEventListener("resize", fitWindow); fitWindow();
 /* ====================== TEXT FIT (shrink, never ellipsis) ====================== */
 function fitLine(el, base, min){
   const line = el.parentElement;
-  const MAX_LINE_H = 80; // px budget that comfortably fits 2 lines at full size (matches startinglineup/)
+  const MAX_LINE_H = 92; // px budget for 2 stacked name lines at the new taller-card size
   let size = base;
   el.style.fontSize = size+"px";
   while(size > min && line.scrollHeight > MAX_LINE_H){
