@@ -254,7 +254,11 @@ const TEAMS = {
 };
 
 const SLOTS = ["LF","CF","RF","LD","RD","GK"];
-const POS_LABEL = {LF:"LW", CF:"C", RF:"RW", LD:"LD", RD:"RD", GK:"G"};
+const POS_LABEL = {LF:"Forward", CF:"Forward", RF:"Forward", LD:"Defense", RD:"Defense", GK:"Goaltender"};
+// ^ matches startinglineup/index.html's ROLE_LABEL verbatim -- this page abbreviated to
+// LW/C/RW/LD/RD/G for a while (the compact-card era) but that diverged from the per-team
+// page and was never wanted; restored to the exact same wording, permanently. Don't
+// re-abbreviate this without an explicit ask.
 // reveal order (both sides simultaneously): goalies first, up through the
 // D, forwards last — symmetric extension of startinglineup/'s single-team
 // reveal order.
