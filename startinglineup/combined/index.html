@@ -56,19 +56,45 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 #panel.show{animation:panelIn .55s cubic-bezier(.22,.9,.3,1) forwards;}
 @keyframes panelIn{to{opacity:1;transform:translateY(0);}}
 
-/* ---------- header (split home | title | away) ---------- */
-#hdr{position:absolute;left:0;top:0;right:0;height:128px;display:flex;}
-.hdrHalf{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:18px;position:relative;overflow:hidden;}
-.hdrHalf.home{padding:0 26px 0 32px;justify-content:flex-start;}
-.hdrHalf.away{padding:0 32px 0 26px;justify-content:flex-end;}
+/* ---------- header (split home | title | away) ----------
+   2026-07-14: reworked to echo the "Up Next" overlay's look (Graphics/Up Next
+   Overlay/overlay.py) per Mat's ask for visual continuity across the estate.
+   Team-name/logo/title POSITIONS are unchanged from before -- only the
+   background treatment changed:
+     - the flat vertical 50/50 split became an ANGLED seam, same slope the
+       Up Next overlay uses for its team-colour clash (-0.3671, i.e. the
+       same italic angle as the league wordmark's "I") -- built via two
+       full-width clip-path polygons that share one seam line, rather than
+       two flex boxes, so the seam can run on a diagonal at all.
+     - Up Next paints a thin team-accent stripe along the TOP edge of its
+       two-team band; Mat asked for that same stripe here but at the BOTTOM
+       of the headline (the ice boundary) instead of the top of the frame --
+       .hdrAccent.home/.away, 5px, clipped to the identical seam line.
+     - Up Next's centred league-mark gets a soft white glow behind it; the
+       league mark is dropped here in favour of "STARTING LINEUPS" text, but
+       that same white glow now sits behind the text (layered text-shadow).
+   Seam geometry (px, header-local: x=0..1840, y=0..128):
+     seamX(y) = 920 + (-0.3671)*(y-64)  ->  top x=943.49, bottom x=896.51. */
+#hdr{position:absolute;left:0;top:0;right:0;height:128px;overflow:hidden;}
+.hdrHalf{position:absolute;left:0;top:0;width:1840px;height:128px;min-width:0;
+  display:flex;align-items:center;gap:18px;}
+.hdrHalf.home{padding-left:32px;justify-content:flex-start;
+  clip-path:polygon(0 0, 943.49px 0, 896.51px 100%, 0 100%);}
+.hdrHalf.away{padding-right:32px;justify-content:flex-end;
+  clip-path:polygon(943.49px 0, 100% 0, 100% 100%, 896.51px 100%);}
 .hdrLogo{width:72px;height:72px;object-fit:contain;flex:0 0 auto;
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
 .hdrTeam{font-size:22px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:480px;}
 .hdrHalf.away .hdrTeam{text-align:right;}
+.hdrAccent{position:absolute;left:0;top:123px;width:1840px;height:5px;z-index:1;}
+.hdrAccent.home{clip-path:polygon(0 0, 898.34px 0, 896.51px 100%, 0 100%);}
+.hdrAccent.away{clip-path:polygon(898.34px 0, 100% 0, 100% 100%, 896.51px 100%);}
 #hdrTitle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   font-size:32px;font-weight:900;letter-spacing:.05em;color:#fff;white-space:nowrap;
-  text-shadow:0 2px 12px rgba(0,0,0,.65);z-index:2;pointer-events:none;}
+  text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
+    0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
+  z-index:2;pointer-events:none;}
 
 /* ---------- ice ---------- */
 #ice{position:absolute;left:0;top:128px;right:0;bottom:0;
@@ -132,6 +158,8 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
         <div class="hdrTeam" id="hdrTeamAway"></div>
         <img class="hdrLogo" id="hdrLogoAway" alt="">
       </div>
+      <div class="hdrAccent home" id="hdrAccentHome"></div>
+      <div class="hdrAccent away" id="hdrAccentAway"></div>
       <div id="hdrTitle">STARTING LINEUPS</div>
     </div>
     <div id="ice">
@@ -412,6 +440,8 @@ function start(){
     `linear-gradient(90deg, ${TH.dark} 0%, ${TH.dark} 72%, rgba(255,255,255,.06) 100%), ${TH.dark}`;
   document.getElementById("hdr").querySelector(".hdrHalf.away").style.background =
     `linear-gradient(270deg, ${TA.dark} 0%, ${TA.dark} 72%, rgba(255,255,255,.06) 100%), ${TA.dark}`;
+  document.getElementById("hdrAccentHome").style.background = TH.ink;
+  document.getElementById("hdrAccentAway").style.background = TA.ink;
   document.getElementById("hdrLogoHome").src = LOGO + encodeURIComponent(TH.logo);
   document.getElementById("hdrLogoAway").src = LOGO + encodeURIComponent(TA.logo);
   document.getElementById("hdrTeamHome").textContent = TH.name;
