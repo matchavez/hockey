@@ -446,6 +446,8 @@
     <div id="sl-nzihl" class="grid g3"></div>
     <div class="league-label blue">NZWIHL</div>
     <div id="sl-nzwihl" class="grid g3"></div>
+    <div class="sec-head" style="margin:22px 0 14px"><span class="sec-txt"><h2 style="font-size:16px">Combined Starting Lineups <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Both teams' starting six on one rink &mdash; one link per scheduled game in the next few days, sourced from the season data warehouse</span></span></div>
+    <div id="sl-combined" class="grid g2"></div>
   </section>
 
   <!-- ROSTERS -->
@@ -727,6 +729,81 @@ const STALE_CUTOFF_DAYS = 2;
 const nzTodayISO = () => new Date().toLocaleDateString('en-CA', {timeZone:'Pacific/Auckland'});
 const daysPast = (isoDate, todayISO) =>
   Math.round((new Date(todayISO+'T00:00:00Z') - new Date((isoDate||'').slice(0,10)+'T00:00:00Z')) / 86400000);
+
+// Combined Starting Lineups — schedule-driven links (Prompt 11). Deliberately
+// sourced from nzihl-season-data's `upcoming` field, NOT boxscores.json like
+// every other schedule-driven section on this page: `upcoming` already
+// covers the whole season with no lookahead cap and is keyed by teamID, so
+// no ALIASES name-matching workaround is needed (same reasoning as
+// team/index.html's schedule widget, the other consumer of this field —
+// see nzihl_season_data_warehouse.md). teamID->slug/name/logo is its own
+// small map (mirrors the README's REG table) rather than reusing the
+// NZIHL/NZWIHL name arrays above, because `upcoming` entries carry raw
+// esportsdesk names ("Red Devils", and NZWIHL's "Dunedin Thunder" for the
+// WOMEN'S team) that don't exact-match those arrays' `nm` field.
+const SL_TEAMID = {
+  674110:{slug:"pure-nz-admirals",      name:"Pure NZ Admirals",      logo:"Pure-NZ-Admirals-2000x2000.png"},
+  675633:{slug:"canterbury-red-devils", name:"Canterbury Red Devils", logo:"Red Devils 2000x2000r.png"},
+  675634:{slug:"dunedin-thunder",       name:"Dunedin Thunder",       logo:"Dunedin_Thunder.png"},
+  675635:{slug:"skycity-stampede",      name:"SkyCity Stampede",      logo:"Skycity Stampede 2000x2000.png"},
+  674109:{slug:"botany-swarm",          name:"Botany Swarm",          logo:"Botany Swarm 2000x2000.png"},
+  675636:{slug:"auckland-steel",        name:"Auckland Steel",        logo:"Auckland-Steel-White.png"},
+  675637:{slug:"canterbury-inferno",    name:"Canterbury Inferno",    logo:"Inferno-White.png"},
+  675638:{slug:"dunedin-thunder-women", name:"Dunedin Thunder Women", logo:"thunder-women-white.png"},
+  675639:{slug:"wakatipu-wild",         name:"Wakatipu Wild",         logo:"Wakatipu-wild-white.png"},
+};
+// Portal's usual lookahead window (its other schedule-driven sections get
+// the same effect via the upstream roster pipeline's in_core_window flag,
+// which this warehouse field doesn't carry — see nzihl_roster_schedule_pipeline.md's
+// "4-day PDF window"). daysPast() is negative for future dates, so "within
+// the next N days" is -N <= daysPast <= 0.
+const SL_WINDOW_DAYS = 4;
+async function loadCombinedLineups(){
+  const el = document.getElementById('sl-combined');
+  if(!el) return;
+  try{
+    const [nzihl, nzwihl] = await Promise.all(["nzihl","nzwihl"].map(lg =>
+      fetch(`https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/${lg}.json`, {cache:"no-store"})
+        .then(r => r.ok ? r.json() : null).catch(()=>null)));
+    const todayISO = nzTodayISO();
+    const games = [];
+    [["NZIHL", nzihl], ["NZWIHL", nzwihl]].forEach(([label, d]) => {
+      if(d && Array.isArray(d.upcoming)) d.upcoming.forEach(g => games.push({...g, league: label}));
+    });
+    const fresh = games
+      .filter(g => { const dp = daysPast(g.date, todayISO); return dp <= 0 && dp >= -SL_WINDOW_DAYS; })
+      .sort((a,b) => (a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+    if(!fresh.length){
+      el.innerHTML = `<div class="game card" style="opacity:.55"><div class="day">No games in the next ${SL_WINDOW_DAYS} days</div>
+        <div class="match">Check back closer to the next fixture</div></div>`;
+      return;
+    }
+    const fmtDay = iso => { try{ return new Date(iso+'T00:00:00').toLocaleDateString('en-NZ',
+      {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }catch(_){ return iso; } };
+    const fmtTime = hhmm => { if(!hhmm) return ''; const [h,m]=String(hhmm).split(':').map(Number);
+      if(Number.isNaN(h)||Number.isNaN(m)) return ''; const h12=((h+11)%12)+1;
+      return `${h12}:${String(m).padStart(2,'0')}${h>=12?'pm':'am'}`; };
+    // Verified against a real fixture (2026-07-14): `upcoming`'s `home`/`away`
+    // keys are the game's true home/away sides (not just "listed first") —
+    // home goes in the graphic's home= param and renders on the rink's left,
+    // matching every other consumer's away-@-home convention on this page.
+    el.innerHTML = fresh.map(g => {
+      const hi = SL_TEAMID[g.home.teamID], ai = SL_TEAMID[g.away.teamID];
+      const when = `${g.league} · ${fmtDay(g.date)}${g.time ? ' · ' + fmtTime(g.time) : ''}`;
+      const awayLg = ai ? `<img class="mlg" loading="lazy" src="${logoUrl({logo:ai.logo})}" alt="">` : '';
+      const homeLg = hi ? `<img class="mlg" loading="lazy" src="${logoUrl({logo:hi.logo})}" alt="">` : '';
+      const inner = `<div class="day">${when}</div>
+        <div class="match">${awayLg}${(ai&&ai.name)||g.away.name} <span>@</span> ${homeLg}${(hi&&hi.name)||g.home.name}</div>
+        <div class="meta">Combined Starting Lineups →</div>`;
+      if(!hi || !ai) return `<div class="game card" style="opacity:.55">${inner}</div>`;
+      const url = `startinglineup/combined/?home=${hi.slug}&away=${ai.slug}`;
+      return `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`;
+    }).join('');
+  }catch(_){
+    el.innerHTML = `<p class="muted-note">Couldn't load combined lineups — try again shortly.</p>`;
+  }
+}
+loadCombinedLineups();
 
 // live latest roster releases
 async function loadRosters(repo, elId){

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta charset="utf-8">
+<title>NZIHL — Combined Starting Lineups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../../assets/fonts/InterVariable.woff2') format('woff2');}
+/* ============================================================
+   NZIHL / NZWIHL — COMBINED STARTING LINEUPS broadcast graphic.
+   URL: hockey/startinglineup/combined/?home=<slug>&away=<slug>
+        (evergreen, no game dependency — polls both teams' existing
+        /lineup/<slug> worker channels, same ones the per-team page and
+        control/ already read/write. No control-page or worker changes.)
+
+   1840x1000 opaque panel centered in a transparent 1920x1080 browser
+   source (same convention as startinglineup/ and summary/). Full
+   landscape rink drawn in SVG across the whole ice area — home defends
+   the left end, away the right. Twelve compact cards, 1-2-3-3-2-1
+   reading left to right: home GK / home LD+RD / home LF+CF+RF /
+   away LF+CF+RF / away LD+RD / away GK.
+
+   Card layout is a straightforward mirror: home's 3 columns (GK / D /
+   F, each column stacked vertically) sit in the left half, away's
+   mirror image sits in the right half. See memory.md /
+   nzihl_combined_lineups.md for the position-derivation notes (built by
+   affine-transposing startinglineup/'s single-team vertical layout into
+   a horizontal one, then nudging the two centre (CF) cards apart so
+   they don't collide across the centre seam).
+   ============================================================ */
+html,body{margin:0;padding:0;background:transparent;overflow:hidden;
+  font-family:Inter,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
+#frame{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:0 0;
+  background:transparent;pointer-events:none;}
+
+#panel{position:absolute;left:40px;top:40px;width:1840px;height:1000px;
+  border-radius:26px 26px 96px 96px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.55);
+  opacity:0;transform:translateY(26px);}
+#panel.show{animation:panelIn .55s cubic-bezier(.22,.9,.3,1) forwards;}
+@keyframes panelIn{to{opacity:1;transform:translateY(0);}}
+
+/* ---------- header (split home | title | away) ---------- */
+#hdr{position:absolute;left:0;top:0;right:0;height:128px;display:flex;}
+.hdrHalf{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:18px;position:relative;overflow:hidden;}
+.hdrHalf.home{padding:0 26px 0 32px;justify-content:flex-start;}
+.hdrHalf.away{padding:0 32px 0 26px;justify-content:flex-end;flex-direction:row-reverse;}
+.hdrLogo{width:72px;height:72px;object-fit:contain;flex:0 0 auto;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
+.hdrTeam{font-size:22px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;}
+.hdrHalf.away .hdrTeam{text-align:right;}
+#hdrTitle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-size:32px;font-weight:900;letter-spacing:.05em;color:#fff;white-space:nowrap;
+  text-shadow:0 2px 12px rgba(0,0,0,.65);z-index:2;pointer-events:none;}
+
+/* ---------- ice ---------- */
+#ice{position:absolute;left:0;top:128px;right:0;bottom:0;
+  background:linear-gradient(180deg,#d0dee9 0%,#dce8f0 40%,#c8d9e6 100%);}
+#rink{position:absolute;inset:0;width:100%;height:100%;}
+
+/* ---------- player cards (compact — 420x90, twelve on one canvas) ---------- */
+.card{position:absolute;width:420px;height:90px;border-radius:13px;display:flex;
+  align-items:stretch;overflow:hidden;box-shadow:0 26px 62px rgba(8,12,20,.85);
+  opacity:0;transform:scale(.86);}
+.card.show{animation:cardIn .5s ease-out forwards;}
+@keyframes cardIn{
+  0%{opacity:0;transform:scale(.86);}
+  55%{opacity:1;transform:scale(1.06);}
+  78%{transform:scale(.97);}
+  100%{opacity:1;transform:scale(1);}
+}
+/* .shown = static visible state for post-reveal swaps (opacity is NOT part of
+   the pulse animation, so it must come from the class, not `forwards`) */
+.card.shown{opacity:1;transform:scale(1);}
+.card.pulse{animation:cardPulse .45s ease;}
+@keyframes cardPulse{0%{transform:scale(1);}40%{transform:scale(1.045);}100%{transform:scale(1);}}
+.cphoto{flex:0 0 auto;width:90px;height:90px;position:relative;overflow:hidden;
+  background:#1b2029;}
+.cphoto img.head{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
+.cphoto .crest{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.cphoto .crest img{max-width:72%;max-height:72%;object-fit:contain;}
+.cphoto .sil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.cphoto .sil svg{width:66%;height:66%;opacity:.4;}
+.cbody{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
+  padding:0 14px;border-left:3px solid transparent;}
+.cnameline{white-space:normal;overflow-wrap:break-word;word-break:normal;line-height:1.06;}
+.cname{font-size:19px;font-weight:800;color:#fff;letter-spacing:.005em;}
+.cmetaline{display:flex;align-items:center;gap:7px;margin-top:4px;}
+.cnum{font-size:15px;font-weight:800;}
+.crole{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.62);}
+.cflag{font-size:10px;font-weight:800;letter-spacing:.02em;color:#0c1420;background:#f1f5f9;
+  border-radius:999px;padding:1px 6px;line-height:1.3;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.card.empty .cbody{opacity:.75;}
+.card.empty .cname{color:rgba(255,255,255,.5);}
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="panel">
+    <div id="hdr">
+      <div class="hdrHalf home">
+        <img class="hdrLogo" id="hdrLogoHome" alt="">
+        <div class="hdrTeam" id="hdrTeamHome"></div>
+      </div>
+      <div class="hdrHalf away">
+        <img class="hdrLogo" id="hdrLogoAway" alt="">
+        <div class="hdrTeam" id="hdrTeamAway"></div>
+      </div>
+      <div id="hdrTitle">STARTING LINEUPS</div>
+    </div>
+    <div id="ice">
+      <svg id="rink" viewBox="0 0 1840 872" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- full landscape rink: home defends the left end, away the right.
+             Same geometry family as startinglineup/'s half-rink (miter-joined
+             faceoff brackets, side-board-facing hash marks, solid dots),
+             rotated 90° and mirrored to both ends. -->
+
+        <!-- centre red line (vertical) + centre faceoff circle -->
+        <rect x="912" y="0" width="16" height="872" fill="#C8102E"/>
+        <circle cx="920" cy="436" r="170" fill="none" stroke="#1B5FAA" stroke-width="6" opacity=".85"/>
+        <circle cx="920" cy="436" r="11" fill="#1B5FAA" opacity=".85"/>
+
+        <!-- blue lines -->
+        <rect x="682" y="0" width="16" height="872" fill="#1B5FAA"/>
+        <rect x="1142" y="0" width="16" height="872" fill="#1B5FAA"/>
+        <!-- neutral-zone faceoff dots (centre-ice side of each blue line) -->
+        <circle cx="734" cy="230" r="10" fill="#C8102E" opacity=".9"/>
+        <circle cx="734" cy="642" r="10" fill="#C8102E" opacity=".9"/>
+        <circle cx="1106" cy="230" r="10" fill="#C8102E" opacity=".9"/>
+        <circle cx="1106" cy="642" r="10" fill="#C8102E" opacity=".9"/>
+
+        <!-- end-zone faceoff circles ×4 — one reusable template (translated
+             into place), transposed from the half-rink's corrected geometry:
+             hash marks now face the SIDE BOARDS (top+bottom of frame, since
+             the rink is landscape here), dot restraining brackets sit left
+             +right of the dot (toward/away centre ice). -->
+        <g stroke="#C8102E" stroke-width="6" fill="none" opacity=".9">
+          <circle cx="284" cy="230" r="158"/>
+          <circle cx="284" cy="642" r="158"/>
+          <circle cx="1556" cy="230" r="158"/>
+          <circle cx="1556" cy="642" r="158"/>
+        </g>
+        <g stroke="#C8102E" stroke-width="6" opacity=".9" fill="none" stroke-linejoin="miter">
+          <!-- template, repeated at each of the 4 circle centres (Tx,Ty):
+               hash ticks at (Tx∓22, Ty∓180..∓152); brackets at
+               (Tx∓60..∓21, Ty∓14..∓40) -->
+          <g transform="translate(284,230)">
+            <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
+            <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
+            <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
+            <path d="M 60,-14 L 21,-14 L 21,-40"/><path d="M 60,14 L 21,14 L 21,40"/>
+          </g>
+          <g transform="translate(284,642)">
+            <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
+            <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
+            <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
+            <path d="M 60,-14 L 21,-14 L 21,-40"/><path d="M 60,14 L 21,14 L 21,40"/>
+          </g>
+          <g transform="translate(1556,230)">
+            <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
+            <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
+            <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
+            <path d="M 60,-14 L 21,-14 L 21,-40"/><path d="M 60,14 L 21,14 L 21,40"/>
+          </g>
+          <g transform="translate(1556,642)">
+            <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
+            <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
+            <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
+            <path d="M 60,-14 L 21,-14 L 21,-40"/><path d="M 60,14 L 21,14 L 21,40"/>
+          </g>
+        </g>
+        <!-- solid faceoff dots -->
+        <circle cx="284" cy="230" r="13" fill="#C8102E" opacity=".9"/>
+        <circle cx="284" cy="642" r="13" fill="#C8102E" opacity=".9"/>
+        <circle cx="1556" cy="230" r="13" fill="#C8102E" opacity=".9"/>
+        <circle cx="1556" cy="642" r="13" fill="#C8102E" opacity=".9"/>
+
+        <!-- goal lines + creases + goal frames, both ends -->
+        <rect x="97" y="0" width="7" height="872" fill="#C8102E"/>
+        <rect x="1736" y="0" width="7" height="872" fill="#C8102E"/>
+        <path d="M 100 346 A 90 90 0 0 1 100 526 Z" fill="#7FB6E6" fill-opacity=".45" stroke="#C8102E" stroke-width="6"/>
+        <path d="M 1740 346 A 90 90 0 0 0 1740 526 Z" fill="#7FB6E6" fill-opacity=".45" stroke="#C8102E" stroke-width="6"/>
+        <rect x="52" y="390" width="26" height="92" rx="6" fill="none" stroke="#C8102E" stroke-width="5" opacity=".8"/>
+        <rect x="1762" y="390" width="26" height="92" rx="6" fill="none" stroke="#C8102E" stroke-width="5" opacity=".8"/>
+      </svg>
+
+      <!-- 1-2-3-3-2-1, left to right: home GK / home LD+RD / home LF+CF+RF /
+           away LF+CF+RF / away LD+RD / away GK. Positions derived by
+           transposing startinglineup/'s single-team layout (see header
+           comment); the two CF cards are nudged apart from the pure
+           transpose so they clear each other across the centre seam. -->
+      <div class="card" id="slot_home_GK" style="left:20px;  top:391px;"></div>
+      <div class="card" id="slot_home_LD" style="left:350px; top:235px;"></div>
+      <div class="card" id="slot_home_RD" style="left:350px; top:547px;"></div>
+      <div class="card" id="slot_home_LF" style="left:480px; top:125px;"></div>
+      <div class="card" id="slot_home_CF" style="left:480px; top:391px;"></div>
+      <div class="card" id="slot_home_RF" style="left:480px; top:657px;"></div>
+
+      <div class="card" id="slot_away_LF" style="left:940px; top:125px;"></div>
+      <div class="card" id="slot_away_CF" style="left:940px; top:391px;"></div>
+      <div class="card" id="slot_away_RF" style="left:940px; top:657px;"></div>
+      <div class="card" id="slot_away_LD" style="left:1070px;top:235px;"></div>
+      <div class="card" id="slot_away_RD" style="left:1070px;top:547px;"></div>
+      <div class="card" id="slot_away_GK" style="left:1400px;top:391px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================== CONFIG ====================== */
+let WORKER = "https://blue-butterfly-aa69.matchavez.workers.dev";
+const LOGO = "https://matchavez.com/nzihl-broadcast-assets/assets/logos/";
+const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-photos/main/";
+
+// Same TEAMS registry as startinglineup/index.html — including Mako, added
+// to both pages in the same commit (2026-07-14 QA finding: Mako was missing
+// from startinglineup/'s TEAMS entirely — see nzihl_graphics_qa_project.md).
+// Kept in sync manually, same accepted sibling-drift tradeoff as the rest
+// of the estate.
+const TEAMS = {
+ "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png"},
+ "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png"},
+ "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF"},
+ "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19"},
+ "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png"},
+ "auckland-mako":         {code:"MKO", league:"nzihl",  name:"Auckland Mako",         ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png"},
+ "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png"},
+ "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13"},
+ "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", textInk:"#FDAD19"},
+ "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png"},
+};
+
+const SLOTS = ["LF","CF","RF","LD","RD","GK"];
+const POS_LABEL = {LF:"LW", CF:"C", RF:"RW", LD:"LD", RD:"RD", GK:"G"};
+// reveal order (both sides simultaneously): goalies first, up through the
+// D, forwards last — symmetric extension of startinglineup/'s single-team
+// reveal order.
+const REVEAL_MS = {GK:380, LD:540, RD:660, LF:800, RF:920, CF:1060};
+
+const Q = new URLSearchParams(location.search);
+if(Q.get("worker")) WORKER = Q.get("worker");
+const esc = s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const slugify = s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+
+const HOME_SLUG = slugify(Q.get("home")||"");
+const AWAY_SLUG = slugify(Q.get("away")||"");
+const TH = TEAMS[HOME_SLUG] || null;
+const TA = TEAMS[AWAY_SLUG] || null;
+// Bad/unknown slug for either param, or two teams from different leagues:
+// render nothing (transparent source) — same bad-slug convention as
+// startinglineup/.
+const VALID = !!(TH && TA && TH.league === TA.league);
+
+// Single JSON.parse of the already-URLSearchParams-decoded value — never
+// decodeURIComponent() it again (the "%-in-a-fact" double-decode bug,
+// see startinglineup/ + activity-banner/).
+function parsePreview(param){
+  try{ const v = Q.get(param); return v ? JSON.parse(v) : null; }catch(e){ return null; }
+}
+const PREVIEW_HOME = parsePreview("previewHome");
+const PREVIEW_AWAY = parsePreview("previewAway");
+
+/* ====================== SCALING (16:9-safe, symmetric centering) ====================== */
+function fitWindow(){
+  const s = Math.min(window.innerWidth/1920, window.innerHeight/1080);
+  const left = Math.max(0,(window.innerWidth  - 1920*s)/2);
+  const top  = Math.max(0,(window.innerHeight - 1080*s)/2);
+  const f = document.getElementById("frame");
+  f.style.transform = `translate(${left}px,${top}px) scale(${s})`;
+}
+window.addEventListener("resize", fitWindow); fitWindow();
+
+/* ====================== TEXT FIT (shrink, never ellipsis) ====================== */
+function fitLine(el, base, min){
+  const line = el.parentElement;
+  const MAX_LINE_H = 46; // px budget for the (smaller) compact card's name line
+  let size = base;
+  el.style.fontSize = size+"px";
+  while(size > min && line.scrollHeight > MAX_LINE_H){
+    size -= 1; el.style.fontSize = size+"px";
+  }
+}
+
+/* ====================== RENDER ====================== */
+const SIL_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="34" r="17" fill="#8a93a0"/>
+  <path d="M18 92 C18 66 34 58 50 58 C66 58 82 66 82 92 Z" fill="#8a93a0"/></svg>`;
+
+// Per-side render state, so home and away channels can never blank each
+// other out or get their FIRST_PAINT/updated_at tracking confused.
+function makeSide(key, T, slug){
+  return { key, T, slug, CUR:{}, FIRST_PAINT:true, LAST_UPDATED:null };
+}
+const SIDE_HOME = TH ? makeSide("home", TH, HOME_SLUG) : null;
+const SIDE_AWAY = TA ? makeSide("away", TA, AWAY_SLUG) : null;
+
+function playerKey(p){ return p ? [p.number,p.name,p.photo||""].join("|") : ""; }
+
+function renderSlot(side, slot, player, animate){
+  const el = document.getElementById(`slot_${side.key}_${slot}`);
+  if(!el) return;
+  const T = side.T, dark = T.dark, ink = T.ink, textInk = T.textInk || T.ink;
+  el.style.background = `linear-gradient(135deg, ${dark} 0%, ${dark} 78%, rgba(255,255,255,.07) 100%), ${dark}`;
+  let photoHtml;
+  if(player && player.photo){
+    photoHtml = `<img class="head" src="${esc(PHOTO_BASE+player.photo)}" alt=""
+      onerror="this.style.display='none';this.parentElement.querySelector('.crest').style.display='flex'">
+      <div class="crest" style="display:none"><img src="${esc(LOGO+encodeURIComponent(T.logo))}" alt=""></div>`;
+  } else if(player){
+    photoHtml = `<div class="crest" style="display:flex"><img src="${esc(LOGO+encodeURIComponent(T.logo))}" alt=""></div>`;
+  } else {
+    photoHtml = `<div class="sil">${SIL_SVG}</div>`;
+  }
+  el.className = "card" + (player ? "" : " empty");
+  el.innerHTML =
+    `<div class="cphoto">${photoHtml}</div>
+     <div class="cbody" style="border-left-color:${ink}">
+       <div class="cnameline">
+         <span class="cname">${player?esc(player.name):"&mdash;"}</span>
+       </div>
+       <div class="cmetaline">
+         ${player&&player.number!=null?`<span class="cnum" style="color:${textInk}">#${esc(player.number)}</span>`:""}
+         <span class="crole">${POS_LABEL[slot]}</span>
+         ${player&&(player.flag==="C"||player.flag==="A")?`<span class="cflag">${esc(player.flag)}</span>`:""}
+       </div>
+     </div>`;
+  const nameEl = el.querySelector(".cname");
+  if(animate){
+    el.style.animationDelay = REVEAL_MS[slot]+"ms";
+    void el.offsetWidth;               // force reflow so the animation restarts cleanly
+    el.classList.add("show");
+    setTimeout(()=>fitLine(nameEl, 19, 11), REVEAL_MS[slot]+40);
+  } else {
+    el.style.animationDelay = "0ms";
+    el.classList.add("shown");
+    void el.offsetWidth;               // restart the pulse cleanly
+    el.classList.add("pulse");
+    fitLine(nameEl, 19, 11);
+  }
+}
+
+function renderAllSide(side, state){
+  const slots = (state && state.slots) || {};
+  SLOTS.forEach(slot=>{
+    const p = slots[slot] || null;
+    const key = playerKey(p);
+    if(side.FIRST_PAINT){ renderSlot(side, slot, p, true); side.CUR[slot]=key; }
+    else if(side.CUR[slot] !== key){ renderSlot(side, slot, p, false); side.CUR[slot]=key; }
+  });
+  side.FIRST_PAINT = false;
+}
+
+/* ====================== DATA ====================== */
+// Same resilience contract as startinglineup/'s pollLineup(): a failed
+// fetch, a non-JSON reply (worker predates /lineup/), or a channel error
+// must never blank an on-air graphic — first load still paints all six
+// silhouettes for that side, and every later poll that fails just leaves
+// the last-good render in place. Each side's channel is independent, so
+// one team's bad channel can never blank the other team's six cards.
+async function pollSide(side){
+  try{
+    const r = await fetch(`${WORKER}/lineup/${side.slug}`, {cache:"no-store"});
+    const txt = await r.text();
+    let j; try{ j = JSON.parse(txt); }catch(e){ if(side.FIRST_PAINT) renderAllSide(side, null); return; }
+    if(j.error){ if(side.FIRST_PAINT) renderAllSide(side, null); return; }
+    if(j.updated_at === side.LAST_UPDATED && !side.FIRST_PAINT) return;
+    side.LAST_UPDATED = j.updated_at;
+    renderAllSide(side, j);
+  }catch(e){
+    if(side.FIRST_PAINT) renderAllSide(side, null);
+  }
+}
+
+/* ====================== INIT ====================== */
+function start(){
+  if(!VALID){ document.body.innerHTML = ""; return; }   // bad slug / cross-league pair: render nothing
+  document.title = TH.name + " vs " + TA.name + " — Starting Lineups";
+
+  const panel = document.getElementById("panel");
+  panel.style.background = "#0d0f13";
+  document.getElementById("hdr").querySelector(".hdrHalf.home").style.background =
+    `linear-gradient(90deg, ${TH.dark} 0%, ${TH.dark} 72%, rgba(255,255,255,.06) 100%), ${TH.dark}`;
+  document.getElementById("hdr").querySelector(".hdrHalf.away").style.background =
+    `linear-gradient(270deg, ${TA.dark} 0%, ${TA.dark} 72%, rgba(255,255,255,.06) 100%), ${TA.dark}`;
+  document.getElementById("hdrLogoHome").src = LOGO + encodeURIComponent(TH.logo);
+  document.getElementById("hdrLogoAway").src = LOGO + encodeURIComponent(TA.logo);
+  document.getElementById("hdrTeamHome").textContent = TH.name;
+  document.getElementById("hdrTeamHome").style.color = TH.textInk || TH.ink;
+  document.getElementById("hdrTeamAway").textContent = TA.name;
+  document.getElementById("hdrTeamAway").style.color = TA.textInk || TA.ink;
+  panel.classList.add("show");
+
+  if(PREVIEW_HOME){
+    renderAllSide(SIDE_HOME, PREVIEW_HOME);   // control-page/QA preview: no polling for this side
+  } else {
+    pollSide(SIDE_HOME);
+    setInterval(()=>pollSide(SIDE_HOME), 10000);
+  }
+  if(PREVIEW_AWAY){
+    renderAllSide(SIDE_AWAY, PREVIEW_AWAY);
+  } else {
+    pollSide(SIDE_AWAY);
+    setInterval(()=>pollSide(SIDE_AWAY), 10000);
+  }
+}
+if(document.fonts && document.fonts.ready){ document.fonts.ready.then(start); } else { start(); }
+</script>
+</body>
+</html>

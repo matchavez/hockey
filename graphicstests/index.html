@@ -486,6 +486,36 @@ registerFamily({
   }
 });
 
+// ---- Combined Starting Lineups ----
+registerFamily({
+  id:"combined", title:"Combined Starting Lineups", w:1920, h:1080, scale:.16, settleMs:900,
+  teams:[
+    {slug:"nzihl-demo",  name:"Botany Swarm @ Pure NZ Admirals",   logo:"Pure-NZ-Admirals-2000x2000.png", home:"pure-nz-admirals", away:"botany-swarm"},
+    {slug:"nzwihl-demo", name:"Canterbury Inferno @ Auckland Steel", logo:"Auckland-Steel-White.png",       home:"auckland-steel",   away:"canterbury-inferno"},
+  ],
+  note:"startinglineup/combined/?home=<slug>&away=<slug>&previewHome=<json>&previewAway=<json> — one representative matchup per league (both sides fed the same synthetic 6-slot lineup) so all 12 cards render filled regardless of what's set on either team's live control channel.",
+  buildUrl: t => {
+    const mk=(n,name)=>({number:n,name:name});
+    const payload={slots:{GK:mk(1,"QA Goaltender"), LD:mk(2,"QA Left D"), RD:mk(3,"QA Right D"),
+      LF:mk(9,"QA Left Forward"), CF:mk(10,"QA Centre"), RF:mk(11,"QA Right Forward")}};
+    const p=encodeURIComponent(JSON.stringify(payload));
+    return `${BASE}startinglineup/combined/?home=${t.home}&away=${t.away}&previewHome=${p}&previewAway=${p}`;
+  },
+  check: async (doc) => {
+    const broken=brokenImages(doc);
+    const slots=["GK","LD","RD","LF","CF","RF"];
+    const empty=[];
+    ["home","away"].forEach(side=>slots.forEach(s=>{
+      const el=doc.getElementById(`slot_${side}_${s}`);
+      if(!el || el.classList.contains("empty")) empty.push(side+"_"+s);
+    }));
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) (headshot/crest/header logo)"};
+    if(empty.length) return {status:"warn", msg:empty.length+" slot(s) didn't fill from preview: "+empty.join(",")};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:"all 12 cards filled from preview payload (both sides)"};
+  }
+});
+
 // ---- Team page ----
 registerFamily({
   id:"team", title:"Team page", w:900, h:1300, scale:.32, settleMs:900,
