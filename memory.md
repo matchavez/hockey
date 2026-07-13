@@ -383,5 +383,35 @@ gracefully. Control page shares the L3 gate's `l3_gate_ok` localStorage key deli
 unlock covers both producer tools). Display cards use the same photo→crest→(silhouette when
 unset) fallback convention as the L3.
 
+## Playoff-readiness audit (2026-07-13)
+Full operational audit ahead of playoffs -- see `playoff-readiness.md` at repo root for the full
+findings table. Changes made in this repo:
+
+- **Overlay regression guard** added to all 5 live pollers (`scorebug/`, `scorebug-l3/`,
+  `activity-banner/`, `ticker/`, `summary/`): each tracks the last-accepted goal/pen counts (or
+  score+event counts for ticker/summary) and skips a tick entirely if a new read comes back LOWER
+  than the last good value -- defends against esportsdesk's documented short/incomplete-200
+  flakiness corrupting the event baseline or flashing a regressed score live. Verified live in
+  Chrome (gameid 2519943) by monkey-patching each page's own `parse()` in the console to return a
+  truncated result and confirming the guard state / on-screen render didn't move.
+- **`scripts/check-surname-overrides.js`** + **`.github/workflows/check-consistency.yml`**: the
+  SURNAME_OVERRIDES map is duplicated across all 5 overlay files above (grown from a previously
+  documented 4 to 5 when scorebug-l3 was created 2026-07-12 -- nobody updated the tracking memory
+  at the time). This CI check diffs the literal across all 5 on every push and fails loudly on
+  drift, rather than consolidating 5 already-live independently-iterated pages into a shared
+  module 3 weeks before playoffs.
+- **`preflight/index.html`**: added `checkSeasonData()` (nzihl-season-data freshness, both
+  leagues) and `checkPhotoManifest()` (nzihl-player-photos manifest.json freshness, >10-day warn
+  threshold matching its weekly cadence). Previously only boxscores.json/stats.json/control
+  channels were checked.
+- **`.github/workflows/force-pages-build.yml`** (new): POSTs `/pages/builds` on every push to
+  main so this repo's well-documented "Pages doesn't always auto-build" gotcha (see Process
+  gotchas above) never depends on someone remembering the manual trick. Verified via the Actions
+  API -- ran green and visibly queued a follow-on Pages build.
+- **Bug found in a SIBLING repo, not this one:** `nzihl-broadcast-assets/summary/worker.js`'s CORS
+  allowlist never included `schedules.cfm`/`stats_hockey.cfm` -- this is why preflight's
+  "leaders"/"schedule" system cards and the club board's FINAL-status chip have always failed
+  (403 from the Worker itself, not esportsdesk). Fixed there; needs Mat's `wrangler deploy`.
+
 ## Sync note
 Keep this file and README.md in sync with every meaningful change. If they drift, flag it to Mat and get approval before publishing the sync rather than doing it silently.
