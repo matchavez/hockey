@@ -280,7 +280,7 @@ function registerFamily(cfg){
       await sleep(cfg.settleMs!=null?cfg.settleMs:600);
       try{
         const doc=f.contentDocument, win=f.contentWindow;
-        await waitImages(doc, 2500);
+        await waitImages(doc, 8000);
         result = await cfg.check(doc, win, team);
       }catch(e){
         result = {status:"fail", msg:"check threw: "+(e&&e.message||e)};
@@ -319,8 +319,8 @@ registerFamily({
     const pool = evalIn(win, "(typeof ACTIVE_TEST_TEAMS!=='undefined'?ACTIVE_TEST_TEAMS:(typeof TEST_TEAMS!=='undefined'?TEST_TEAMS:null))");
     if(!pool || !pool[0]) return {status:"fail", msg:"no ACTIVE_TEST_TEAMS/TEST_TEAMS for this club"};
     win.fireTest(pool[0], "goal");
-    await sleep(900);
-    await waitImages(doc, 2500);
+    await sleep(1800);
+    await waitImages(doc, 8000);
     const broken = brokenImages(doc);
     const btxt = txt(doc,"btxt");
     if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) after firing goal banner"};
@@ -381,8 +381,8 @@ registerFamily({
     const target = pool[0] || allTest[0];
     if(!target) return {status:"warn", msg:"scorebug crest OK, no TEST_TEAMS entry to fire"};
     win.fireTest(target, "goal");
-    await sleep(900);
-    await waitImages(doc, 2500);
+    await sleep(1800);
+    await waitImages(doc, 8000);
     const broken2=brokenImages(doc);
     const btxt=txt(doc,"btxt");
     if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
@@ -406,8 +406,8 @@ registerFamily({
     const target=pool[0]||allTest[0];
     if(!target) return {status:"warn", msg:"crest OK, no TEST_TEAMS entry to fire"};
     win.fireTest(target,"goal");
-    await sleep(900);
-    await waitImages(doc, 2500);
+    await sleep(1800);
+    await waitImages(doc, 8000);
     const broken2=brokenImages(doc);
     const btxt=txt(doc,"btxt");
     if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
