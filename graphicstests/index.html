@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta charset="utf-8">
+<title>Broadcast Graphics QA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../assets/fonts/InterVariable.woff2') format('woff2');}
+/* ============================================================
+   NZIHL / NZWIHL — BROADCAST GRAPHICS QA (producer tool, NOT an overlay)
+   Sibling to hockey/preflight/ — Pre-Flight answers "will the DATA resolve
+   tonight?" (worker/manifest/pipeline health). This page answers "does each
+   GRAPHIC actually RENDER correctly, right now, for every club?" by loading
+   the real overlay URLs in real iframes (using each page's own ?test=1 /
+   ?preview= harnesses where available) and checking the rendered DOM for
+   broken images, empty/placeholder text, and layout overflow.
+   ============================================================ */
+:root{--bg:#0d0f13;--card:#14171d;--line:#242a33;--txt:#dfe4ea;--dim:#8a93a0;
+      --ok:#36d399;--warn:#f5b942;--bad:#ef5b5b;--acc:#7db2ff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font:400 15px/1.5 Inter,-apple-system,"Segoe UI",sans-serif;
+     padding:28px 30px 60px;-webkit-font-smoothing:antialiased;}
+h1{font-size:24px;font-weight:800;letter-spacing:.01em;}
+h1 small{color:var(--dim);font-weight:500;font-size:14px;margin-left:10px;}
+h2{font-size:15px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;
+   margin:32px 0 4px;display:flex;align-items:center;gap:10px;}
+h2 .fam-note{text-transform:none;letter-spacing:0;font-weight:500;color:#5d6570;font-size:12.5px;}
+h2 .famstat{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:7px;background:rgba(138,147,160,.12);color:var(--dim);}
+.subhead{color:#5d6570;font-size:13px;margin:2px 0 12px;max-width:900px;}
+#topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px;}
+button{font:600 12.5px Inter,sans-serif;color:#fff;background:#1b2028;border:1px solid #333a44;
+       border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap;}
+button:hover{background:#232a35;border-color:#4a5562;}
+button:disabled{opacity:.45;cursor:default;}
+button.primary{background:#1c3a5e;border-color:#2f5f8f;}
+button.primary:hover{background:#234a75;}
+button.run{margin-left:auto;}
+#summary{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 6px;}
+.sumchip{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;}
+.sumchip .n{font-size:17px;margin-right:5px;}
+.grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:6px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;
+      width:340px;flex:0 0 auto;}
+.card .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.card .hd img{width:22px;height:22px;object-fit:contain;flex:0 0 auto;}
+.card .hd .nm{font-weight:700;font-size:13.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chip{display:inline-block;font-size:11px;font-weight:800;border-radius:7px;padding:2.5px 8px;
+      letter-spacing:.03em;white-space:nowrap;}
+.chip.pass{background:rgba(54,211,153,.14);color:var(--ok);}
+.chip.warn{background:rgba(245,185,66,.15);color:var(--warn);}
+.chip.fail{background:rgba(239,91,91,.15);color:var(--bad);}
+.chip.idle{background:rgba(138,147,160,.12);color:var(--dim);}
+.chip.run{background:rgba(125,178,255,.15);color:var(--acc);}
+.thumbwrap{position:relative;overflow:hidden;border-radius:8px;background:#000;margin-bottom:8px;}
+.thumbwrap iframe{border:0;transform-origin:top left;pointer-events:none;}
+.thumbwrap .noframe{display:flex;align-items:center;justify-content:center;color:#444;font-size:11px;height:100%;}
+.card .msg{font-size:12px;color:var(--dim);line-height:1.45;min-height:32px;}
+.card .btns{display:flex;gap:6px;margin-top:8px;}
+.card .btns button, .card .btns a.btn{font-size:11.5px;padding:5px 9px;}
+a.btn{font:600 11.5px Inter,sans-serif;color:#fff;background:#1b2028;border:1px solid #333a44;
+      border-radius:8px;padding:5px 9px;cursor:pointer;text-decoration:none;display:inline-block;}
+a.btn:hover{background:#232a35;border-color:#4a5562;}
+.asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:9px;}
+.asset-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;}
+.asset-card .t{font-weight:700;font-size:13px;margin-bottom:3px;}
+.asset-card .d{color:var(--dim);font-size:11.5px;}
+#foot{margin-top:30px;color:var(--dim);font-size:12.5px;}
+#foot a{color:var(--acc);}
+.pill-row{margin-bottom:4px;}
+.pill-row a{color:var(--acc);text-decoration:none;font-size:13px;margin-right:14px;}
+.pill-row a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="pill-row"><a href="../">&larr; Portal</a><a href="../preflight/">Pre-Flight (data/pipeline health) &#8599;</a></div>
+<h1>Broadcast Graphics QA <small id="now"></small></h1>
+<div class="subhead">Loads each overlay's real URL in a live iframe (using its own <code>?test=1</code>/<code>?preview=</code>
+  harness where one exists) and checks the rendered DOM for broken images, empty or placeholder
+  (undefined/NaN) text, and layout overflow — a PASS here means the graphic actually looks right for
+  that club, not just that the data resolved. Heavier per-club checks are opt-in (click Run) so the page
+  doesn't hammer the worker/esportsdesk on every load.</div>
+<div id="topbar">
+  <button class="primary" id="runAll">▶ Run everything</button>
+  <button id="rerunAssets">↻ Re-check static assets</button>
+</div>
+<div id="summary"></div>
+
+<h2>Static assets <span class="famstat" id="fs-assets"></span></h2>
+<div class="subhead">Standings PNGs, DVD Bounce loops, UP-NEXT graphics — checked directly (no iframe needed), auto-runs on load.</div>
+<div id="assets-standings" class="asset-grid" style="margin-bottom:10px"></div>
+<div id="assets-dvd" class="asset-grid" style="margin-bottom:10px"></div>
+<div id="assets-upnext" class="asset-grid"></div>
+
+<div id="families"></div>
+
+<div id="foot">
+  Same worker/CDN endpoints the overlays themselves use. Nothing here writes to the live control
+  channel except the explicit L3/Starting-Lineup <code>?preview=</code> checks, which render locally
+  in the test iframe only — they never touch another producer's live state.
+  Docs: <a href="https://github.com/matchavez/hockey#readme" target="_blank" rel="noopener">repo README</a>.
+</div>
+
+<script>
+document.getElementById("now").textContent = new Date().toLocaleString();
+
+/* ====================== shared constants ====================== */
+const BASE = "https://matchavez.com/hockey/";
+const ASSETS = "https://matchavez.com/nzihl-broadcast-assets";
+const LOGO = ASSETS + "/assets/logos/";
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+const TEAMS = [
+ {slug:"pure-nz-admirals",      name:"Pure NZ Admirals",      code:"ADM", league:"nzihl",  logo:"Pure-NZ-Admirals-2000x2000.png", dvd:"PureNZAdmirals",      dvdzip:"pure_nz_admirals_dvd.zip",      up:"Pure NZ Admirals"},
+ {slug:"botany-swarm",          name:"Botany Swarm",          code:"BSW", league:"nzihl",  logo:"Botany Swarm 2000x2000.png",     dvd:"BotanySwarm",         dvdzip:"botany_swarm_dvd.zip",          up:"Botany Swarm"},
+ {slug:"skycity-stampede",      name:"SkyCity Stampede",      code:"SCS", league:"nzihl",  logo:"Skycity Stampede 2000x2000.png", dvd:"SkyCityStampede",     dvdzip:"skycity_stampede_dvd.zip",      up:"SkyCity Stampede"},
+ {slug:"dunedin-thunder",       name:"Dunedin Thunder",       code:"DUN", league:"nzihl",  logo:"Dunedin_Thunder.png",             dvd:"DunedinThunder",      dvdzip:"dunedin_thunder_dvd.zip",       up:"Dunedin Thunder"},
+ {slug:"canterbury-red-devils", name:"Canterbury Red Devils", code:"CRD", league:"nzihl",  logo:"Red Devils 2000x2000r.png",      dvd:"CanterburyRedDevils", dvdzip:"canterbury_red_devils_dvd.zip", up:"Red Devils"},
+ {slug:"auckland-mako",         name:"Auckland Mako",         code:"MKO", league:"nzihl",  logo:"Auckland Mako 2000x2000.png",    dvd:"AucklandMako",        dvdzip:"auckland_mako_dvd.zip",         up:"Auckland Mako", standDown:true},
+ {slug:"auckland-steel",        name:"Auckland Steel",        code:"AST", league:"nzwihl", logo:"Auckland-Steel-White.png",       dvd:"AucklandSteel",       dvdzip:"auckland_steel_dvd.zip",        up:"Auckland Steel"},
+ {slug:"canterbury-inferno",    name:"Canterbury Inferno",    code:"CIN", league:"nzwihl", logo:"Inferno-White.png",              dvd:"CanterburyInferno",   dvdzip:"canterbury_inferno_dvd.zip",    up:"Canterbury Inferno"},
+ {slug:"dunedin-thunder-women", name:"Dunedin Thunder Women", code:"DTW", league:"nzwihl", logo:"thunder-women-white.png",        dvd:"DunedinThunderWomen", dvdzip:"dunedin_thunder_women_dvd.zip", up:"Dunedin Thunder Women"},
+ {slug:"wakatipu-wild",         name:"Wakatipu Wild",         code:"WLD", league:"nzwihl", logo:"Wakatipu-wild-white.png",        dvd:"WakatipuWild",        dvdzip:"wakatipu_wild_dvd.zip",         up:"Wakatipu Wild"},
+];
+
+/* ====================== generic DOM check helpers ====================== */
+function imgOk(img){ return !!img && img.complete && img.naturalWidth>0; }
+function brokenImages(doc){ return Array.from(doc.images||[]).filter(im=>!imgOk(im)); }
+function txt(doc,id){ const el=doc.getElementById(id); return el?el.textContent.trim():""; }
+function hasPlaceholderText(doc){
+  const t=(doc.body&&doc.body.innerText)||"";
+  return /\bundefined\b|\bNaN\b|\[object Object\]/.test(t);
+}
+function overflowing(doc, sel){
+  return Array.from(doc.querySelectorAll(sel)).filter(el=>el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2);
+}
+
+/* ====================== iframe test harness ====================== */
+function makeFrame(url, w, h){
+  const f=document.createElement("iframe");
+  f.src=url; f.width=w; f.height=h;
+  f.style.width=w+"px"; f.style.height=h+"px"; f.style.border="0";
+  f.style.position="fixed"; f.style.left="-99999px"; f.style.top="0";
+  document.body.appendChild(f);
+  return f;
+}
+function waitLoad(f, timeoutMs){
+  return new Promise(res=>{
+    let done=false;
+    f.addEventListener("load",()=>{ if(!done){done=true;res(true);} });
+    setTimeout(()=>{ if(!done){done=true;res(false);} }, timeoutMs||9000);
+  });
+}
+function freeze(f){
+  // Stops further live polling (worker/esportsdesk fetches) so a frozen thumbnail
+  // doesn't keep costing network/API calls in the background — the already-rendered
+  // DOM stays visible, only NEW fetches from here on are swallowed.
+  try{ f.contentWindow.fetch=()=>Promise.reject(new Error("gqa: frozen after check")); }catch(e){}
+}
+function placeThumb(container, f, nativeW, nativeH, scale){
+  const wrap=document.createElement("div");
+  wrap.className="thumbwrap";
+  wrap.style.width=Math.round(nativeW*scale)+"px";
+  wrap.style.height=Math.round(nativeH*scale)+"px";
+  f.style.position="absolute"; f.style.left="0"; f.style.top="0";
+  f.style.transform="scale("+scale+")";
+  wrap.appendChild(f);
+  container.appendChild(wrap);
+}
+
+/* ====================== card rendering ====================== */
+const SUMMARY_TOTALS={pass:0,warn:0,fail:0};
+function renderSummary(){
+  const el=document.getElementById("summary");
+  el.innerHTML =
+    `<div class="sumchip" style="color:var(--ok)"><span class="n">${SUMMARY_TOTALS.pass}</span>PASS</div>`+
+    `<div class="sumchip" style="color:var(--warn)"><span class="n">${SUMMARY_TOTALS.warn}</span>WARN</div>`+
+    `<div class="sumchip" style="color:var(--bad)"><span class="n">${SUMMARY_TOTALS.fail}</span>FAIL</div>`;
+}
+renderSummary();
+function bumpSummary(status, delta){
+  if(SUMMARY_TOTALS[status]==null) return;
+  SUMMARY_TOTALS[status]+=delta; renderSummary();
+}
+
+function makeCard(grid, team){
+  const card=document.createElement("div"); card.className="card";
+  card.innerHTML=`
+    <div class="hd"><img src="${LOGO}${encodeURIComponent(team.logo)}" alt=""><span class="nm">${esc(team.name)}</span><span class="chip idle st">idle</span></div>
+    <div class="thumbslot"></div>
+    <div class="msg">Not yet run.</div>
+    <div class="btns"></div>`;
+  grid.appendChild(card);
+  return card;
+}
+function setCardStatus(card, prevStatus, status, msg, urlForOpen, retest){
+  if(prevStatus!==status){
+    if(prevStatus && SUMMARY_TOTALS[prevStatus]!=null) bumpSummary(prevStatus,-1);
+    if(SUMMARY_TOTALS[status]!=null) bumpSummary(status,1);
+  }
+  const chip=card.querySelector(".st");
+  chip.className="chip st "+status;
+  chip.textContent=status.toUpperCase();
+  card.querySelector(".msg").textContent=msg;
+  const btns=card.querySelector(".btns");
+  btns.innerHTML="";
+  if(urlForOpen){
+    const a=document.createElement("a"); a.className="btn"; a.href=urlForOpen; a.target="_blank"; a.rel="noopener";
+    a.textContent="open ↗"; btns.appendChild(a);
+  }
+  if(retest){
+    const b=document.createElement("button"); b.textContent="↻ re-test"; b.onclick=retest; btns.appendChild(b);
+  }
+  return status;
+}
+
+/* ====================== family runner ====================== */
+// cfg: {id, title, note, w, h, scale, teams (default TEAMS), buildUrl(team), settleMs, check(doc,win,team)->{status,msg}}
+const FAMILIES=[];
+function registerFamily(cfg){
+  const wrap=document.createElement("div");
+  const teamsForFamily = cfg.teams || TEAMS;
+  wrap.innerHTML = `<h2>${esc(cfg.title)} <span class="famstat idle" id="fs-${cfg.id}">idle</span>
+      <button class="run" id="run-${cfg.id}">▶ Run (${teamsForFamily.length})</button></h2>
+    <div class="subhead">${cfg.note||""}</div>
+    <div class="grid" id="grid-${cfg.id}"></div>`;
+  document.getElementById("families").appendChild(wrap);
+  const grid=wrap.querySelector(".grid");
+  const famStat=wrap.querySelector(".famstat");
+  const cards=new Map();
+  teamsForFamily.forEach(t=>cards.set(t.slug,{card:makeCard(grid,t),status:null}));
+
+  async function runOne(team){
+    const rec=cards.get(team.slug);
+    rec.status=setCardStatus(rec.card, rec.status, "run", "running…", null, null);
+    const url=cfg.buildUrl(team);
+    const f=makeFrame(url, cfg.w, cfg.h);
+    const loaded=await waitLoad(f, 9000);
+    let result;
+    if(!loaded){
+      result={status:"fail", msg:"iframe never fired load (timed out after 9s)"};
+    } else {
+      await sleep(cfg.settleMs!=null?cfg.settleMs:600);
+      try{
+        const doc=f.contentDocument, win=f.contentWindow;
+        result = await cfg.check(doc, win, team);
+      }catch(e){
+        result = {status:"fail", msg:"check threw: "+(e&&e.message||e)};
+      }
+    }
+    // thumbnail: keep the rendered frame visible (frozen) in the card
+    const slot=rec.card.querySelector(".thumbslot");
+    slot.innerHTML="";
+    freeze(f);
+    placeThumb(slot, f, cfg.w, cfg.h, cfg.scale);
+    rec.status=setCardStatus(rec.card, rec.status, result.status, result.msg, url, ()=>runOne(team));
+    return result.status;
+  }
+
+  async function runAll(){
+    document.getElementById("run-"+cfg.id).disabled=true;
+    famStat.className="famstat run"; famStat.textContent="running…";
+    let p=0,w=0,fl=0;
+    for(const t of teamsForFamily){
+      const s=await runOne(t);
+      if(s==="pass")p++; else if(s==="warn")w++; else fl++;
+      famStat.textContent=`${p} pass · ${w} warn · ${fl} fail (${p+w+fl}/${teamsForFamily.length})`;
+    }
+    famStat.className="famstat "+(fl?"fail":w?"warn":"pass");
+    document.getElementById("run-"+cfg.id).disabled=false;
+  }
+  document.getElementById("run-"+cfg.id).onclick=runAll;
+  FAMILIES.push({id:cfg.id, runAll});
+}
+
+/* ====================== FAMILY DEFINITIONS ====================== */
+
+// ---- Activity Banner (goal/penalty test harness baked into the page) ----
+registerFamily({
+  id:"banner", title:"Activity Banner", w:1920, h:1080, scale:.16, settleMs:1100,
+  note:"activity-banner/?team=<slug>&test=1 — fires that club's own goal banner via the page's built-in fireTest() harness, no live game required.",
+  buildUrl: t => `${BASE}activity-banner/?team=${t.slug}&test=1`,
+  check: async (doc, win) => {
+    if(typeof win.fireTest!=="function") return {status:"fail", msg:"test harness missing — fireTest() not found (page structure may have changed)"};
+    const pool = win.ACTIVE_TEST_TEAMS || win.TEST_TEAMS;
+    if(!pool || !pool[0]) return {status:"fail", msg:"no ACTIVE_TEST_TEAMS/TEST_TEAMS for this club"};
+    win.fireTest(pool[0], "goal");
+    await sleep(900);
+    const broken = brokenImages(doc);
+    const btxt = txt(doc,"btxt");
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) after firing goal banner"};
+    if(!btxt) return {status:"warn", msg:"banner text empty after fireTest — check render timing"};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text (undefined/NaN) visible: \""+btxt.slice(0,70)+"\""};
+    return {status:"pass", msg:"goal banner rendered: \""+btxt.slice(0,80)+"\""};
+  }
+});
+
+// ---- Player Lower Thirds (rendered via Activity Banner's #l3, driven by ?preview=) ----
+registerFamily({
+  id:"l3", title:"Player Lower Thirds", w:1920, h:1080, scale:.16, settleMs:900,
+  note:"activity-banner/?team=<slug>&preview=<json> — the actual on-air L3 graphic lives inside Activity Banner; this drives it with a synthetic player payload instead of needing a live control-channel fire.",
+  buildUrl: t => {
+    const payload={player:{team_code:t.code, name:"QA Test Player", number:9, role:"skater", position:"F"}, fact:"QA smoke-test fact line for layout checking.", include_fact:true};
+    return `${BASE}activity-banner/?team=${t.slug}&preview=${encodeURIComponent(JSON.stringify(payload))}`;
+  },
+  check: async (doc) => {
+    const broken=brokenImages(doc);
+    const name=txt(doc,"l3name"), stat=txt(doc,"l3stat");
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) in L3"};
+    if(!name) return {status:"warn", msg:"l3name empty — preview payload may not have rendered"};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible in L3"};
+    const of=overflowing(doc, "#l3name,#l3stat,#l3fact");
+    if(of.length) return {status:"warn", msg:"text overflow in "+of.map(e=>"#"+e.id).join(",")};
+    return {status:"pass", msg:"L3 rendered: \""+name+"\" · "+(stat||"(no stat line)")};
+  }
+});
+
+// ---- Ticker ----
+registerFamily({
+  id:"ticker", title:"Ticker", w:1920, h:1080, scale:.16, settleMs:1400,
+  note:"ticker/?team=<slug>&test=1 — feeds a real prior game (2519940) through the live parser so the ticker has real events to lay out, while ?team= drives that club's scorebug crest/colour.",
+  buildUrl: t => `${BASE}ticker/?team=${t.slug}&test=1`,
+  check: async (doc) => {
+    await sleep(300);
+    const broken=brokenImages(doc);
+    const track=doc.getElementById("track");
+    const nItems = track ? track.children.length : 0;
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) (crest/bug likely)"};
+    if(!nItems) return {status:"warn", msg:"ticker track has 0 items — demo game may not have resolved"};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:nItems+" ticker item(s) laid out, crest loaded"};
+  }
+});
+
+// ---- Scorebug (+ its own goal/penalty banner test harness) ----
+registerFamily({
+  id:"scorebug", title:"Scorebug", w:1920, h:1080, scale:.16, settleMs:1100,
+  note:"scorebug/?team=<slug>&test=1 — persistent scorebug crest/colour for that club, plus its own fireTest() goal/penalty banner harness.",
+  buildUrl: t => `${BASE}scorebug/?team=${t.slug}&test=1`,
+  check: async (doc, win, team) => {
+    const broken1=brokenImages(doc);
+    if(broken1.length) return {status:"fail", msg:broken1.length+" broken image(s) in persistent scorebug (crest/logo)"};
+    if(typeof win.fireTest!=="function") return {status:"warn", msg:"scorebug crest OK, but goal/pen fireTest() harness missing"};
+    const pool = (win.TEST_TEAMS||[]).filter(x=>x.abbr===team.code);
+    const target = pool[0] || (win.TEST_TEAMS||[])[0];
+    if(!target) return {status:"warn", msg:"scorebug crest OK, no TEST_TEAMS entry to fire"};
+    win.fireTest(target, "goal");
+    await sleep(900);
+    const broken2=brokenImages(doc);
+    const btxt=txt(doc,"btxt");
+    if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
+    if(!btxt) return {status:"warn", msg:"scorebug crest OK, but banner text empty after fireTest"};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible: \""+btxt.slice(0,70)+"\""};
+    return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\""};
+  }
+});
+
+// ---- Scorebug + Player L3 (combined live page) ----
+registerFamily({
+  id:"scorebugl3", title:"Scorebug + Player L3", w:1920, h:1080, scale:.16, settleMs:1100,
+  note:"scorebug-l3/?team=<slug>&test=1 — same combined page used behind the Christchurch Singular scorebug; checks crest/colour plus the goal/penalty banner harness.",
+  buildUrl: t => `${BASE}scorebug-l3/?team=${t.slug}&test=1`,
+  check: async (doc, win, team) => {
+    const broken1=brokenImages(doc);
+    if(broken1.length) return {status:"fail", msg:broken1.length+" broken image(s) in persistent scorebug"};
+    if(typeof win.fireTest!=="function") return {status:"warn", msg:"crest OK, fireTest() harness missing"};
+    const pool=(win.TEST_TEAMS||[]).filter(x=>x.abbr===team.code);
+    const target=pool[0]||(win.TEST_TEAMS||[])[0];
+    if(!target) return {status:"warn", msg:"crest OK, no TEST_TEAMS entry to fire"};
+    win.fireTest(target,"goal");
+    await sleep(900);
+    const broken2=brokenImages(doc);
+    const btxt=txt(doc,"btxt");
+    if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
+    if(!btxt) return {status:"warn", msg:"crest OK, banner text empty after fireTest"};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\""};
+  }
+});
+
+// ---- Live Game Summary ----
+registerFamily({
+  id:"summary", title:"Live Game Summary", w:1840, h:1000, scale:.17, settleMs:1600,
+  note:"summary/?team=<slug>&bg=opaque — resolves that club's live/next/most-recent game via the roster pipeline manifest (same LAST_GAME fallback as production, so it renders real data even between games). Auckland Mako has no 2026 games — its “no game found” message is the expected state, not a failure.",
+  buildUrl: t => `${BASE}summary/?team=${t.slug}&bg=opaque`,
+  check: async (doc, win, team) => {
+    const broken=brokenImages(doc);
+    const msg=txt(doc,"msg");
+    const nameA=txt(doc,"nameA"), nameB=txt(doc,"nameB");
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s)"};
+    if(!nameA && !nameB){
+      if(team.standDown) return {status:"pass", msg:"no game found — expected (stood down, no 2026 games)"};
+      return {status:"warn", msg:msg||"no matchup rendered (nameA/nameB empty) — check manifest/LAST_GAME fallback"};
+    }
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:esc(nameA)+" vs "+esc(nameB)};
+  }
+});
+
+// ---- Scoring Leaders ----
+registerFamily({
+  id:"leaders", title:"Scoring Leaders", w:1840, h:1000, scale:.17, settleMs:1600,
+  note:"scoringleaders/?team=<slug>&bg=opaque — same matchup-resolution/LAST_GAME fallback as Live Game Summary.",
+  buildUrl: t => `${BASE}scoringleaders/?team=${t.slug}&bg=opaque`,
+  check: async (doc, win, team) => {
+    const broken=brokenImages(doc);
+    const grid=doc.getElementById("grid");
+    const rows = grid ? grid.children.length : 0;
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s)"};
+    if(!rows){
+      if(team.standDown) return {status:"pass", msg:"no game found — expected (stood down, no 2026 games)"};
+      return {status:"warn", msg:"leaders grid is empty — check manifest/LAST_GAME fallback"};
+    }
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:rows+" leader row(s) rendered"};
+  }
+});
+
+// ---- Starting Lineup ----
+registerFamily({
+  id:"lineup", title:"Starting Lineup", w:1920, h:1080, scale:.16, settleMs:900,
+  note:"startinglineup/?team=<slug>&preview=<json> — synthetic 6-slot lineup so every card renders filled, regardless of what's actually set on the live control channel right now.",
+  buildUrl: t => {
+    const mk=(n,name)=>({number:n,name:name});
+    const payload={slots:{GK:mk(1,"QA Goaltender"), LD:mk(2,"QA Left D"), RD:mk(3,"QA Right D"),
+      LF:mk(9,"QA Left Forward"), CF:mk(10,"QA Centre"), RF:mk(11,"QA Right Forward")}};
+    return `${BASE}startinglineup/?team=${t.slug}&preview=${encodeURIComponent(JSON.stringify(payload))}`;
+  },
+  check: async (doc) => {
+    const broken=brokenImages(doc);
+    const slots=["GK","LD","RD","LF","CF","RF"];
+    const empty=slots.filter(s=>{const el=doc.getElementById("slot_"+s); return !el || el.classList.contains("empty");});
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) (headshot/crest/header logo)"};
+    if(empty.length) return {status:"warn", msg:empty.length+" slot(s) didn't fill from preview: "+empty.join(",")};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:"all 6 cards filled from preview payload"};
+  }
+});
+
+// ---- Team page ----
+registerFamily({
+  id:"team", title:"Team page", w:900, h:1300, scale:.32, settleMs:900,
+  note:"team/?team=<slug> — the club landing page (portal-style, not a broadcast canvas): ID card, copy-ready overlay URLs, and the live schedule widget.",
+  buildUrl: t => `${BASE}team/?team=${t.slug}`,
+  check: async (doc) => {
+    const broken=brokenImages(doc);
+    const idcard=txt(doc,"idcard");
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s)"};
+    if(!idcard) return {status:"fail", msg:"#idcard didn't render — team may not have resolved from the ?team= slug"};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:"ID card + copy-URLs rendered"};
+  }
+});
+
+// ---- League / Standings page ----
+registerFamily({
+  id:"league", title:"League page", w:900, h:1300, scale:.32, settleMs:1200,
+  teams:[{slug:"nzihl",name:"NZIHL",logo:"league/NZIHL-icon.png",league:"nzihl"},{slug:"nzwihl",name:"NZWIHL",logo:"league/NZWIHL-icon.png",league:"nzwihl"}],
+  note:"league/?league=nzihl|nzwihl — standings image, This Weekend fixtures, club grid, roster links.",
+  buildUrl: t => `${BASE}league/?league=${t.slug}`,
+  check: async (doc) => {
+    const broken=brokenImages(doc);
+    const grid=txt(doc,"games-grid");
+    if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) (standings PNG or club crest)"};
+    if(grid.indexOf("Loading fixtures")>=0) return {status:"warn", msg:"fixtures grid stuck on \"Loading…\" — manifest fetch may have failed"};
+    if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    return {status:"pass", msg:"standings + fixtures rendered"};
+  }
+});
+
+/* ====================== STATIC ASSET CHECKS (no iframe, auto-run) ====================== */
+const GH="https://api.github.com/repos/matchavez/nzihl-broadcast-assets";
+async function ghJSON(u){ const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }
+function loadImg(src){ return new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src+"?v="+Date.now(); }); }
+function assetCard(container, title){
+  const d=document.createElement("div"); d.className="asset-card";
+  d.innerHTML=`<div class="t">${esc(title)} <span class="chip idle" style="margin-left:4px">checking…</span></div><div class="d"></div>`;
+  container.appendChild(d); return d;
+}
+function setAsset(card, status, detail){
+  card.querySelector(".chip").className="chip "+status;
+  card.querySelector(".chip").textContent=status.toUpperCase();
+  card.querySelector(".d").textContent=detail;
+}
+
+async function checkStandings(){
+  const grid=document.getElementById("assets-standings"); grid.innerHTML="";
+  const files=[
+    ["NZIHL 1920×1080","NZIHL_Standings.png",1920,1080],
+    ["NZIHL 1840×1000","NZIHL_Standings_1840x1000.png",1840,1000],
+    ["NZWIHL 1920×1080","NZWIHL_Standings.png",1920,1080],
+    ["NZWIHL 1840×1000","NZWIHL_Standings_1840x1000.png",1840,1000],
+  ];
+  const results=await Promise.all(files.map(async ([label,file,w,h])=>{
+    const card=assetCard(grid,label);
+    const im=await loadImg(`${ASSETS}/${file}`);
+    if(!im){ setAsset(card,"fail","image failed to load"); return "fail"; }
+    if(im.naturalWidth!==w||im.naturalHeight!==h){ setAsset(card,"warn",`loaded but ${im.naturalWidth}×${im.naturalHeight} (expected ${w}×${h})`); return "warn"; }
+    setAsset(card,"pass",`${im.naturalWidth}×${im.naturalHeight} OK`);
+    return "pass";
+  }));
+  return results;
+}
+
+async function checkDVD(){
+  const grid=document.getElementById("assets-dvd"); grid.innerHTML="";
+  const results=await Promise.all(TEAMS.map(async t=>{
+    const card=assetCard(grid,t.name+" — DVD Bounce");
+    try{
+      const files=await ghJSON(`${GH}/contents/${encodeURIComponent("DVD Bounce Loops/"+t.dvd)}`);
+      const mp4s=files.filter(f=>/\.mp4$/i.test(f.name));
+      const zip=await ghJSON(`${GH}/contents/${encodeURIComponent("DVD Bounce Loops/zips/"+t.dvdzip)}`).catch(()=>null);
+      if(mp4s.length<4) { setAsset(card,"warn",mp4s.length+"/4 corner mp4s found"); return "warn"; }
+      if(!zip){ setAsset(card,"warn","4 mp4s OK, but zip missing: "+t.dvdzip); return "warn"; }
+      setAsset(card,"pass","4 corner mp4s + zip present");
+      return "pass";
+    }catch(e){ setAsset(card,"fail","folder not found / API error: "+(e.message||e)); return "fail"; }
+  }));
+  return results;
+}
+
+async function checkUpNext(){
+  const grid=document.getElementById("assets-upnext"); grid.innerHTML="";
+  const results=await Promise.all(TEAMS.map(async t=>{
+    const card=assetCard(grid,t.name+" — UP NEXT");
+    try{
+      const files=await ghJSON(`${GH}/contents/${encodeURIComponent("up-next/"+t.up)}`);
+      const pngs=files.filter(f=>/\.png$/i.test(f.name));
+      if(!pngs.length){ setAsset(card,"fail","folder exists but has 0 PNGs"); return "fail"; }
+      setAsset(card,"pass",pngs.length+" graphic(s) present");
+      return "pass";
+    }catch(e){ setAsset(card,"fail","folder not found / API error: "+(e.message||e)); return "fail"; }
+  }));
+  return results;
+}
+
+async function runStaticAssets(){
+  const fs=document.getElementById("fs-assets");
+  fs.className="famstat run"; fs.textContent="running…";
+  document.getElementById("rerunAssets").disabled=true;
+  const all=[].concat(
+    await checkStandings(),
+    await checkDVD(),
+    await checkUpNext(),
+  );
+  const p=all.filter(x=>x==="pass").length, w=all.filter(x=>x==="warn").length, fl=all.filter(x=>x==="fail").length;
+  Object.assign(SUMMARY_TOTALS, {pass:SUMMARY_TOTALS.pass+p, warn:SUMMARY_TOTALS.warn+w, fail:SUMMARY_TOTALS.fail+fl});
+  renderSummary();
+  fs.className="famstat "+(fl?"fail":w?"warn":"pass");
+  fs.textContent=`${p} pass · ${w} warn · ${fl} fail`;
+  document.getElementById("rerunAssets").disabled=false;
+}
+document.getElementById("rerunAssets").onclick=runStaticAssets;
+runStaticAssets();
+
+/* ====================== RUN EVERYTHING ====================== */
+document.getElementById("runAll").onclick = async ()=>{
+  document.getElementById("runAll").disabled=true;
+  for(const fam of FAMILIES){ await fam.runAll(); }
+  document.getElementById("runAll").disabled=false;
+};
+</script>
+</body>
+</html>
