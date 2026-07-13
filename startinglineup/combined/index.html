@@ -169,12 +169,12 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 .cbody{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
   padding:0 14px;border-left:4px solid transparent;}
 .cnameline{white-space:normal;overflow-wrap:break-word;word-break:normal;line-height:1.08;}
-.cname{font-size:35px;font-weight:800;color:#fff;letter-spacing:.005em;}
+.cname{font-size:31.5px;font-weight:800;color:#fff;letter-spacing:.005em;}
 .cmetaline{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px;}
-.cnum{font-size:26px;font-weight:800;}
-.crole{font-size:22px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+.cnum{font-size:23.4px;font-weight:800;}
+.crole{font-size:19.8px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
   color:rgba(255,255,255,.62);}
-.cflag{font-size:14px;font-weight:800;letter-spacing:.02em;color:#0c1420;background:#f1f5f9;
+.cflag{font-size:12.6px;font-weight:800;letter-spacing:.02em;color:#0c1420;background:#f1f5f9;
   border-radius:999px;padding:2px 8px;line-height:1.3;box-shadow:0 3px 8px rgba(0,0,0,.5);}
 .card.empty .cbody{opacity:.75;}
 .card.empty .cname{color:rgba(255,255,255,.5);}
@@ -284,17 +284,17 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
            comment); the two CF cards are nudged apart from the pure
            transpose so they clear each other across the centre seam. -->
       <div class="card" id="slot_home_LF" style="left:500px; top:68.5px;"></div>
-      <div class="card" id="slot_home_LD" style="left:20px;  top:68.5px;"></div>
+      <div class="card" id="slot_home_LD" style="left:30px;  top:78.5px;"></div>
       <div class="card" id="slot_home_GK" style="left:20px;  top:368.5px;"></div>
       <div class="card" id="slot_home_CF" style="left:500px; top:368.5px;"></div>
-      <div class="card" id="slot_home_RD" style="left:20px;  top:668.5px;"></div>
+      <div class="card" id="slot_home_RD" style="left:30px;  top:658.5px;"></div>
       <div class="card" id="slot_home_RF" style="left:500px; top:668.5px;"></div>
 
       <div class="card" id="slot_away_LF" style="left:950px; top:68.5px;"></div>
-      <div class="card" id="slot_away_LD" style="left:1430px;top:68.5px;"></div>
+      <div class="card" id="slot_away_LD" style="left:1420px;top:78.5px;"></div>
       <div class="card" id="slot_away_GK" style="left:1430px;top:368.5px;"></div>
       <div class="card" id="slot_away_CF" style="left:950px; top:368.5px;"></div>
-      <div class="card" id="slot_away_RD" style="left:1430px;top:668.5px;"></div>
+      <div class="card" id="slot_away_RD" style="left:1420px;top:658.5px;"></div>
       <div class="card" id="slot_away_RF" style="left:950px; top:668.5px;"></div>
     </div>
   </div>
@@ -330,8 +330,9 @@ const TEAMS = {
  "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          lines:["BOTANY","SWARM"],       ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png", hdrAccent:"#F7AF28", hdrLine2:"#F7BA40"},
  "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", lines:["CANTERBURY","RED DEVILS"], ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF", hdrAccent:"#DC0000", hdrLine2:"#F02626"},
  "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
- "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", hdrAccent:"#0C1B3A", hdrLine2:"#FAC805"},
- // ^ hdrLine2 deliberately overridden to Stampede Yellow (#FAC805, the club's own
+ "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", hdrAccent:"#FAC805", hdrLine2:"#FAC805"},
+ // ^ hdrLine2 AND hdrAccent deliberately overridden to Stampede Yellow (#FAC805,
+ // the club's own
  // primary per the Style Guide hex cheat sheet) INSTEAD of overlay.py's navy
  // `name` value -- Mat's explicit ask, this graphic only, not a fix to
  // overlay.py itself. overlay.py's navy fill + white stroke2 was tuned to
@@ -450,13 +451,13 @@ function renderSlot(side, slot, player, animate){
     el.style.animationDelay = REVEAL_MS[slot]+"ms";
     void el.offsetWidth;               // force reflow so the animation restarts cleanly
     el.classList.add("show");
-    setTimeout(()=>fitLine(nameEl, 35, 15), REVEAL_MS[slot]+40);
+    setTimeout(()=>fitLine(nameEl, 31.5, 13.5), REVEAL_MS[slot]+40);
   } else {
     el.style.animationDelay = "0ms";
     el.classList.add("shown");
     void el.offsetWidth;               // restart the pulse cleanly
     el.classList.add("pulse");
-    fitLine(nameEl, 35, 15);
+    fitLine(nameEl, 31.5, 13.5);
   }
 }
 
