@@ -19,7 +19,6 @@ on:
       - "ticker/index.html"
       - "lowerthirds/index.html"
       - "scoringleaders/index.html"
-      - "scoringleaders/ab-test.html"
       - "scripts/check-surname-overrides.js"
   pull_request:
   workflow_dispatch: {}

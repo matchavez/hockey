@@ -31,7 +31,6 @@ const PAREN_FILES = [
   ...SURNAME_FILES,
   "lowerthirds/index.html",
   "scoringleaders/index.html",
-  "scoringleaders/ab-test.html",
 ];
 
 function checkGroup(label, files, re) {

@@ -40,10 +40,6 @@
   header.hero::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:4px;
     background:linear-gradient(90deg, var(--p1) 0%, var(--p1) 60%, var(--p2) 85%, var(--p3) 100%); }
   .hero .wrap{ position:relative; }
-  .crumbs{ display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:16px; flex-wrap:wrap; }
-  .crumbs a{ padding:4px 10px; border-radius:999px; border:1px solid var(--line); transition:color .15s,border-color .15s,background .15s; }
-  .crumbs a:hover{ color:var(--txt); border-color:#3a3f47; background:var(--panel); }
-  .crumbs span{ opacity:.5; }
 
   .idcard{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
   .logo-plate{ width:148px; height:148px; border-radius:26px; flex:0 0 auto;
@@ -130,7 +126,6 @@
 
 <header class="hero">
   <div class="wrap">
-    <div class="crumbs"><a href="../">&larr; Portal</a><span>/</span><span id="crumb-league">League</span></div>
     <div id="idcard" class="idcard"></div>
   </div>
 </header>
@@ -231,7 +226,6 @@ if(!league){
   document.documentElement.style.setProperty('--p3', th.p3);
   document.title = `${league} — NZ Hockey Broadcast Assets`;
   document.getElementById('favicon').href = `${ASSETS}/assets/league/${league}-icon.png`;
-  document.getElementById('crumb-league').textContent = league;
 
   document.getElementById('idcard').innerHTML = `
     <div class="logo-plate"><img src="${leagueLogoUrl(league)}" alt=""></div>

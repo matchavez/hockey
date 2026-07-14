@@ -736,3 +736,33 @@ not a special case needing its own handling.
 
 See also [[nzihl_combined_lineups]] for the `?team=` resolution logic itself (unchanged here —
 this is purely a new link surface, no logic changes to `startinglineup/combined/`).
+
+## Repo litter sweep (2026-07-14)
+
+Mat asked for a general tidy-up pass after the redesign v2 promotion, plus explicit permission
+to remove `redesign2/` whenever. Full-repo grep-first-then-delete pass, everything confirmed
+unreferenced before removal:
+
+- **`redesign2/`** (the preview that produced the production redesign) — deleted. Its own
+  `nav.js`/`index.html`/`team/`/`ops/` were a self-contained near-copy, nothing else in the repo
+  pointed at it.
+- **`redesign-preview.html`** (the abandoned v1 zone-IA prototype, superseded 2026-07-14 by v2 —
+  see [[hockey-portal-redesign]]) — deleted. Not linked from anywhere; its git history stays
+  recoverable if ever needed.
+- **`scoringleaders/ab-test.html`** (design-experiment page for the Scoring Leaders pill layout —
+  README/memory both flagged "ask before deleting once a variant is picked and promoted"; the
+  variant was picked and shipped 2026-07-09) — deleted after confirming with Mat. Removed its
+  entry from `scripts/check-surname-overrides.js`'s `PAREN_FILES` list and from
+  `.github/workflows/check-consistency.yml`'s trigger paths (both referenced the now-gone file);
+  re-ran the check script locally to confirm it still passes clean across the remaining files.
+- **`league/index.html`**'s standalone `.crumbs` div (`← Portal / League`, plus its CSS and the
+  JS line setting `#crumb-league`'s text) — removed. This was the "slightly redundant" leftover
+  flagged in [[hockey-portal-redesign]]'s production-promotion note: `nav.js`'s shared top bar
+  already has a Portal link and underlines the current page, so the page's own crumbs were pure
+  duplication. Nothing else on `league/` touched (its own `NZIHL`/`NZWIHL` team-array copy and
+  drift risk vs `window.RD2` are unchanged — that's a refactor, not litter, left for a future
+  pass).
+- **`box/` was already retired** (2026-07-12, see below) — confirmed nothing new links it.
+- Swept for other litter classes (`.orig`/`.bak`/`.tmp`, `.DS_Store`, orphaned scripts, stray
+  workflow references) — found none beyond the items above. `warehouse-audit.md` and
+  `playoff-readiness.md` at repo root are intentional audit-report deliverables, not litter.
