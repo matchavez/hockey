@@ -172,9 +172,11 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    top:123px -- so it can't bleed into or affect the halves' blur at all.
    Sits after .hdrAccent in the DOM with the same z-index:1, so it paints
    on top and blurs the stripe's own hard colour split; still below
-   #hdrTitle (z-index:2). */
+   #hdrTitle (z-index:2). Blur radius 20px->32px per Mat's ask for a
+   smoother transition -- #hdrSeamBlur's radius is untouched (20px), this
+   bump is scoped to the accent stripe only. */
 #hdrAccentBlur{position:absolute;left:880px;top:123px;width:80px;height:5px;z-index:1;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);pointer-events:none;}
+  backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);pointer-events:none;}
 /* font-weight 700 (was 600), font-size 50px (was 48px, ~+5%) per Mat's
    2026-07-14 ask.
    2026-07-15: anchor shifted from dead-centre (50%) to 50% - 23px. Mat
