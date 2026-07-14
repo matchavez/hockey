@@ -159,11 +159,20 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    (dark gradient, e.g. maroon/navy), and Mat confirmed THIS box's result
    on the halves already looks right on its own -- don't touch it. The
    accent stripe now gets its OWN separate blur box, scoped to just its
-   5px band, immediately below. This box stays exactly as-is: full 128px
-   header height, blurs only what's visually behind it before .hdrAccent
-   and #hdrAccentBlur paint on top (both z-index:1, later in the DOM). */
+   5px band, immediately below. Full 128px header height, blurs only what's
+   visually behind it before .hdrAccent and #hdrAccentBlur paint on top
+   (both z-index:1, later in the DOM).
+   2026-07-16: this box had the SAME hard-edge problem #hdrAccentBlur had
+   (flagged with a screenshot -- a visible vertical seam at the box's own
+   left/right bounds, x=880/960, now obvious against the Stampede yellow/
+   navy matchup). Same fix applied: a mask-image feathering the box's own
+   edges (15%/85% stops) so the blur fades to nothing before the hard
+   clip instead of cutting off. Box position/width/radius all untouched. */
 #hdrSeamBlur{position:absolute;left:880px;top:0;width:80px;height:128px;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);pointer-events:none;}
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  mask-image:linear-gradient(to right,transparent 0%,black 15%,black 85%,transparent 100%);
+  -webkit-mask-image:linear-gradient(to right,transparent 0%,black 15%,black 85%,transparent 100%);
+  pointer-events:none;}
 /* 2026-07-16: the accent stripe (.hdrAccent, 5px tall at y=123..128) needs
    its own independent blur, separate from #hdrSeamBlur above -- it's a
    different colour pair (team accent colours, not the dark gradient
