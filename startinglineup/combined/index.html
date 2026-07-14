@@ -372,36 +372,42 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
              into place), transposed from the half-rink's corrected geometry:
              hash marks now face the SIDE BOARDS (top+bottom of frame, since
              the rink is landscape here), dot restraining brackets sit left
-             +right of the dot (toward/away centre ice). -->
+             +right of the dot (toward/away centre ice).
+             2026-07-16: all 4 moved 50px INWARD (toward centre ice) per
+             Mat's ask -- home pair cx 284->334, away pair cx 1556->1506.
+             cy (230/642) untouched. Circle, hash-mark/bracket group
+             (translate x), and solid dot all share the same cx per side,
+             so all three updated together to keep each circle's dot and
+             brackets concentric. -->
         <g stroke="#C8102E" stroke-width="6" fill="none" opacity=".9">
-          <circle cx="284" cy="230" r="158"/>
-          <circle cx="284" cy="642" r="158"/>
-          <circle cx="1556" cy="230" r="158"/>
-          <circle cx="1556" cy="642" r="158"/>
+          <circle cx="334" cy="230" r="158"/>
+          <circle cx="334" cy="642" r="158"/>
+          <circle cx="1506" cy="230" r="158"/>
+          <circle cx="1506" cy="642" r="158"/>
         </g>
         <g stroke="#C8102E" stroke-width="6" opacity=".9" fill="none" stroke-linejoin="miter">
           <!-- template, repeated at each of the 4 circle centres (Tx,Ty):
                hash ticks at (Tx∓22, Ty∓180..∓152); brackets at
                (Tx∓60..∓21, Ty∓14..∓40) -->
-          <g transform="translate(284,230)">
+          <g transform="translate(334,230)">
             <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
             <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
             <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
             <path d="M 60,-14 L 21,-14 L 21,-40"/><path d="M 60,14 L 21,14 L 21,40"/>
           </g>
-          <g transform="translate(284,642)">
+          <g transform="translate(334,642)">
             <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
             <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
             <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
             <path d="M 60,-14 L 21,-14 L 21,-40"/><path d="M 60,14 L 21,14 L 21,40"/>
           </g>
-          <g transform="translate(1556,230)">
+          <g transform="translate(1506,230)">
             <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
             <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
             <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
             <path d="M 60,-14 L 21,-14 L 21,-40"/><path d="M 60,14 L 21,14 L 21,40"/>
           </g>
-          <g transform="translate(1556,642)">
+          <g transform="translate(1506,642)">
             <line x1="-22" y1="-180" x2="-22" y2="-152"/><line x1="22" y1="-180" x2="22" y2="-152"/>
             <line x1="-22" y1="152" x2="-22" y2="180"/><line x1="22" y1="152" x2="22" y2="180"/>
             <path d="M -60,-14 L -21,-14 L -21,-40"/><path d="M -60,14 L -21,14 L -21,40"/>
@@ -409,10 +415,10 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
           </g>
         </g>
         <!-- solid faceoff dots -->
-        <circle cx="284" cy="230" r="13" fill="#C8102E" opacity=".9"/>
-        <circle cx="284" cy="642" r="13" fill="#C8102E" opacity=".9"/>
-        <circle cx="1556" cy="230" r="13" fill="#C8102E" opacity=".9"/>
-        <circle cx="1556" cy="642" r="13" fill="#C8102E" opacity=".9"/>
+        <circle cx="334" cy="230" r="13" fill="#C8102E" opacity=".9"/>
+        <circle cx="334" cy="642" r="13" fill="#C8102E" opacity=".9"/>
+        <circle cx="1506" cy="230" r="13" fill="#C8102E" opacity=".9"/>
+        <circle cx="1506" cy="642" r="13" fill="#C8102E" opacity=".9"/>
 
         <!-- goal lines + creases + goal frames, both ends -->
         <rect x="97" y="0" width="7" height="872" fill="#C8102E"/>
