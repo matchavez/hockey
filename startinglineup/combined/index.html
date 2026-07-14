@@ -578,19 +578,22 @@ const ADMIRALS_TEAM_ID = 674110, STAMPEDE_TEAM_ID = 675635;
 // lightness the naive way (uniformly scaling RGB toward black desaturates
 // warm hues into olive/brown). Derived this one differently to dodge that:
 // held saturation HIGH (95%, vs #FAC805's ~96%) while only moderately
-// dropping lightness (50%->44% HSL, hue unchanged ~47°) -- a deep amber/
-// gold rather than a muddy olive. Checked contrast against the header's
-// navy text (#1D3056, same colour used for the STAMPEDE line) via WCAG
-// relative luminance: #DBAD06 vs #1D3056 = ~6.2:1 (comfortably above the
-// 4.5:1 AA text minimum). Going darker than this starts to reproduce the
-// exact "navy text on navy-ish background reads hollow" problem the
-// original bright-yellow invert was built to avoid (verified -- a 34%-
-// lightness version only cleared ~3.6:1, too close for comfort). If this
-// tint needs reuse elsewhere, it isn't in the official hex cheat sheet
-// yet -- same situation as Swarm Rose/Admiral Blue (legibility tints
-// added ad hoc, formalised in the style guide later); flag to Mat before
-// treating it as brand-official outside this one override.
-const STAMPEDE_INVERT_BG = "#DBAD06", STAMPEDE_INVERT_TEXT = "#1D3056";
+// dropping lightness -- a deep amber/gold rather than a muddy olive.
+// 2026-07-16: Mat said the first pass (#DBAD06, 50%->44% HSL) "isn't
+// quite dark enough" -- dropped further to 38% HSL (same hue ~47°, same
+// 95% saturation) -> #BD9505. Contrast against the header's navy text
+// (#1D3056) via WCAG relative luminance: #BD9505 vs #1D3056 = ~4.64:1 --
+// still clears the 4.5:1 AA text minimum (comfortably clears the 3:1
+// large/bold-text minimum this headline actually needs), but this is
+// close to the floor -- the previous candidate at 34% lightness measured
+// ~3.6:1 and started reproducing the "navy text on navy-ish background
+// reads hollow" problem the whole invert was built to avoid. Don't push
+// this materially darker without re-checking contrast against #1D3056.
+// If this tint needs reuse elsewhere, it isn't in the official hex cheat
+// sheet yet -- same situation as Swarm Rose/Admiral Blue (legibility
+// tints added ad hoc, formalised in the style guide later); flag to Mat
+// before treating it as brand-official outside this one override.
+const STAMPEDE_INVERT_BG = "#BD9505", STAMPEDE_INVERT_TEXT = "#1D3056";
 function stampedeInvertSide(){
   if(!TH || !TA) return null;
   if(TH.id===STAMPEDE_TEAM_ID && TA.id===ADMIRALS_TEAM_ID) return "home";
