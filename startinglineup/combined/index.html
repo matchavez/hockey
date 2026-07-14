@@ -187,9 +187,25 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    registry (SkyCity Stampede / Wakatipu Wild both use #FAC805), so a
    too-strong blur likely blew out/haloed against it worse than the
    darker accents -- a gentler radius should read as a smooth fade
-   without that blown-out look. */
+   without that blown-out look.
+   2026-07-16 (later still): Mat screenshotted the actual problem -- it was
+   never the CENTRE seam (x=920, which now reads smooth); it's the box's
+   own LEFT/RIGHT edges (x=840 and x=1000) where #hdrAccentBlur's backdrop-
+   filter cuts off. Inside the box the colour blurs smoothly, but the box
+   boundary itself is a hard rectangular clip -- outside it the stripe is
+   perfectly sharp .hdrAccent colour, so the box edge reads as its own
+   thin seam (worse against yellow, the highest-luminance accent). No
+   amount of radius/width tuning fixes an inherently hard clip -- the
+   right tool is a mask that FEATHERS the box's own edges, so the blur
+   itself fades to nothing right at the boundary instead of cutting off.
+   mask-image: 15%/85% stops -> ~24px feather zone on each side of the
+   160px box (roomier than the 16px blur radius, so the fade-out finishes
+   before the hard edge). */
 #hdrAccentBlur{position:absolute;left:840px;top:123px;width:160px;height:5px;z-index:1;
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);pointer-events:none;}
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  mask-image:linear-gradient(to right,transparent 0%,black 15%,black 85%,transparent 100%);
+  -webkit-mask-image:linear-gradient(to right,transparent 0%,black 15%,black 85%,transparent 100%);
+  pointer-events:none;}
 /* font-weight 700 (was 600), font-size 50px (was 48px, ~+5%) per Mat's
    2026-07-14 ask.
    2026-07-15: anchor shifted from dead-centre (50%) to 50% - 23px. Mat
