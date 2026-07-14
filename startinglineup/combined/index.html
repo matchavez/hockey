@@ -251,10 +251,15 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    lines (hdrTeamL1/L2's -webkit-text-stroke:2px #08080A) per Mat's ask,
    after seeing it work well keeping SKYCITY legible on the Stampede
    invert's yellow background -- applied here so the headline gets the
-   same crisp edge against any background colour, not just yellow. */
+   same crisp edge against any background colour, not just yellow.
+   2026-07-16 (reverted): Mat said it was "a bit much" on this glowing
+   headline specifically -- the existing white-glow text-shadow already
+   does the legibility job here (unlike the flat team-name text, which had
+   no glow to fall back on), so the added hard black stroke was redundant/
+   heavy on top of it. Stroke removed, text-shadow glow-only treatment
+   restored. */
 #hdrTitle{position:absolute;left:calc(50% - 17px);top:50%;transform:translate(-50%,-50%);
   font-size:50px;font-weight:700;letter-spacing:.1875em;color:#fff;white-space:nowrap;
-  -webkit-text-stroke:2px #08080A;paint-order:stroke fill;
   text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
     0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
   z-index:2;pointer-events:none;}
