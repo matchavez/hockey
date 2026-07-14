@@ -676,7 +676,13 @@ alongside the existing schedule-driven "Combined Starting Lineups" grid — same
 pattern as every other Team Slugs section (Game Summary, Team Scoring Leaders, Activity Banner,
 Starting Lineup), via a new `combinedTeamCard()` function.
 
-**Not yet Chrome-verified live** (dry-run only, against real warehouse data) — worth a live
-round-trip check next session: load `startinglineup/combined/?team=pure-nz-admirals`, confirm it
-renders the Stampede/Admirals matchup with both `/lineup/<slug>` channels polling correctly, and
-spot-check the new portal grid's Open/Copy links.
+**Chrome-verified live post-deploy (same session):** `?team=pure-nz-admirals` renders the
+resolved Stampede(home)/Admirals(away) matchup exactly as the dry-run predicted, with both real
+`/lineup/<slug>` channels' live data (Admirals' six: Daigle C / Hayward Jones A / Sevenier /
+Mawson / Finlay, Stampede's partially-set six with silhouette placeholders for unset slots) —
+confirms the `/lineup/` polling and TEAMS rendering both work end-to-end off a resolved (not
+explicit) home/away pair. `?team=auckland-mako` renders a fully blank page (confirmed visually,
+no cards/rink/header) — the "no resolvable fixture" path degrades correctly. Explicit
+`?home=canterbury-red-devils&away=botany-swarm` regression-checked unchanged (real data,
+correct sides). Portal's new "Combined Starting Lineups Team Slugs" grid renders correctly under
+the existing schedule-driven grid, both coexisting without layout collision.
