@@ -230,8 +230,15 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    confirming -23px was right all along and the nudges were chasing a
    stale/cached render). Back to -23px, the mathematically-derived value
    from the measurement above -- do not nudge this further without a
-   fresh live measurement (not a cached screenshot) confirming drift. */
-#hdrTitle{position:absolute;left:calc(50% - 23px);top:50%;transform:translate(-50%,-50%);
+   fresh live measurement (not a cached screenshot) confirming drift.
+   2026-07-16 (live-verified): confirmed on the live page via the Range
+   API (not a screenshot) that -23px puts the gap's midpoint at x=919.99
+   of 1840 -- i.e. exactly centred on the seam, sub-pixel accurate.
+   2026-07-16 (captain's call): Mat asked to move it 6px right anyway as
+   a deliberate stylistic choice, not a correction -- anchor -23px ->
+   -17px. This is now off-centre from the seam ON PURPOSE; don't
+   "re-centre" it back to -23px without checking with Mat first. */
+#hdrTitle{position:absolute;left:calc(50% - 17px);top:50%;transform:translate(-50%,-50%);
   font-size:50px;font-weight:700;letter-spacing:.1875em;color:#fff;white-space:nowrap;
   text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
     0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
