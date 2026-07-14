@@ -218,8 +218,13 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    exactly: (920-23) - halfTotalWidth for the left edge, halfTotalWidth for
    the right edge, puts the gap's own midpoint at x≈920.0. If either word
    is ever changed, re-derive this constant (see comment) rather than
-   guessing. */
-#hdrTitle{position:absolute;left:calc(50% - 23px);top:50%;transform:translate(-50%,-50%);
+   guessing.
+   2026-07-16: nudged another 3px right per Mat's ask -- anchor -23px ->
+   -20px (less negative = shifts right). Purely a manual aesthetic tweak
+   layered on top of the derived -23px value above, not a re-derivation;
+   if "STARTING"/"LINEUPS" wording or size ever changes, re-derive from
+   the -23px baseline first, then re-apply this +3px on top. */
+#hdrTitle{position:absolute;left:calc(50% - 20px);top:50%;transform:translate(-50%,-50%);
   font-size:50px;font-weight:700;letter-spacing:.1875em;color:#fff;white-space:nowrap;
   text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
     0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
