@@ -118,8 +118,11 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    own TEAMS registry so the wording/line-breaks match exactly (e.g.
    "Dunedin Thunder Women" -> DUNEDIN / THUNDER, dropping "Women", same
    as the overlay). */
-/* 2026-07-15: logo +8% (72->78px) per Mat's ask. */
-.hdrLogo{width:78px;height:78px;object-fit:contain;flex:0 0 auto;
+/* 2026-07-15: logo +8% (72->78px) per Mat's ask.
+   2026-07-16: +~15% again (78->90px) per Mat's "all team logos" ask --
+   still fits comfortably inside the 128px header height (centered via
+   .hdrHalf's flex align-items), no other layout changes needed. */
+.hdrLogo{width:90px;height:90px;object-fit:contain;flex:0 0 auto;
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
 /* 2026-07-15: text treatment corrected to REPLICATE overlay.py's
    make_text_sprite(), not approximate it -- font-weight 700 (was 800,
@@ -283,7 +286,10 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
   background:#1b2029;}
 .cphoto img.head{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
 .cphoto .crest{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.cphoto .crest img{max-width:72%;max-height:72%;object-fit:contain;}
+/* 2026-07-16: crest (team-logo headshot fallback) +~15% per Mat's "all
+   team logos" ask -- 72%->83% of the 108x135 photo box, still centered
+   and well clear of the box edges. */
+.cphoto .crest img{max-width:83%;max-height:83%;object-fit:contain;}
 .cphoto .sil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
 .cphoto .sil svg{width:66%;height:66%;opacity:.4;}
 /* 2026-07-14: away cards mirror photo-then-text to text-then-photo (photo
