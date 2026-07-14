@@ -346,24 +346,24 @@ const assetCard = a => `
 
 const CHIP_EG = '<span class="chip blue">Evergreen URL</span>';
 document.getElementById('asset-grid').innerHTML = [
-  { title:"Activity Banner", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+  { title:"Activity Banner", chip:CHIP_EG, anchor:"#hl-banner", activeOnly:true,
     desc:"Transparent goal/penalty banner overlay, no scorebug — one static URL per club, paste as a browser source.",
     expand: slugList(bannerRow) },
-  { title:"Starting Lineup", chip:CHIP_EG, anchor:"#lineup", activeOnly:true,
+  { title:"Starting Lineup", chip:CHIP_EG, anchor:"#hl-lineup", activeOnly:true,
     desc:"Starting six on a half-rink — set on the control page, the browser-source graphic follows. Persists between games.",
     extra:`<div class="links" style="margin-top:0 0 4px"><a class="btn ext" target="_blank" rel="noopener" href="startinglineup/control/">Control Page — all teams</a></div>`,
     expand: slugList(lineupRow) },
-  { title:"Game Summary", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+  { title:"Game Summary", chip:CHIP_EG, anchor:"#hl-summary", activeOnly:true,
     desc:"Live scoring card (1840×1000-style). Per-club evergreen URL with black/opaque stage — on each team page." },
-  { title:"Team Scoring Leaders", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+  { title:"Team Scoring Leaders", chip:CHIP_EG, anchor:"#hl-leaders", activeOnly:true,
     desc:"Each team's top-3 point scorers, live + season form. Per-club evergreen URL — on each team page." },
-  { title:"Player Lower Thirds", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+  { title:"Player Lower Thirds", chip:CHIP_EG, anchor:"#hl-lowerthirds", activeOnly:true,
     desc:"Phone control page — tap a player, fire a stat+photo lower third through the Activity Banner already on air." },
-  { title:"Combined Starting Lineups", chip:CHIP_EG, anchor:"#lineup", activeOnly:true,
+  { title:"Combined Starting Lineups", chip:CHIP_EG, anchor:"#hl-lineup-combined", activeOnly:true,
     desc:"Both teams' starting six on one rink — each club's URL resolves its next fixture automatically." },
-  { title:"Ticker & Scorebug", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+  { title:"Ticker & Scorebug", chip:CHIP_EG, anchor:"#hl-ticker", activeOnly:true,
     desc:"Scorebug + scrolling recap ticker; Singular scorebug where wired. Per-club links on each team page." },
-  { title:"Up Next & DVD Loops", chip:"", anchor:"#packs", activeOnly:false,
+  { title:"Up Next & DVD Loops", chip:"", anchor:"#hl-packs", activeOnly:false,
     desc:"Downloadable graphics packs — matchup hero/lower-third overlays and seamless bouncing-logo MP4 loops (4 corners, 1080p50). Zips live on each team page." },
 ].map(assetCard).join('');
 

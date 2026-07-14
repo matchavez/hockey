@@ -147,6 +147,27 @@
     border-radius:20px; opacity:0; pointer-events:none; transition:all .2s ease; z-index:60; }
   #toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
 
+
+  /* ---------- SPOTLIGHT — jumped in from a portal crest link (?team=x#hl-key).
+     Dims every other section so the eye snaps straight to the right card,
+     then the target itself pulses a gold ring a few times before settling. */
+  .hl-dim{ transition:opacity .5s ease, filter .5s ease; opacity:.32; filter:saturate(.35) brightness(.82); }
+  .hl-spot{ position:relative; z-index:5; border-radius:14px; outline:3px solid transparent; outline-offset:3px;
+    animation:hlBurst 3.4s cubic-bezier(.2,.7,.2,1) 1 both; }
+  @keyframes hlBurst{
+    0%   { box-shadow:0 0 0 0 rgba(247,190,17,.95), 0 18px 46px rgba(247,190,17,.4); outline-color:var(--gold); transform:scale(1.018); }
+    8%   { box-shadow:0 0 0 14px rgba(247,190,17,0), 0 18px 46px rgba(247,190,17,.4); }
+    16%  { box-shadow:0 0 0 0 rgba(247,190,17,.85), 0 18px 46px rgba(247,190,17,.4); }
+    24%  { box-shadow:0 0 0 14px rgba(247,190,17,0), 0 18px 46px rgba(247,190,17,.4); }
+    32%  { box-shadow:0 0 0 0 rgba(247,190,17,.75), 0 18px 46px rgba(247,190,17,.35); }
+    42%  { box-shadow:0 0 0 16px rgba(247,190,17,0), 0 18px 46px rgba(247,190,17,.3); transform:scale(1.01); }
+    85%  { box-shadow:0 0 0 0 rgba(247,190,17,0), 0 18px 46px rgba(247,190,17,.18); outline-color:var(--gold); transform:scale(1.006); }
+    100% { box-shadow:0 0 0 0 rgba(247,190,17,0), 0 0 0 0 rgba(247,190,17,0); outline-color:transparent; transform:scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .hl-dim{ transition:none; }
+    .hl-spot{ animation:none; outline-color:var(--gold); box-shadow:0 0 0 6px rgba(247,190,17,.32); }
+  }
 </style>
 </head>
 <body>
@@ -283,8 +304,8 @@ if(!team){
   const l3Path        = `../lowerthirds/?team=${sl}`;
   const full = p => `https://matchavez.com/hockey/${p.replace(/^(\.\.\/)+/,'')}`;
 
-  const overlayCard = (title, sub, chip, openLinks) => `
-    <div class="card">
+  const overlayCard = (title, sub, chip, openLinks, hl) => `
+    <div class="card"${hl ? ` data-hl="${hl}"` : ''}>
       <h3>${title} ${chip||''}</h3>
       <p>${sub}</p>
       <div class="links">${openLinks}</div>
@@ -294,25 +315,25 @@ if(!team){
     overlayCard("Game Summary", "Live scoring card · 1840×1000-style.", '<span class="chip"><span class="dot"></span>Live</span>',
       `<a class="btn ext" target="_blank" rel="noopener" href="${summaryBlack}">Black</a>
        <a class="btn ext" target="_blank" rel="noopener" href="${summaryOpaque}">Opaque</a>
-       <a class="btn cp" data-copy="${full(summaryBlack)}">Copy</a>`),
+       <a class="btn cp" data-copy="${full(summaryBlack)}">Copy</a>`, "summary"),
     overlayCard("Team Scoring Leaders", "Each team's top-3 point scorers, live + season-form.", '<span class="chip"><span class="dot"></span>Live</span>',
       `<a class="btn ext" target="_blank" rel="noopener" href="${leadersBlack}">Black</a>
        <a class="btn ext" target="_blank" rel="noopener" href="${leadersOpaque}">Opaque</a>
-       <a class="btn cp" data-copy="${full(leadersBlack)}">Copy</a>`),
+       <a class="btn cp" data-copy="${full(leadersBlack)}">Copy</a>`, "leaders"),
     overlayCard("Activity Banner", "Transparent goal/penalty banner, no scorebug.", '<span class="chip"><span class="dot"></span>Live</span>',
       `<a class="btn ext" target="_blank" rel="noopener" href="${bannerPath}">Open</a>
-       <a class="btn cp" data-copy="${full(bannerPath)}">Copy</a>`),
+       <a class="btn cp" data-copy="${full(bannerPath)}">Copy</a>`, "banner"),
     overlayCard("Player Lower Thirds", "Phone control page — fires through the Activity Banner.", '<span class="chip blue">Phone</span>',
       `<a class="btn ext" target="_blank" rel="noopener" href="${l3Path}">Open</a>
-       <a class="btn cp" data-copy="${full(l3Path)}">Copy</a>`),
+       <a class="btn cp" data-copy="${full(l3Path)}">Copy</a>`, "lowerthirds"),
     overlayCard("Ticker Page", "Scorebug + scrolling recap ticker.", '<span class="chip"><span class="dot"></span>Live</span>',
       `<a class="btn ext" target="_blank" rel="noopener" href="${tickerPath}">Open</a>
-       <a class="btn cp" data-copy="${full(tickerPath)}">Copy</a>`),
+       <a class="btn cp" data-copy="${full(tickerPath)}">Copy</a>`, "ticker"),
     SCOREBUG_WIRED.has(sl)
       ? overlayCard("Scorebug", "Singular scorebug clip + bottom banner.", '<span class="chip"><span class="dot"></span>Live</span>',
           `<a class="btn ext" target="_blank" rel="noopener" href="${scorebugPath}">Open</a>
-           <a class="btn cp" data-copy="${full(scorebugPath)}">Copy</a>`)
-      : `<div class="card"><h3>Scorebug</h3><p class="muted-note">Not wired for this club yet — each club needs its own Singular output id. Ask Mat to fill it in before publishing.</p></div>`,
+           <a class="btn cp" data-copy="${full(scorebugPath)}">Copy</a>`, "ticker")
+      : `<div class="card" data-hl="ticker"><h3>Scorebug</h3><p class="muted-note">Not wired for this club yet — each club needs its own Singular output id. Ask Mat to fill it in before publishing.</p></div>`,
   ].join('');
 
   const upZip = `${ASSETS}/up-next/zips/${sl.replace(/-/g,'_')}_upnext.zip`;
@@ -343,7 +364,7 @@ if(!team){
 
     <section id="lineup">
       <div class="sec-head"><span class="sec-txt"><h2>Starting Lineup <span class="chip blue">Evergreen URL</span></h2><span class="sub">Starting six on a half-rink — live, set on the control page</span></span></div>
-      <div class="card" style="padding:10px">
+      <div class="card" style="padding:10px" data-hl="lineup">
         <div class="lineup-preview"><iframe src="${lineupPath}" title="${team.nm} starting lineup" loading="lazy"></iframe></div>
         <div class="links" style="margin-top:10px">
           <a class="btn ext" target="_blank" rel="noopener" href="${lineupPath}">Open</a>
@@ -352,7 +373,7 @@ if(!team){
         </div>
       </div>
       <div class="sec-head" style="margin:20px 0 12px"><span class="sec-txt"><h2 style="font-size:15px">Combined Starting Lineups <span class="chip blue">Evergreen URL</span></h2><span class="sub">Both teams' starting six on one rink — resolves ${team.nm}'s next fixture automatically</span></span></div>
-      <div class="card" style="padding:10px">
+      <div class="card" style="padding:10px" data-hl="lineup-combined">
         <div class="lineup-preview"><iframe src="${lineupCombined}" title="${team.nm} combined starting lineups" loading="lazy"></iframe></div>
         <div class="links" style="margin-top:10px">
           <a class="btn ext" target="_blank" rel="noopener" href="${lineupCombined}">Open</a>
@@ -381,9 +402,9 @@ if(!team){
     <section id="packs">
       <div class="sec-head"><img class="sec-thumb" src="${ASSETS}/thumbs/up_next.png" alt=""><span class="sec-txt"><h2>Graphics Packs</h2><span class="sub">Download the team pack, or browse the files</span></span></div>
       <div class="grid">
-        <div class="card"><h3>Up Next</h3><p>Hero &amp; lower-third overlays for this matchup slot.</p>
+        <div class="card" data-hl="packs"><h3>Up Next</h3><p>Hero &amp; lower-third overlays for this matchup slot.</p>
           <div class="links"><a class="btn dl" href="${upZip}">Zip</a><a class="btn gh" target="_blank" rel="noopener" href="${upBrowse}">Browse</a></div></div>
-        <div class="card"><h3>DVD Bounce Loop</h3><p>Seamless bouncing-logo MP4s, 4 corner variants (1080p50).</p>
+        <div class="card" data-hl="packs"><h3>DVD Bounce Loop</h3><p>Seamless bouncing-logo MP4s, 4 corner variants (1080p50).</p>
           <div class="links"><a class="btn dl" href="${dvdZip}">Zip</a><a class="btn gh" target="_blank" rel="noopener" href="${dvdBrowse}">Browse</a></div></div>
       </div>
     </section>
@@ -400,6 +421,25 @@ if(!team){
         </div>
       </div>
     </section>`;
+
+  /* Spotlight — arrived from a portal crest link carrying #hl-<key>. Dims
+     every OTHER top-level section briefly and pulses a gold ring around the
+     matching card(s) so the eye lands exactly where the click promised,
+     instead of just dumping the visitor at the top of a dense page. */
+  (function spotlightFromHash(){
+    const m = location.hash.match(/^#hl-(.+)$/);
+    if(!m) return;
+    const key = m[1];
+    const targets = [...document.querySelectorAll(`[data-hl="${key}"]`)];
+    if(!targets.length) return;
+    const keepSections = new Set(targets.map(t => t.closest('section')).filter(Boolean));
+    const allSections = [...document.querySelectorAll('#main > section')];
+    targets[0].scrollIntoView({behavior:'smooth', block:'center'});
+    allSections.forEach(s => { if(!keepSections.has(s)) s.classList.add('hl-dim'); });
+    requestAnimationFrame(() => targets.forEach(t => t.classList.add('hl-spot')));
+    setTimeout(() => allSections.forEach(s => s.classList.remove('hl-dim')), 1700);
+    setTimeout(() => targets.forEach(t => t.classList.remove('hl-spot')), 3600);
+  })();
 
   /* Live latest roster PDF for this club — matches the release asset (named
      <date>_<AWAYCODE>_at_<HOMECODE>.pdf) whose code belongs to this team.
