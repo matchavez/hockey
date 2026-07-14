@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Portal — redesigned 2026-07-14 (promoted from redesign2/ preview):
+     shared top bar (nav.js), Game Day merge w/ game-code pills, asset catalog
+     routing to team pages, Ops sub-portal at ops/. -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NZ Hockey Broadcast Assets</title>
-<meta name="description" content="Portal to NZIHL & NZWIHL broadcast assets — standings, rosters, Up Next graphics, DVD loops, brand.">
+<meta name="description" content="Portal to NZIHL & NZWIHL broadcast assets — standings, game-day graphics, rosters, loops and brand.">
 <link rel="icon" href="data:,">
 <style>
   @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('assets/fonts/InterVariable.woff2') format('woff2');}
-  @font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url('assets/fonts/InterVariable-Italic.woff2') format('woff2');}
   :root{
     --bg:#0a0b0d; --panel:#141619; --panel2:#1b1e22; --line:#2a2e34;
     --txt:#f3f4f6; --muted:#9aa3ad; --gold:#f7be11; --accent:#3aa0ff; --live:#2ecc71;
@@ -20,19 +20,13 @@
   html{ scroll-behavior:smooth; }
   body{ margin:0; background:var(--bg); color:var(--txt);
     font-family:Inter,-apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;
-    font-feature-settings:"ss01" 1,"ss02" 1;
-    line-height:1.5; }
+    font-feature-settings:"ss01" 1,"ss02" 1; line-height:1.5; }
   button,input{ font:inherit; font-feature-settings:inherit; }
   a{ color:inherit; text-decoration:none; }
   .wrap{ max-width:1080px; margin:0 auto; padding:0 16px; }
 
-  /* scroll progress — thin gold beam pinned to the very top */
-  #pbar{ position:fixed; top:0; left:0; height:2px; width:0; z-index:9;
-    background:linear-gradient(90deg,var(--gold),#ffd75e);
-    box-shadow:0 0 8px rgba(247,190,17,.5); }
-
-  /* hero — drifting rink-light wash */
-  header.hero{ padding:36px 0 24px; border-bottom:1px solid var(--line);
+  /* hero — much shorter than production; the drifting rink-light wash stays */
+  header.hero{ padding:22px 0 18px; border-bottom:1px solid var(--line);
     position:relative; overflow:hidden; }
   header.hero::before{ content:""; position:absolute; inset:-60% -20%; pointer-events:none;
     background:
@@ -41,96 +35,39 @@
     animation:drift 16s ease-in-out infinite alternate; }
   @keyframes drift{ from{ transform:translate3d(-2.5%,0,0) scale(1); }
     to{ transform:translate3d(2.5%,4%,0) scale(1.06); } }
-
-  /* full-page ice rink watermark — fixed behind all content, corner-of-arena perspective baked into the vectors */
-  .rink-bg{ position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.2; }
-  .rink-bg svg{ display:block; width:100%; height:100%; }
-  .hero .wrap{ position:relative; }
-  .pill-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-  .hero .home{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600;
-    color:var(--muted); margin-bottom:0; padding:4px 10px; border-radius:999px; border:1px solid var(--line);
-    transition:color .15s, border-color .15s, background .15s, box-shadow .2s; }
-  .hero .home:hover{ color:var(--txt); border-color:#3a3f47; background:var(--panel);
-    box-shadow:0 0 14px rgba(243,244,246,.07); }
+  .hero .wrap{ position:relative; display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; }
+  .hero .l{ min-width:0; flex:1 1 380px; }
   .eyebrow{ display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800;
-    letter-spacing:.18em; text-transform:uppercase; color:var(--gold); margin:0 0 6px; }
+    letter-spacing:.18em; text-transform:uppercase; color:var(--gold); margin:0 0 4px; }
   .eyebrow .sep{ width:26px; height:2px; border-radius:2px;
     background:linear-gradient(90deg,var(--gold),transparent); }
   .eyebrow #clock{ color:var(--muted); letter-spacing:.08em; font-weight:700; }
-  .hero h1{ font-size:clamp(24px,4.4vw,38px); font-weight:800; margin:0; letter-spacing:.005em;
+  .hero h1{ font-size:clamp(21px,3.6vw,30px); font-weight:800; margin:0; letter-spacing:.005em;
     background:linear-gradient(92deg,#fff 55%, rgba(247,190,17,.92));
     -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .hero .tag{ color:var(--muted); margin-top:7px; font-size:14px; max-width:640px; }
+  .hero .tag{ color:var(--muted); margin-top:4px; font-size:13px; max-width:640px; }
+  .hero .home{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
+    color:var(--muted); padding:4px 10px; border-radius:999px; border:1px solid var(--line);
+    margin-bottom:3px; transition:color .15s, border-color .15s, background .15s; }
+  .hero .home:hover{ color:var(--txt); border-color:#3a3f47; background:var(--panel); }
 
-  /* "This Weekend" chips — one per live series (any concurrent matchup), filled from boxscores.json */
-  .weekend-wrap{ display:none; margin-top:16px; }
-  .weekend-wrap.show{ display:block; }
-  .weekend-label{ font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase;
-    color:var(--muted); margin:0 0 8px; }
-  .next-chips{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; }
-  .next-chip{ display:none; align-items:center; gap:9px; padding:8px 15px;
-    border-radius:999px; border:1px solid rgba(247,190,17,.4); background:rgba(247,190,17,.06);
-    font-size:12.5px; font-weight:600; transition:box-shadow .2s, border-color .2s; }
-  .next-chip.show{ display:inline-flex; }
-  a.next-chip:hover{ border-color:rgba(247,190,17,.7); box-shadow:0 0 18px rgba(247,190,17,.22); }
-  .next-chip b{ color:var(--gold); font-size:10.5px; font-weight:800; letter-spacing:.12em; }
-  .next-chip .dot{ background:var(--gold); animation-name:pulse-gold; margin:0; }
-  @keyframes pulse-gold{ 0%,100%{ box-shadow:0 0 0 0 rgba(247,190,17,.5); }
-    50%{ box-shadow:0 0 0 5px rgba(247,190,17,0); } }
-  /* NZWIHL variant — same blue as hockeyrosters' .chip.NZWIHL (var(--accent), #3aa0ff) */
-  .next-chip.blue{ border-color:rgba(58,160,255,.4); background:rgba(58,160,255,.06); }
-  a.next-chip.blue:hover{ border-color:rgba(58,160,255,.7); box-shadow:0 0 18px rgba(58,160,255,.22); }
-  .next-chip.blue b{ color:var(--accent); }
-  .next-chip.blue .dot{ background:var(--accent); animation-name:pulse-blue; }
-  @keyframes pulse-blue{ 0%,100%{ box-shadow:0 0 0 0 rgba(58,160,255,.5); }
-    50%{ box-shadow:0 0 0 5px rgba(58,160,255,0); } }
-
-  .team-strip{ position:relative; z-index:6; background:rgba(10,11,13,.94); border-bottom:1px solid var(--line); }
-  .team-strip .wrap{ display:flex; align-items:center; gap:12px; padding:9px 16px; }
-  .team-strip .strip-title{ flex:0 0 auto; font-size:11px; font-weight:800; letter-spacing:.14em;
-    text-transform:uppercase; color:var(--muted); white-space:nowrap; }
-  .team-strip .strip-logos{ display:flex; align-items:center; gap:8px; overflow-x:auto; min-width:0;
-    scrollbar-width:none; -ms-overflow-style:none; }
-  .team-strip .strip-logos::-webkit-scrollbar{ display:none; }
-  .team-strip a{ flex:0 0 auto; display:flex; align-items:center; justify-content:center;
-    width:38px; height:38px; border-radius:10px; border:1px solid transparent;
-    transition:transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .2s ease; }
-  .team-strip a:hover{ transform:translateY(-2px) scale(1.08); border-color:rgba(247,190,17,.4);
-    background:var(--panel); box-shadow:0 4px 14px rgba(0,0,0,.4); }
-  .team-strip img{ width:28px; height:28px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
-  .team-strip .div{ width:1px; height:20px; background:var(--line); flex:0 0 auto; margin:0 2px; }
-
-  nav.jump{ position:sticky; top:0; z-index:5; background:rgba(10,11,13,.86);
-    backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
-  nav.jump .wrap{ display:flex; gap:6px; overflow-x:auto; padding:9px 16px;
-    scrollbar-width:none; -ms-overflow-style:none; }
-  nav.jump .wrap::-webkit-scrollbar{ display:none; }
-  nav.jump a{ white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--muted);
-    padding:5px 11px; border-radius:999px; border:1px solid transparent;
-    transition:color .15s, border-color .15s, background .15s; }
-  nav.jump a:hover{ color:var(--txt); border-color:var(--line); background:var(--panel); }
-  nav.jump a.on{ color:var(--gold); border-color:rgba(247,190,17,.35); background:rgba(247,190,17,.07); }
-
-  section{ padding:26px 0 6px; }
-  body.anim main section{ opacity:0; transform:translateY(14px);
-    transition:opacity .55s ease, transform .55s ease; }
-  body.anim main section.in{ opacity:1; transform:none; }
+  section{ padding:24px 0 6px; }
   .sec-head{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
-  .sec-thumb{ width:104px; height:58px; object-fit:cover; border-radius:9px;
-    border:1px solid var(--line); background:#000; flex:0 0 auto;
-    transition:transform .25s ease, border-color .2s ease, box-shadow .25s ease; }
-  .sec-head:hover .sec-thumb{ transform:scale(1.05) rotate(-.6deg);
-    border-color:rgba(247,190,17,.4); box-shadow:0 6px 18px rgba(0,0,0,.45); }
+  .sec-thumb{ width:96px; height:54px; object-fit:cover; border-radius:9px;
+    border:1px solid var(--line); background:#000; flex:0 0 auto; }
   .sec-head .sec-txt{ min-width:0; }
-  .sec-head h2{ font-size:18px; font-weight:800; margin:0; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+  .sec-head h2{ font-size:17px; font-weight:800; margin:0; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
   .sec-head .sub{ font-size:12.5px; color:var(--muted); }
 
-  /* status chips — say up front how each section behaves */
   .chip{ font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
     padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;
     border:1px solid rgba(46,204,113,.35); color:var(--live); background:rgba(46,204,113,.07); }
   .chip .dot{ margin:0; width:6px; height:6px; }
   .chip.blue{ border-color:rgba(58,160,255,.35); color:var(--accent); background:rgba(58,160,255,.07); }
+  .dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--live);
+    margin-right:7px; vertical-align:1px; animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,.45); }
+    50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
 
   .grid{ display:grid; gap:12px; }
   .g2{ grid-template-columns:repeat(2,1fr); }
@@ -140,21 +77,40 @@
 
   .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px;
     padding:14px; transition:transform .18s ease, border-color .18s ease, box-shadow .22s ease; }
-  a.card:hover{ transform:translateY(-2px); border-color:#3a3f47;
-    box-shadow:0 8px 26px rgba(0,0,0,.4), 0 0 0 1px rgba(58,160,255,.14); }
-  .card h3{ margin:0 0 4px; font-size:14.5px; font-weight:700; }
+  .card h3{ margin:0 0 4px; font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .card p{ margin:0; font-size:12.5px; color:var(--muted); }
 
-  /* cursor-follow glow — panels light up under the pointer */
-  .card,.team,.roster-col,.standings figure{ position:relative; }
-  .card::after,.team::after,.roster-col::after,.standings figure::after{
-    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-    opacity:0; transition:opacity .25s ease;
-    background:radial-gradient(170px circle at var(--mx,50%) var(--my,50%),
-      rgba(247,190,17,.09), transparent 68%); }
-  .card:hover::after,.team:hover::after,.roster-col:hover::after,
-  .standings figure:hover::after{ opacity:1; }
+  .btn{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:6px 11px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt); cursor:pointer; }
+  .links{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; align-items:center; }
+  .pill{ font-size:11px; font-weight:600; padding:4px 9px; border-radius:7px;
+    border:1px solid var(--line); background:var(--panel2); cursor:pointer; }
+  .btn,.pill{ transition:color .15s ease, border-color .15s ease, background .15s ease,
+    box-shadow .22s ease, transform .15s ease; }
+  .btn:hover,.pill:hover{ transform:translateY(-1px); border-color:#3a3f47; }
+  .dl:hover,.cp:hover{ border-color:rgba(247,190,17,.55); color:#fff;
+    box-shadow:0 0 0 1px rgba(247,190,17,.28), 0 0 16px rgba(247,190,17,.20); }
+  .ext:hover,.gh:hover{ border-color:rgba(58,160,255,.55); color:#fff;
+    box-shadow:0 0 0 1px rgba(58,160,255,.25), 0 0 16px rgba(58,160,255,.20); }
+  .dl::before{ content:"↓"; } .ext::before{ content:"↗"; } .cp::before{ content:"⧉"; }
+  .dl::before,.ext::before,.cp::before{ margin-right:5px; opacity:.6; font-size:10px; font-weight:700; }
+  .copied{ color:var(--gold) !important; border-color:rgba(247,190,17,.6) !important; }
+  .copied::before{ content:"✓" !important; opacity:1 !important; }
 
+  /* game-day cards */
+  .game .day{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--gold);
+    text-transform:uppercase; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .game .day.blue{ color:var(--accent); }
+  .game .match{ font-size:14px; font-weight:700; margin:5px 0 3px; display:flex;
+    align-items:center; flex-wrap:wrap; gap:2px; }
+  .game .match .mlg{ width:19px; height:19px; object-fit:contain; margin-right:5px;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  .game .match span{ color:var(--muted); font-weight:600; padding:0 6px; }
+  .game .meta{ font-size:11.5px; color:var(--muted); }
+  .game .meta b{ color:var(--txt); font-weight:600; }
+
+  /* standings */
   .standings{ display:grid; gap:14px; grid-template-columns:1fr 1fr; }
   @media(max-width:680px){ .standings{ grid-template-columns:1fr; } }
   .standings figure{ margin:0; background:var(--panel); border:1px solid var(--line);
@@ -164,61 +120,50 @@
   .standings img{ display:block; width:100%; height:auto; background:#000; }
   .standings figcaption{ display:flex; align-items:center; justify-content:space-between;
     gap:8px; padding:10px 12px; font-size:12.5px; }
-  .standings figcaption b{ font-weight:700; }
   .standings figcaption b a:hover{ text-decoration:underline; text-underline-offset:2px; }
+  .standings .acts{ display:flex; gap:6px; }
 
-  .btn{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
-    padding:6px 11px; border-radius:8px; border:1px solid var(--line);
-    background:var(--panel2); color:var(--txt); cursor:pointer; }
-  .links{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
-
-  .team{ display:flex; align-items:center; justify-content:space-between; gap:8px;
-    background:var(--panel); border:1px solid var(--line); border-radius:11px;
-    padding:6px 10px 6px 8px; transition:border-color .15s, background .15s; }
-  .team:hover{ border-color:#3a3f47; background:#17191d; }
-  .team .idw{ display:flex; align-items:center; gap:8px; min-width:0; }
-  .team .lg{ width:26px; height:26px; object-fit:contain; flex:0 0 auto;
+  /* asset catalog — the replacement for the per-team link walls.
+     Each card: what it is + a crest strip that jumps straight to a team page.
+     High-traffic families (Activity Banner, Starting Lineup) additionally
+     keep the full slug list behind a <details> — Mat's "hybrid". */
+  .asset{ display:flex; flex-direction:column; }
+  .asset .a-desc{ flex:1 1 auto; }
+  .crests{ display:flex; flex-wrap:wrap; gap:5px; margin-top:11px; align-items:center; }
+  .crests a{ display:flex; align-items:center; justify-content:center; width:30px; height:30px;
+    border-radius:8px; border:1px solid transparent;
+    transition:transform .15s ease, border-color .15s ease, background .15s ease; }
+  .crests a:hover{ transform:translateY(-2px); border-color:rgba(247,190,17,.4); background:var(--panel2); }
+  .crests a.off{ opacity:.32; } .crests a.off:hover{ border-color:var(--line); }
+  .crests img{ width:22px; height:22px; object-fit:contain; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .crests .cr-div{ width:1px; height:16px; background:var(--line); margin:0 3px; }
+  .crests .cr-note{ font-size:10px; color:var(--muted); font-weight:600; margin-left:2px; }
+  details.slugs{ margin-top:11px; border-top:1px dashed var(--line); padding-top:9px; }
+  details.slugs summary{ cursor:pointer; font-size:11px; font-weight:700; color:var(--muted);
+    letter-spacing:.06em; text-transform:uppercase; list-style:none; display:flex; align-items:center; gap:6px; }
+  details.slugs summary::-webkit-details-marker{ display:none; }
+  details.slugs summary::before{ content:"▸"; font-size:10px; transition:transform .15s; }
+  details.slugs[open] summary::before{ transform:rotate(90deg); }
+  details.slugs summary:hover{ color:var(--txt); }
+  .slug-row{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:6px 0; border-bottom:1px dashed var(--line); }
+  .slug-row:last-child{ border-bottom:0; }
+  .slug-row .idw{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .slug-row .lg{ width:22px; height:22px; object-fit:contain; flex:0 0 auto;
     filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
-  .team .nm{ font-size:13px; font-weight:600; min-width:0; overflow:hidden;
+  .slug-row .nm{ font-size:12.5px; font-weight:600; min-width:0; overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap; }
-  .team .acts{ display:flex; gap:6px; flex:0 0 auto; }
-  .pill{ font-size:11px; font-weight:600; padding:4px 9px; border-radius:7px;
-    border:1px solid var(--line); background:var(--panel2); }
+  .slug-row .acts{ display:flex; gap:6px; flex:0 0 auto; }
+  .slug-lg-label{ font-size:10px; font-weight:800; letter-spacing:.12em; color:var(--muted);
+    text-transform:uppercase; margin:8px 0 2px; }
 
-  /* ---- interaction language ----
-     Every control tells you what it does before you click:
-       ↓  gold  = downloads a file
-       ⧉  gold  = copies a URL (paste as a browser source)
-       ↗  blue  = opens a page                                   */
-  .btn,.pill{ transition:color .15s ease, border-color .15s ease, background .15s ease,
-    box-shadow .22s ease, transform .15s ease; }
-  .btn:hover,.pill:hover{ transform:translateY(-1px); border-color:#3a3f47; }
-  .dl:hover,.cp:hover{ border-color:rgba(247,190,17,.55); color:#fff;
-    box-shadow:0 0 0 1px rgba(247,190,17,.28), 0 0 16px rgba(247,190,17,.20); }
-  .ext:hover{ border-color:rgba(58,160,255,.55); color:#fff;
-    box-shadow:0 0 0 1px rgba(58,160,255,.25), 0 0 16px rgba(58,160,255,.20); }
-  .btn.gold{ background:var(--gold); color:#1a1500; border-color:var(--gold); }
-  .dl::before{ content:"↓"; } .ext::before{ content:"↗"; } .cp::before{ content:"⧉"; }
-  .dl::before,.ext::before,.cp::before{ margin-right:5px; opacity:.6; font-size:10px; font-weight:700; }
-  .copied{ color:var(--gold) !important; border-color:rgba(247,190,17,.6) !important; }
-  .copied::before{ content:"✓" !important; opacity:1 !important; }
-
-  /* pulsing "this updates itself" dot */
-  .dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--live);
-    margin-right:7px; vertical-align:1px; animation:pulse 2.4s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,.45); }
-    50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
-
+  /* rosters */
+  .roster-col{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
   .league-label{ font-size:11px; font-weight:800; letter-spacing:.14em; color:var(--muted);
-    text-transform:uppercase; margin:8px 2px 8px; display:flex; align-items:center; gap:8px; }
+    text-transform:uppercase; margin:0 0 8px; display:flex; align-items:center; gap:8px; }
   .league-label::before{ content:""; display:inline-block; width:14px; height:2px;
     background:var(--gold); border-radius:2px; }
-  /* NZWIHL variant — same blue used for the women's league everywhere else (var(--accent), #3aa0ff) */
-  .league-label.blue{ color:var(--accent); }
   .league-label.blue::before{ background:var(--accent); }
-
-  #rosters .roster-col{ background:var(--panel); border:1px solid var(--line);
-    border-radius:14px; padding:14px; }
   .roster-item{ display:flex; align-items:center; justify-content:space-between; gap:10px;
     padding:8px 0; border-bottom:1px dashed var(--line); }
   .roster-item:last-child{ border-bottom:0; }
@@ -228,109 +173,41 @@
   footer{ margin-top:30px; border-top:1px solid var(--line); padding:20px 0 40px;
     color:var(--muted); font-size:12.5px; }
   footer a{ color:var(--accent); }
-  code{ background:var(--panel2); border:1px solid var(--line); border-radius:6px;
-    padding:1px 6px; font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--txt); }
 
   #toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px);
     background:#fff; color:#000; font-size:12.5px; font-weight:700; padding:9px 16px;
-    border-radius:20px; opacity:0; pointer-events:none; transition:all .2s ease; z-index:30; }
+    border-radius:20px; opacity:0; pointer-events:none; transition:all .2s ease; z-index:60; }
   #toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
 
-  a.game{ display:block; }
-  .game .day{ font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--gold);
-    text-transform:uppercase; }
-  .game .match{ font-size:14px; font-weight:700; margin:4px 0 4px; display:flex;
-    align-items:center; flex-wrap:wrap; gap:2px; }
-  .game .match .mlg{ width:19px; height:19px; object-fit:contain; margin-right:5px;
-    filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
-  .game .match span{ color:var(--muted); font-weight:600; padding:0 6px; }
-  .game .meta{ font-size:11.5px; color:var(--muted); }
-  .game .meta b{ color:var(--txt); font-weight:600; }
 
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; transition:none !important; }
-    .btn:hover,.pill:hover,a.card:hover{ transform:none !important; }
-    body.anim main section{ opacity:1 !important; transform:none !important; }
   }
 </style>
 </head>
 <body>
-
-<div id="pbar"></div>
-
-<nav class="team-strip" aria-label="Jump to a team's page">
-  <div class="wrap">
-    <span class="strip-title">Leagues &amp; Teams</span>
-    <span class="div"></span>
-    <div class="strip-logos" id="team-strip-row"></div>
-  </div>
-</nav>
-
-<div class="rink-bg" aria-hidden="true">
-  <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
-    <path d="M540.0,784.6 L1349.0,591.3 L1363.3,586.9 L1375.7,580.9 L1386.2,573.4 L1394.7,564.6 L1400.9,554.6 L1405.0,543.6 L1406.8,531.7 L1406.4,519.0 L1403.8,505.8 L1399.1,492.3 L1392.4,478.6 L1383.8,464.8 L1373.5,451.2 L1361.5,437.9 L1249.3,322.4 L1237.0,310.6 L1223.5,299.4 L1208.8,288.8 L1193.2,278.9 L1176.9,269.9 L1160.0,261.9 L1142.7,254.9 L1125.3,248.9 L1107.9,244.2 L1090.7,240.6 L1073.9,238.3 L1057.6,237.2 L1042.1,237.5 L1027.5,239.0 L289.0,353.8 L271.0,357.4 L253.9,362.5 L238.1,369.2 L223.6,377.2 L210.7,386.7 L199.5,397.4 L190.2,409.2 L183.0,422.1 L177.9,436.0 L175.1,450.5 L174.7,465.7 L176.6,481.2 L181.0,497.0 L187.8,512.7 L265.9,665.4 L276.0,682.7 L288.5,699.4 L303.3,715.4 L320.1,730.4 L338.8,744.1 L359.1,756.4 L380.6,767.0 L403.2,775.7 L426.4,782.5 L449.9,787.3 L473.3,789.8 L496.4,790.3 L518.7,788.5 L540.0,784.6 Z" fill="none" stroke="rgba(243,244,246,.09)" stroke-width="4"/>
-    <line x1="975.9" y1="680.5" x2="683.0" y2="292.5" stroke="rgba(247,190,17,.12)" stroke-width="4"/>
-    <line x1="832.4" y1="714.7" x2="552.3" y2="312.8" stroke="rgba(58,160,255,.12)" stroke-width="5"/>
-    <line x1="1111.8" y1="648.0" x2="807.7" y2="273.2" stroke="rgba(58,160,255,.12)" stroke-width="5"/>
-    <line x1="407.4" y1="777.1" x2="201.4" y2="395.3" stroke="rgba(247,190,17,.12)" stroke-width="3"/>
-    <line x1="1404.4" y1="545.7" x2="1122.1" y2="248.0" stroke="rgba(247,190,17,.12)" stroke-width="3"/>
-    <path d="M314.3,604.5 L320.2,602.9 L325.5,600.6 L330.0,597.6 L333.8,594.0 L336.6,589.9 L338.5,585.4 L339.3,580.6 L339.1,575.6 L337.9,570.6 L335.7,565.7 L332.6,561.0 L328.6,556.6 L323.9,552.6 L318.5,549.2 L312.6,546.3 L306.4,544.0 L300.0,542.5 L293.4,541.7 L287.0,541.7 L280.8,542.4" fill="none" stroke="rgba(58,160,255,.12)" stroke-width="3"/>
-    <path d="M1278.3,412.8 L1273.8,413.3 L1268.8,413.2 L1263.4,412.5 L1257.9,411.2 L1252.3,409.3 L1246.7,406.9 L1241.4,404.1 L1236.4,400.8 L1231.9,397.3 L1228.0,393.5 L1224.8,389.7 L1222.3,385.8 L1220.6,381.9 L1219.8,378.3 L1219.9,374.9 L1220.8,371.8 L1222.6,369.2 L1225.2,367.0 L1228.5,365.4 L1232.4,364.3" fill="none" stroke="rgba(58,160,255,.12)" stroke-width="3"/>
-    <path d="M897.7,457.3 L891.8,450.4 L885.2,443.8 L877.8,437.5 L869.9,431.7 L861.4,426.3 L852.5,421.4 L843.3,417.0 L833.8,413.3 L824.2,410.2 L814.5,407.7 L804.9,406.0 L795.4,404.9 L786.1,404.6 L777.2,405.0 L768.7,406.1 L760.7,407.9 L753.4,410.5 L746.6,413.7 L740.7,417.5 L735.5,422.0 L731.2,427.0 L727.9,432.6 L725.5,438.6 L724.1,445.0 L723.8,451.8 L724.5,458.9 L726.2,466.1 L729.0,473.5 L732.8,480.8 L737.6,488.2 L743.3,495.4 L749.8,502.4 L757.2,509.0 L765.3,515.3 L774.1,521.2 L783.3,526.5 L793.0,531.2 L803.0,535.3 L813.2,538.6 L823.5,541.2 L833.7,543.1 L843.7,544.1 L853.5,544.3 L862.8,543.8 L871.6,542.4 L879.8,540.2 L887.3,537.3 L894.0,533.7 L899.8,529.4 L904.7,524.5 L908.6,519.1 L911.5,513.1 L913.3,506.8 L914.1,500.1 L913.9,493.2 L912.6,486.0 L910.3,478.8 L907.0,471.5 L902.8,464.3 Z" fill="none" stroke="rgba(58,160,255,.12)" stroke-width="3"/>
-    <path d="M830.6,470.2 L827.7,467.3 L823.9,464.8 L819.7,463.1 L815.3,462.3 L811.3,462.5 L808.1,463.7 L805.9,465.8 L804.9,468.5 L805.3,471.6 L807.1,474.8 L810.0,477.8 L813.8,480.2 L818.1,481.9 L822.4,482.7 L826.4,482.5 L829.7,481.3 L831.9,479.3 L832.8,476.5 L832.3,473.4 Z" fill="rgba(58,160,255,.12)"/>
-    <path d="M584.6,643.6 L578.9,635.4 L572.3,627.6 L564.8,620.1 L556.6,613.2 L547.7,606.9 L538.3,601.1 L528.3,596.1 L518.0,591.7 L507.5,588.2 L496.7,585.4 L485.9,583.5 L475.2,582.4 L464.6,582.2 L454.2,582.9 L444.2,584.4 L434.7,586.8 L425.8,590.0 L417.5,594.0 L409.9,598.8 L403.2,604.3 L397.4,610.5 L392.6,617.3 L388.8,624.7 L386.2,632.5 L384.6,640.7 L384.2,649.3 L385.0,658.0 L386.9,666.9 L390.1,675.8 L394.4,684.6 L399.7,693.3 L406.2,701.7 L413.6,709.7 L421.9,717.2 L431.1,724.1 L440.9,730.4 L451.4,735.9 L462.3,740.7 L473.6,744.6 L485.1,747.5 L496.6,749.6 L508.1,750.6 L519.3,750.7 L530.2,749.7 L540.7,747.9 L550.5,745.0 L559.7,741.3 L568.0,736.7 L575.4,731.4 L581.8,725.3 L587.2,718.5 L591.5,711.2 L594.7,703.5 L596.7,695.3 L597.5,686.9 L597.2,678.2 L595.7,669.5 L593.0,660.8 L589.3,652.1 Z" fill="none" stroke="rgba(247,190,17,.12)" stroke-width="3"/>
-    <path d="M449.1,427.5 L444.1,420.5 L438.3,413.7 L431.7,407.3 L424.4,401.3 L416.4,395.8 L407.8,390.8 L398.8,386.4 L389.4,382.5 L379.7,379.3 L369.7,376.8 L359.7,375.0 L349.7,373.9 L339.8,373.5 L330.1,373.9 L320.7,375.0 L311.7,376.8 L303.2,379.4 L295.2,382.6 L287.9,386.5 L281.4,391.1 L275.7,396.2 L270.9,401.8 L267.1,408.0 L264.2,414.5 L262.4,421.4 L261.6,428.6 L261.9,436.0 L263.4,443.5 L265.9,451.0 L269.5,458.5 L274.1,465.9 L279.7,473.0 L286.3,479.8 L293.7,486.3 L301.9,492.3 L310.7,497.7 L320.2,502.5 L330.2,506.7 L340.5,510.2 L351.0,512.9 L361.7,514.8 L372.3,515.9 L382.8,516.1 L393.0,515.6 L402.8,514.2 L412.1,512.0 L420.8,509.0 L428.8,505.4 L436.0,501.0 L442.3,496.0 L447.7,490.5 L452.1,484.5 L455.4,478.0 L457.7,471.2 L458.9,464.1 L459.0,456.8 L458.1,449.5 L456.1,442.1 L453.1,434.7 Z" fill="none" stroke="rgba(247,190,17,.12)" stroke-width="3"/>
-    <path d="M1319.4,485.2 L1312.6,478.5 L1305.2,472.0 L1297.2,465.9 L1288.7,460.2 L1279.8,454.9 L1270.6,450.1 L1261.3,445.8 L1251.8,442.2 L1242.2,439.2 L1232.8,436.8 L1223.5,435.1 L1214.5,434.1 L1205.9,433.8 L1197.7,434.2 L1190.0,435.3 L1182.9,437.1 L1176.6,439.6 L1170.9,442.8 L1166.1,446.6 L1162.2,451.0 L1159.2,456.0 L1157.1,461.5 L1156.0,467.4 L1156.0,473.7 L1156.9,480.4 L1158.9,487.3 L1161.9,494.4 L1165.9,501.6 L1170.8,508.8 L1176.6,516.0 L1183.2,523.1 L1190.6,529.9 L1198.7,536.4 L1207.4,542.6 L1216.6,548.3 L1226.2,553.5 L1236.1,558.1 L1246.1,562.0 L1256.2,565.3 L1266.2,567.8 L1276.0,569.6 L1285.5,570.6 L1294.5,570.8 L1303.1,570.2 L1311.0,568.8 L1318.2,566.7 L1324.6,563.8 L1330.1,560.2 L1334.7,556.0 L1338.3,551.2 L1340.9,545.9 L1342.5,540.0 L1343.0,533.8 L1342.5,527.2 L1341.0,520.4 L1338.5,513.4 L1335.0,506.4 L1330.6,499.2 L1325.4,492.2 Z" fill="none" stroke="rgba(247,190,17,.12)" stroke-width="3"/>
-    <path d="M1151.5,306.3 L1145.6,300.4 L1139.0,294.7 L1131.8,289.3 L1124.2,284.3 L1116.2,279.6 L1107.8,275.3 L1099.2,271.5 L1090.4,268.2 L1081.6,265.5 L1072.8,263.3 L1064.1,261.7 L1055.6,260.6 L1047.4,260.2 L1039.6,260.5 L1032.2,261.3 L1025.4,262.7 L1019.2,264.8 L1013.6,267.4 L1008.8,270.6 L1004.7,274.3 L1001.5,278.5 L999.2,283.1 L997.8,288.1 L997.3,293.5 L997.8,299.3 L999.2,305.2 L1001.5,311.3 L1004.7,317.5 L1008.9,323.8 L1013.9,330.0 L1019.7,336.1 L1026.2,342.1 L1033.4,347.8 L1041.2,353.2 L1049.6,358.2 L1058.3,362.8 L1067.3,366.8 L1076.5,370.4 L1085.8,373.3 L1095.1,375.7 L1104.2,377.4 L1113.1,378.4 L1121.7,378.7 L1129.8,378.4 L1137.4,377.3 L1144.4,375.6 L1150.7,373.3 L1156.2,370.4 L1160.8,366.9 L1164.6,362.8 L1167.5,358.3 L1169.4,353.4 L1170.4,348.1 L1170.4,342.5 L1169.5,336.7 L1167.6,330.7 L1164.8,324.6 L1161.2,318.4 L1156.7,312.3 Z" fill="none" stroke="rgba(247,190,17,.12)" stroke-width="3"/>
-    <path d="M505.0,660.8 L502.1,657.3 L498.2,654.4 L493.5,652.4 L488.7,651.5 L484.0,651.9 L480.1,653.4 L477.2,655.9 L475.6,659.2 L475.6,663.0 L477.1,666.8 L480.0,670.4 L483.9,673.3 L488.6,675.3 L493.5,676.2 L498.2,675.8 L502.1,674.3 L505.0,671.7 L506.5,668.4 L506.5,664.6 Z" fill="rgba(247,190,17,.12)"/>
-    <path d="M373.8,440.5 L371.3,437.5 L367.7,435.0 L363.5,433.2 L359.0,432.4 L354.7,432.6 L350.9,433.8 L348.1,435.9 L346.5,438.6 L346.3,441.8 L347.5,445.0 L350.0,448.1 L353.5,450.6 L357.8,452.4 L362.3,453.2 L366.7,453.0 L370.5,451.8 L373.3,449.7 L374.9,446.9 L375.0,443.7 Z" fill="rgba(247,190,17,.12)"/>
-    <path d="M1259.5,498.2 L1256.2,495.3 L1252.3,492.9 L1248.0,491.2 L1243.8,490.5 L1240.2,490.7 L1237.4,491.8 L1235.7,493.8 L1235.3,496.5 L1236.3,499.5 L1238.5,502.7 L1241.8,505.6 L1245.7,508.0 L1250.0,509.7 L1254.2,510.5 L1257.9,510.2 L1260.7,509.0 L1262.4,507.0 L1262.7,504.3 L1261.7,501.3 Z" fill="rgba(247,190,17,.12)"/>
-    <path d="M1093.7,316.2 L1090.8,313.7 L1087.2,311.6 L1083.3,310.1 L1079.4,309.4 L1075.9,309.5 L1073.2,310.4 L1071.5,312.1 L1070.9,314.4 L1071.6,317.0 L1073.5,319.7 L1076.4,322.3 L1080.0,324.4 L1083.9,325.9 L1087.9,326.6 L1091.4,326.5 L1094.1,325.5 L1095.8,323.8 L1096.3,321.6 L1095.6,318.9 Z" fill="rgba(247,190,17,.12)"/>
-    <path d="M795.8,598.1 L792.6,594.8 L788.3,592.4 L783.6,591.1 L779.2,591.3 L775.7,592.8 L773.8,595.5 L773.6,598.9 L775.3,602.5 L778.6,605.8 L782.9,608.3 L787.6,609.6 L792.0,609.4 L795.5,607.9 L797.4,605.2 L797.5,601.7 Z" fill="rgba(247,190,17,.12)"/>
-    <path d="M649.5,392.9 L646.7,390.0 L642.8,387.9 L638.4,386.8 L634.3,386.8 L631.0,388.0 L629.0,390.3 L628.7,393.1 L630.0,396.3 L632.9,399.1 L636.8,401.3 L641.2,402.5 L645.3,402.4 L648.7,401.1 L650.6,398.9 L650.9,396.0 Z" fill="rgba(247,190,17,.12)"/>
-    <path d="M1013.7,551.1 L1010.3,548.0 L1006.1,545.7 L1001.5,544.5 L997.4,544.6 L994.3,546.1 L992.7,548.6 L992.9,551.8 L994.8,555.2 L998.1,558.3 L1002.4,560.7 L1007.0,561.9 L1011.1,561.8 L1014.2,560.3 L1015.8,557.8 L1015.6,554.6 Z" fill="rgba(247,190,17,.12)"/>
-    <path d="M857.5,357.0 L854.6,354.3 L850.7,352.2 L846.5,351.1 L842.6,351.2 L839.6,352.3 L837.9,354.4 L837.9,357.2 L839.5,360.1 L842.4,362.8 L846.3,364.9 L850.5,366.0 L854.5,366.0 L857.5,364.8 L859.1,362.7 L859.1,359.9 Z" fill="rgba(247,190,17,.12)"/>
-  </svg>
-</div>
+<script src="nav.js" data-root="."></script>
 
 <header class="hero">
   <div class="wrap">
-    <div class="pill-row">
-      <a class="home" href="https://matchavez.com">&larr; matchavez.com</a>
-      <a class="home" target="_blank" rel="noopener" href="preflight/">Pre-Flight &#8599;</a>
-      <a class="home" target="_blank" rel="noopener" href="graphicstests/">Graphics QA &#8599;</a>
+    <div class="l">
+      <div class="eyebrow">2026 Season <span class="sep"></span> <span id="clock"></span></div>
+      <h1>NZ Hockey Broadcast Assets</h1>
+      <div class="tag">Standings and this week's games below — everything for one club lives on its team page in the bar above.</div>
     </div>
-    <div class="eyebrow">2026 Season <span class="sep"></span> <span id="clock"></span></div>
-    <h1>NZ Hockey Broadcast Assets</h1>
-    <div class="tag">One place for every NZIHL &amp; NZWIHL broadcast asset — standings, rosters, Up Next graphics, loops and brand. Most update automatically.</div>
-    <div id="weekend-wrap" class="weekend-wrap">
-      <div class="weekend-label">This Weekend</div>
-      <div id="next-chips" class="next-chips"></div>
-    </div>
+    <a class="home" href="https://matchavez.com">&larr; matchavez.com</a>
   </div>
 </header>
 
-<nav class="jump">
-  <div class="wrap">
-    <a href="#standings">Standings</a>
-    <a href="#boxscores">Live Summary</a>
-    <a href="#leaders-live">Scoring Leaders</a>
-    <a href="#summaryslugs">Summary URLs</a>
-    <a href="#leadersslugs">Leaders URLs</a>
-    <a href="#bannerslugs">Banner URLs</a>
-    <a href="#lowerthirds">Player L3s</a>
-    <a href="#startinglineup">Starting Lineup</a>
-    <a href="#rosters">Rosters</a>
-    <a href="warehouse/#photos">Photos</a>
-    <a href="#warehouse">Warehouse</a>
-    <a href="#brand">Brand</a>
-    <a href="#upnext">Up Next</a>
-    <a href="#loops">Loops</a>
-    <a href="#logos">Logos</a>
-  </div>
-</nav>
-
 <main class="wrap">
+
+  <!-- GAME DAY — one card per game; Summary + Leaders + Combined Lineups all
+       hang off the same fixture, so they're one card now, with the
+       esportsdesk game code in a pill. Replaces three separate sections. -->
+  <section id="gameday">
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Game Day <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">This week's fixtures from the roster pipeline · Game Summary, Scoring Leaders &amp; Combined Lineups per game</span></span></div>
+    <div id="gameday-grid" class="grid g2"><div class="card"><p class="muted-note">Loading fixtures…</p></div></div>
+  </section>
 
   <!-- STANDINGS -->
   <section id="standings">
@@ -338,500 +215,212 @@
     <div class="standings">
       <figure>
         <a id="nzihl-stand-link" target="_blank" rel="noopener"><img id="nzihl-stand" alt="NZIHL standings"></a>
-        <figcaption><b><a href="league/?league=nzihl" title="Open the NZIHL league page">NZIHL</a></b><span class="acts"><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">1920×1080</button><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
+        <figcaption><b><a href="league/?league=nzihl">NZIHL</a></b><span class="acts"><button class="btn cp" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings.png">1920×1080</button><button class="btn cp" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
       <figure>
         <a id="nzwihl-stand-link" target="_blank" rel="noopener"><img id="nzwihl-stand" alt="NZWIHL standings"></a>
-        <figcaption><b><a href="league/?league=nzwihl" title="Open the NZWIHL league page">NZWIHL</a></b><span class="acts"><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">1920×1080</button><button class="btn cp" title="Copies the PNG URL — paste as a browser source" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
+        <figcaption><b><a href="league/?league=nzwihl">NZWIHL</a></b><span class="acts"><button class="btn cp" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings.png">1920×1080</button><button class="btn cp" data-copy="https://matchavez.com/nzihl-broadcast-assets/NZWIHL_Standings_1840x1000.png">1840×1000</button></span></figcaption>
       </figure>
     </div>
   </section>
 
-  <!-- THIS WEEKEND · BOX SCORES -->
-  <section id="boxscores">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Live Game Summary <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Resolved from the roster pipeline · links go live as results post</span></span></div>
-    <div id="boxscore-grid" class="grid g2">
-      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519937">
-        <div class="day">Sat 27 Jun · 4:45 PM</div>
-        <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
-        <div class="meta"><b>Paradice Avondale</b> · Game summary →</div>
-      </a>
-      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519939">
-        <div class="day">Sat 27 Jun · 5:10 PM</div>
-        <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
-        <div class="meta"><b>Alpine Ice Centre</b> · Game summary →</div>
-      </a>
-      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519940">
-        <div class="day">Sun 28 Jun · 5:10 PM</div>
-        <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
-        <div class="meta"><b>Alpine Ice Centre</b> · Game summary →</div>
-      </a>
-      <a class="game card" target="_blank" rel="noopener" href="summary/?g=2519938">
-        <div class="day">Sun 28 Jun · 6:00 PM</div>
-        <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
-        <div class="meta"><b>Paradice Avondale</b> · Game summary →</div>
-      </a>
-    </div>
-  </section>
-
-  <!-- LIVE TEAM SCORING LEADERS (mirrors Live Game Summary above — same
-       matchups/games, same auto-resolve-from-the-roster-pipeline behaviour,
-       just pointed at scoringleaders/?g= instead of summary/?g=) -->
-  <section id="leaders-live">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Live Team Scoring Leaders <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Same matchups as Game Summary · each team's top-3 point scorers</span></span></div>
-    <div id="leaders-grid" class="grid g2">
-      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519937">
-        <div class="day">Sat 27 Jun · 4:45 PM</div>
-        <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
-        <div class="meta"><b>Paradice Avondale</b> · Scoring leaders →</div>
-      </a>
-      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519939">
-        <div class="day">Sat 27 Jun · 5:10 PM</div>
-        <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
-        <div class="meta"><b>Alpine Ice Centre</b> · Scoring leaders →</div>
-      </a>
-      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519940">
-        <div class="day">Sun 28 Jun · 5:10 PM</div>
-        <div class="match">Dunedin Thunder <span>@</span> Canterbury Red Devils</div>
-        <div class="meta"><b>Alpine Ice Centre</b> · Scoring leaders →</div>
-      </a>
-      <a class="game card" target="_blank" rel="noopener" href="scoringleaders/?g=2519938">
-        <div class="day">Sun 28 Jun · 6:00 PM</div>
-        <div class="match">Botany Swarm <span>@</span> Pure NZ Admirals</div>
-        <div class="meta"><b>Paradice Avondale</b> · Scoring leaders →</div>
-      </a>
-    </div>
-  </section>
-
-  <!-- GAME SUMMARY TEAM SLUGS -->
-  <section id="summaryslugs">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Game Summary Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Static per-team Game Summary URLs · open or copy as a source</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="slugs-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="slugs-nzwihl" class="grid g3"></div>
-  </section>
-
-  <!-- TEAM SCORING LEADERS TEAM SLUGS -->
-  <section id="leadersslugs">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Team Scoring Leaders Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Each team's top-3 point scorers, live from stats_1team.cfm + the season data warehouse · open or copy as a source</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="leaders-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="leaders-nzwihl" class="grid g3"></div>
-  </section>
-
-  <!-- ACTIVITY BANNER TEAM SLUGS -->
-  <section id="bannerslugs">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Activity Banner Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">Transparent goal/penalty banner overlay (no scorebug) · static per-team URL · open or copy as a source - (<a target="_blank" rel="noopener" href="activity-banner/?test=1">test</a>)</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="banner-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="banner-nzwihl" class="grid g3"></div>
-  </section>
-
-  <!-- PLAYER LOWER THIRDS -->
-  <section id="lowerthirds">
-    <div class="sec-head"><span class="sec-txt"><h2>Player Lower Thirds <span class="chip blue">Evergreen URL</span></h2><span class="sub">Phone control page — tap a player, edit the fact, fire a stat+photo lower third through the Activity Banner already on air · static per-team URL</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="l3-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="l3-nzwihl" class="grid g3"></div>
-  </section>
-
-  <!-- STARTING LINEUP -->
-  <section id="startinglineup">
-    <div class="sec-head"><span class="sec-txt"><h2>Starting Lineup <span class="chip blue">Evergreen URL</span></h2><span class="sub">Per-team starting-six graphic on a half-rink &mdash; pick LF/CF/RF/LD/RD/GK on the control page (all teams in one place), the browser-source graphic follows &middot; persists between games &middot; <a style="color:var(--live)" target="_blank" rel="noopener" href="startinglineup/control/">Control Page →</a></span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="sl-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="sl-nzwihl" class="grid g3"></div>
-    <div class="sec-head" style="margin:22px 0 14px"><span class="sec-txt"><h2 style="font-size:16px">Combined Starting Lineups <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Both teams' starting six on one rink &mdash; one link per scheduled game in the next few days, sourced from the season data warehouse</span></span></div>
-    <div id="sl-combined" class="grid g2"></div>
-    <div class="sec-head" style="margin:22px 0 14px"><span class="sec-txt"><h2 style="font-size:16px">Combined Starting Lineups Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">One URL per team &mdash; resolves this team's next scheduled fixture automatically and keeps updating as the schedule advances, same convention as Activity Banner's team slugs &middot; open or copy as a source</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="sl-combined-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="sl-combined-nzwihl" class="grid g3"></div>
+  <!-- ASSET CATALOG — replaces six separate all-teams link walls. Each card
+       says what the asset is; the crest strip jumps to that club's team
+       page, which carries the exhaustive links. Activity Banner and
+       Starting Lineup keep their full slug lists behind an expander. -->
+  <section id="assets">
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/activity_banner.png" alt=""><span class="sec-txt"><h2>Per-Team Assets <span class="chip blue">Evergreen URL</span></h2><span class="sub">One static URL per club per asset · tap a crest for that club's full kit, or expand the high-traffic lists here</span></span></div>
+    <div id="asset-grid" class="grid g2"></div>
   </section>
 
   <!-- ROSTERS -->
   <section id="rosters">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/rosters.png" alt=""><span class="sec-txt"><h2>Game-Day Rosters <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Latest fixture PDFs · auto-published per game · <a style="color:var(--live)" target="_blank" rel="noopener" href="https://matchavez.com/hockeyrosters/">Roster Portal →</a></span></span></div>
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/rosters.png" alt=""><span class="sec-txt"><h2>Game-Day Rosters <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Latest fixture PDFs · auto-published per game</span></span></div>
     <div class="grid g2">
       <div class="roster-col">
         <div class="league-label">NZIHL</div>
         <div id="ros-nzihl"><p class="muted-note">Loading latest…</p></div>
-        <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters/releases">All NZIHL rosters</a></div>
+        <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/hockeyrosters/">Roster Portal</a><a class="btn gh" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters/releases">All NZIHL rosters</a></div>
       </div>
       <div class="roster-col">
         <div class="league-label blue">NZWIHL</div>
         <div id="ros-nzwihl"><p class="muted-note">Loading latest…</p></div>
-        <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters/releases">All NZWIHL rosters</a></div>
+        <div class="links"><a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/hockeyrosters/">Roster Portal</a><a class="btn gh" target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters/releases">All NZWIHL rosters</a></div>
       </div>
     </div>
   </section>
 
-  <!-- DATA WAREHOUSE -->
-  <section id="warehouse">
-    <div class="sec-head"><span class="sec-txt"><h2>Data Warehouse</h2><span class="sub">Browse the full season game archive and every player/coach photo, sorted by team &amp; jersey number, on one page</span></span></div>
-    <div class="grid g2">
-      <a class="card" href="warehouse/">
-        <h3>Open the Warehouse →</h3>
-        <p>Every completed box score + remaining fixtures (nzihl-season-data), and every rostered player/coach's photo &mdash; grouped by team, sorted by jersey #, with a small stat line under each active player &mdash; both live, both on one page. This replaced the old standalone photo gallery.</p>
-      </a>
-      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-player-photos">
-        <h3>Photo repo &amp; manifest →</h3>
-        <p>Source, weekly Action, and the full manifest.json (name, number, photo path, active flag) behind the warehouse's photo section.</p>
-      </a>
-    </div>
-  </section>
-
-  <!-- BRAND -->
+  <!-- BRAND & REFERENCE — brand guide + logos merged into one place -->
   <section id="brand">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/brand.png" alt=""><span class="sec-txt"><h2>Brand &amp; Style</h2><span class="sub">Colours, logos and usage rules</span></span></div>
-    <div class="grid g2">
+    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/brand.png" alt=""><span class="sec-txt"><h2>Brand &amp; Reference</h2><span class="sub">Colours, logos, usage rules — one stop</span></span></div>
+    <div class="grid g3">
       <div class="card">
         <h3>2026 Style &amp; Colour Guide</h3>
         <p>Full per-team palettes, logo plates, scorebug and cross-league usage rules.</p>
         <div class="links">
           <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">HTML</a>
           <a class="btn dl" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.pdf">PDF</a>
+          <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-hex-cheat-sheet.html">Hex Sheet</a>
         </div>
       </div>
-      <a class="card" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-hex-cheat-sheet.html">
-        <h3>Hex Cheat Sheet →</h3>
-        <p>Phone-friendly, tap-to-copy hex codes for every team.</p>
-      </a>
-    </div>
-  </section>
-
-  <!-- Up Next -->
-  <section id="upnext">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/up_next.png" alt=""><span class="sec-txt"><h2>Up Next Graphics</h2><span class="sub">Per-matchup hero / lower-third overlays · download the team pack</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="upnext-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="upnext-nzwihl" class="grid g3"></div>
-  </section>
-
-  <!-- DVD LOOPS -->
-  <section id="loops">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/dvd_loops.gif" alt=""><span class="sec-txt"><h2>DVD Bounce Loops</h2><span class="sub">Seamless bouncing-logo MP4s · 4 corner variants per team (1080p50)</span></span></div>
-    <div class="league-label">NZIHL</div>
-    <div id="loops-nzihl" class="grid g3"></div>
-    <div class="league-label blue">NZWIHL</div>
-    <div id="loops-nzwihl" class="grid g3"></div>
-  </section>
-
-  <!-- LOGOS -->
-  <section id="logos">
-    <div class="sec-head"><img class="sec-thumb" src="https://matchavez.com/nzihl-broadcast-assets/thumbs/logos.png" alt=""><span class="sec-txt"><h2>Logos</h2><span class="sub">Team &amp; league marks used in the graphics</span></span></div>
-    <div class="grid g2">
-      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/tree/main/assets/logos">
-        <h3>Team logos →</h3>
+      <div class="card">
+        <h3>Team logos</h3>
         <p>High-res PNG team marks (white &amp; full-colour) for both leagues.</p>
-      </a>
-      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/tree/main/assets/league">
-        <h3>League marks →</h3>
+        <div class="links"><a class="btn gh" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/tree/main/assets/logos">Browse on GitHub</a></div>
+      </div>
+      <div class="card">
+        <h3>League marks</h3>
         <p>NZIHL &amp; NZWIHL white logos.</p>
-      </a>
+        <div class="links"><a class="btn gh" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/tree/main/assets/league">Browse on GitHub</a></div>
+      </div>
     </div>
   </section>
-
 
 </main>
 
 <footer>
   <div class="wrap">
-    Source repos:
-    <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets">nzihl-broadcast-assets</a> ·
-    <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters">nzihl-broadcast-rosters</a> ·
-    <a target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">nzwihl-broadcast-rosters</a>
-    <div style="margin-top:8px">Tools: <a target="_blank" rel="noopener" href="https://cockpit.49ing.ch/dashboard">49ing Cockpit ↗</a></div>
-    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="scorebug/?test=1">Red Devils Scorebug + Live Banner (beta) ↗</a></div>
-    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="scorebug/?team=canterbury-inferno&test=1">Inferno Scorebug + Live Banner (beta) ↗</a></div>
-    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="activity-banner/?test=1">Activity Banner — goal/penalty only, no scorebug (beta) ↗</a></div>
-    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="ticker/?test=1">Ticker Page — scorebug + scrolling game ticker (beta) ↗</a></div>
-    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="preflight/">Broadcast Pre-Flight — worker/manifest/game checks + copy-ready URLs ↗</a></div>
-    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="graphicstests/">Broadcast Graphics QA — per-club render checks for every overlay + DVD/UP-NEXT/standings asset checks ↗</a></div>
+    Diagnostics, QA, test pages, data repos and external tools now live under
+    <a href="ops/">Ops</a> (top-right of the bar).
     <div style="margin-top:8px"><a href="https://matchavez.com">matchavez.com</a> / hockey</div>
-    <div style="margin-top:8px"><a target="_blank" rel="noopener" href="https://app.singular.live/appinstances/6104631/control">Christchurch Scorebug Login ↗</a></div>
   </div>
 </footer>
 
 <div id="toast"></div>
 
 <script>
-const ASSETS = "https://matchavez.com/nzihl-broadcast-assets";
-const enc = s => encodeURIComponent(s);
+const { ASSETS, TEAMS, logoUrl, byName } = window.RD2;
+const enc = encodeURIComponent;
+const teamHref = t => `team/?team=${t.slug}`;
 
-const NZIHL = [
-  {nm:"Pure NZ Admirals", nick:"Admirals", up:"Pure NZ Admirals", dvd:"PureNZAdmirals", logo:"Pure-NZ-Admirals-2000x2000.png"},
-  {nm:"Botany Swarm", nick:"Swarm", up:"Botany Swarm", dvd:"BotanySwarm", logo:"Botany Swarm 2000x2000.png"},
-  {nm:"SkyCity Stampede", nick:"Stampede", up:"SkyCity Stampede", dvd:"SkyCityStampede", logo:"Skycity Stampede 2000x2000.png"},
-  {nm:"Dunedin Thunder", nick:"Thunder", up:"Dunedin Thunder", dvd:"DunedinThunder", logo:"Dunedin_Thunder.png"},
-  {nm:"Auckland Mako", nick:"Mako", up:"Auckland Mako", dvd:"AucklandMako", logo:"Auckland Mako 2000x2000.png"},
-  {nm:"Canterbury Red Devils", nick:"Red Devils", up:"Red Devils", dvd:"CanterburyRedDevils", logo:"Red Devils 2000x2000r.png"},
-];
-const NZWIHL = [
-  {nm:"Auckland Steel", nick:"Steel", up:"Auckland Steel", dvd:"AucklandSteel", logo:"Auckland-Steel-White.png"},
-  {nm:"Canterbury Inferno", nick:"Inferno", up:"Canterbury Inferno", dvd:"CanterburyInferno", logo:"Inferno-White.png"},
-  {nm:"Dunedin Thunder Women", nick:"Thunder", up:"Dunedin Thunder Women", dvd:"DunedinThunderWomen", logo:"thunder-women-white.png"},
-  {nm:"Wakatipu Wild", nick:"Wild", up:"Wakatipu Wild", dvd:"WakatipuWild", logo:"Wakatipu-wild-white.png"},
-];
-// one consistent order for every team list: alphabetical by team nickname, subdivided by league
-[NZIHL, NZWIHL].forEach(a => a.sort((x,y) => x.nick.localeCompare(y.nick)));
-
-const logoUrl = t => `${ASSETS}/assets/logos/${enc(t.logo)}`;
-const logoOf = name => {
-  const t = [...NZIHL, ...NZWIHL].find(t => t.nm === name);
-  return t ? logoUrl(t) : null;
-};
-const idw = t => `<span class="idw"><img class="lg" loading="lazy" src="${logoUrl(t)}" alt=""><span class="nm">${t.nm}</span></span>`;
-
-// cache-busted standings
+/* cache-busted standings */
 const v = Date.now();
 document.getElementById('nzihl-stand').src  = `${ASSETS}/NZIHL_Standings.png?v=${v}`;
 document.getElementById('nzwihl-stand').src = `${ASSETS}/NZWIHL_Standings.png?v=${v}`;
 document.getElementById('nzihl-stand-link').href  = `${ASSETS}/NZIHL_Standings.png`;
 document.getElementById('nzwihl-stand-link').href = `${ASSETS}/NZWIHL_Standings.png`;
 
-// Up Next team cards
-function upCard(t){
-  const slug = t.nm.toLowerCase().replace(/\s+/g,"_");
-  const zip = `${ASSETS}/up-next/zips/${slug}_upnext.zip`;
-  const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/up-next/${enc(t.up)}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill dl" title="Download the team pack (zip)" href="${zip}">Zip</a>
-    <a class="pill ext" title="Browse the files on GitHub" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
-}
-// Leagues & Teams strip — wordless logo-only links pinned across the top above
-// the jump nav: 2 league wordmarks (-> league/?league=<nzihl|nzwihl>) then all
-// 10 club crests (-> team/?team=<slug>, incl. Auckland Mako — no 2026 games,
-// but its team page degrades gracefully: "no game" / "not wired" states).
-const LEAGUE_LOGOS = {
-  NZIHL:  "NZIHL-White-2000.png",
-  NZWIHL: "NZWIHL-Logo-White-1000px.png",
+/* ---------- ASSET CATALOG ---------- */
+/* activeOnly: Mako is stood down for 2026 — its crest renders dimmed for
+   evergreen live assets (nothing to resolve) but stays clickable. */
+const crestStrip = (anchor, activeOnly) => {
+  const link = t => `<a ${activeOnly && !t.active ? 'class="off"' : ''} href="${teamHref(t)}${anchor||''}" title="${t.nm}"><img loading="lazy" src="${logoUrl(t)}" alt="${t.tla}"></a>`;
+  return `<div class="crests">
+    ${TEAMS.filter(t=>t.lg==="nzihl").map(link).join('')}
+    <span class="cr-div"></span>
+    ${TEAMS.filter(t=>t.lg==="nzwihl").map(link).join('')}
+    <span class="cr-note">→ team pages</span>
+  </div>`;
 };
-function leaguePill(key){
-  const file = LEAGUE_LOGOS[key];
-  return `<a href="league/?league=${key.toLowerCase()}" title="${key} league page" aria-label="${key} league page">
-    <img loading="lazy" src="${ASSETS}/assets/league/${enc(file)}" alt="${key}"></a>`;
-}
-function stripPill(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  return `<a href="team/?team=${sl}" title="${t.nm}" aria-label="${t.nm}"><img loading="lazy" src="${logoUrl(t)}" alt="${t.nm}"></a>`;
-}
-document.getElementById('team-strip-row').innerHTML =
-  leaguePill('NZIHL') + leaguePill('NZWIHL') +
-  '<span class="div"></span>' +
-  NZIHL.map(stripPill).join('') +
-  '<span class="div"></span>' +
-  NZWIHL.map(stripPill).join('');
+const slugList = rowFn => {
+  const rows = lg => TEAMS.filter(t=>t.lg===lg && t.active).map(rowFn).join('');
+  return `<div class="slug-lg-label">NZIHL</div>${rows("nzihl")}
+          <div class="slug-lg-label">NZWIHL</div>${rows("nzwihl")}`;
+};
+const idw = t => `<span class="idw"><img class="lg" loading="lazy" src="${logoUrl(t)}" alt=""><span class="nm">${t.nm}</span></span>`;
+const full = p => `https://matchavez.com/hockey/${p}`;
 
-document.getElementById('upnext-nzihl').innerHTML  = NZIHL.map(upCard).join('');
-document.getElementById('upnext-nzwihl').innerHTML = NZWIHL.map(upCard).join('');
+const bannerRow = t => {
+  const p = `activity-banner/?team=${t.slug}`;
+  return `<div class="slug-row">${idw(t)}<span class="acts">
+    <a class="pill ext" target="_blank" rel="noopener" href="${p}">Open</a>
+    <span class="pill cp" data-copy="${full(p)}">Copy</span></span></div>`;
+};
+const lineupRow = t => {
+  const p = `startinglineup/?team=${t.slug}`;
+  return `<div class="slug-row">${idw(t)}<span class="acts">
+    <a class="pill ext" target="_blank" rel="noopener" href="${p}">Open</a>
+    <span class="pill cp" data-copy="${full(p)}">Copy</span></span></div>`;
+};
 
-// DVD loop team cards
-function dvdCard(t){
-  const slug = t.nm.toLowerCase().replace(/\s+/g,"_");
-  const zip = `${ASSETS}/DVD%20Bounce%20Loops/zips/${slug}_dvd.zip`;
-  const browse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${t.dvd}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill dl" title="Download the loop pack (zip)" href="${zip}">Zip</a>
-    <a class="pill ext" title="Browse the files on GitHub" target="_blank" rel="noopener" href="${browse}">Browse</a></span></div>`;
-}
-document.getElementById('loops-nzihl').innerHTML  = NZIHL.map(dvdCard).join('');
-document.getElementById('loops-nzwihl').innerHTML = NZWIHL.map(dvdCard).join('');
+const assetCard = a => `
+  <div class="card asset">
+    <div class="a-desc">
+      <h3>${a.title} ${a.chip||''}</h3>
+      <p>${a.desc}</p>
+    </div>
+    ${a.extra||''}
+    ${crestStrip(a.anchor, a.activeOnly)}
+    ${a.expand ? `<details class="slugs"><summary>All team URLs</summary>${a.expand}</details>` : ''}
+  </div>`;
 
-// Game Summary per-team static URLs ("Team Slugs") — ?bg=black (default, solid
-// stage) vs ?bg=opaque (translucent-but-highly-opaque stage, picks up whatever's
-// behind it when composited over video). Both are the SAME summary.html; the
-// background mode is just a URL param (see html.bg-opaque rules in summary/index.html).
-// (Mat, 2026-07-05)
-function summaryCard(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  const pathBlack  = `summary/?team=${sl}&bg=black`;
-  const pathOpaque = `summary/?team=${sl}&bg=opaque`;
-  const fullBlack  = `https://matchavez.com/hockey/${pathBlack}`;
-  const fullOpaque = `https://matchavez.com/hockey/${pathOpaque}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill ext" title="Open — solid black stage" target="_blank" rel="noopener" href="${pathBlack}">Black</a>
-    <a class="pill ext" title="Open — translucent, highly-opaque stage (for compositing over video)" target="_blank" rel="noopener" href="${pathOpaque}">Opaque</a>
-    <a class="pill cp" title="Copy the Black URL — paste as a browser source" data-copy="${fullBlack}" style="cursor:pointer">Copy</a></span></div>`;
-}
-// Auckland Mako has no 2026 games, so no Game Summary slug to point at — excluded from this list only.
-document.getElementById('slugs-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(summaryCard).join('');
-document.getElementById('slugs-nzwihl').innerHTML = NZWIHL.map(summaryCard).join('');
+const CHIP_EG = '<span class="chip blue">Evergreen URL</span>';
+document.getElementById('asset-grid').innerHTML = [
+  { title:"Activity Banner", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+    desc:"Transparent goal/penalty banner overlay, no scorebug — one static URL per club, paste as a browser source.",
+    expand: slugList(bannerRow) },
+  { title:"Starting Lineup", chip:CHIP_EG, anchor:"#lineup", activeOnly:true,
+    desc:"Starting six on a half-rink — set on the control page, the browser-source graphic follows. Persists between games.",
+    extra:`<div class="links" style="margin-top:0 0 4px"><a class="btn ext" target="_blank" rel="noopener" href="startinglineup/control/">Control Page — all teams</a></div>`,
+    expand: slugList(lineupRow) },
+  { title:"Game Summary", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+    desc:"Live scoring card (1840×1000-style). Per-club evergreen URL with black/opaque stage — on each team page." },
+  { title:"Team Scoring Leaders", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+    desc:"Each team's top-3 point scorers, live + season form. Per-club evergreen URL — on each team page." },
+  { title:"Player Lower Thirds", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+    desc:"Phone control page — tap a player, fire a stat+photo lower third through the Activity Banner already on air." },
+  { title:"Combined Starting Lineups", chip:CHIP_EG, anchor:"#lineup", activeOnly:true,
+    desc:"Both teams' starting six on one rink — each club's URL resolves its next fixture automatically." },
+  { title:"Ticker & Scorebug", chip:CHIP_EG, anchor:"#overlays", activeOnly:true,
+    desc:"Scorebug + scrolling recap ticker; Singular scorebug where wired. Per-club links on each team page." },
+  { title:"Up Next & DVD Loops", chip:"", anchor:"#packs", activeOnly:false,
+    desc:"Downloadable graphics packs — matchup hero/lower-third overlays and seamless bouncing-logo MP4 loops (4 corners, 1080p50). Zips live on each team page." },
+].map(assetCard).join('');
 
-// Team Scoring Leaders per-team static URLs — same ?bg=black/?bg=opaque
-// toggle and slug convention as Game Summary (same summaryCard() pattern).
-function leadersCard(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  const pathBlack  = `scoringleaders/?team=${sl}&bg=black`;
-  const pathOpaque = `scoringleaders/?team=${sl}&bg=opaque`;
-  const fullBlack  = `https://matchavez.com/hockey/${pathBlack}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill ext" title="Open — solid stage" target="_blank" rel="noopener" href="${pathBlack}">Black</a>
-    <a class="pill ext" title="Open — translucent, highly-opaque stage (for compositing over video)" target="_blank" rel="noopener" href="${pathOpaque}">Opaque</a>
-    <a class="pill cp" title="Copy the Black URL — paste as a browser source" data-copy="${fullBlack}" style="cursor:pointer">Copy</a></span></div>`;
-}
-// Auckland Mako excluded (no 2026 games) — same 9-team list as Game Summary.
-document.getElementById('leaders-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(leadersCard).join('');
-document.getElementById('leaders-nzwihl').innerHTML = NZWIHL.map(leadersCard).join('');
-
-// Activity Banner per-team static URLs ("Activity Banner Team Slugs") — same slugs as Game Summary.
-function bannerCard(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  const path = `activity-banner/?team=${sl}`;
-  const full = `https://matchavez.com/hockey/${path}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill ext" title="Open the live overlay" target="_blank" rel="noopener" href="${path}">Open</a>
-    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
-}
-// Mako left out (no 2026 games) — 9 teams, matching the Game Summary slug list.
-document.getElementById('banner-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(bannerCard).join('');
-document.getElementById('banner-nzwihl').innerHTML = NZWIHL.map(bannerCard).join('');
-
-// Player Lower Thirds per-team static URLs ("Player Lower Thirds") — the
-// phone control page, same slug used by both this page and its matching
-// Activity Banner instance (the control channel is keyed by that slug).
-function l3Card(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  const path = `lowerthirds/?team=${sl}`;
-  const full = `https://matchavez.com/hockey/${path}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill ext" title="Open the phone control page" target="_blank" rel="noopener" href="${path}">Open</a>
-    <a class="pill cp" title="Copy the static URL — send to the phone firing lower thirds" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
-}
-// Mako left out (no 2026 games) — same 9-team list as Activity Banner (this
-// feature fires THROUGH that overlay, so it only makes sense for the same set).
-document.getElementById('l3-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(l3Card).join('');
-document.getElementById('l3-nzwihl').innerHTML = NZWIHL.map(l3Card).join('');
-
-// Starting Lineup ("Starting Lineup") — evergreen per-team starting-six
-// graphic (display = browser source, control/ = director's picker). Same
-// slug convention; state persists in the worker's /lineup/<slug> channel.
-function slCard(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  const graphic = `startinglineup/?team=${sl}`;
-  const full = `https://matchavez.com/hockey/${graphic}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill ext" title="Open the graphic" target="_blank" rel="noopener" href="${graphic}">Open</a>
-    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
-}
-// Same 9-team Mako-excluded list as the Activity Banner / Player L3 sections.
-document.getElementById('sl-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(slCard).join('');
-document.getElementById('sl-nzwihl').innerHTML = NZWIHL.map(slCard).join('');
-
-// Combined Starting Lineups Team Slugs (2026-07-14) — evergreen per-team
-// URL for startinglineup/combined/, same idea as Activity Banner's team
-// slugs: the page resolves this team's next scheduled fixture itself
-// (from nzihl-season-data's `upcoming` field, see combined/index.html's
-// resolveTeamSlug()), so ONE bookmarked URL per team keeps showing the
-// right opponent as the schedule moves game to game — no manual editing.
-// Distinct from the schedule-driven #sl-combined grid above, which links
-// one exact ?home=&away= URL per fixture in the next few days.
-function combinedTeamCard(t){
-  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  const graphic = `startinglineup/combined/?team=${sl}`;
-  const full = `https://matchavez.com/hockey/${graphic}`;
-  return `<div class="team">${idw(t)}<span class="acts">
-    <a class="pill ext" title="Open the graphic" target="_blank" rel="noopener" href="${graphic}">Open</a>
-    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
-}
-// Mako excluded — no 2026 games means no fixture to ever resolve, same
-// reasoning as every other Mako-excluded evergreen slug list on this page.
-document.getElementById('sl-combined-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(combinedTeamCard).join('');
-document.getElementById('sl-combined-nzwihl').innerHTML = NZWIHL.map(combinedTeamCard).join('');
-
-// Games/rosters older than this many days (past their date) are treated as
-// stale and hidden from the portal's "current" sections, rather than lingering
-// forever when there's nothing yet scheduled to replace them. Direct URLs
-// (summary/?g=..., the GitHub release itself) are unaffected — this only
-// changes what gets featured as current.
+/* ---------- GAME DAY ---------- */
 const STALE_CUTOFF_DAYS = 2;
 const nzTodayISO = () => new Date().toLocaleDateString('en-CA', {timeZone:'Pacific/Auckland'});
 const daysPast = (isoDate, todayISO) =>
   Math.round((new Date(todayISO+'T00:00:00Z') - new Date((isoDate||'').slice(0,10)+'T00:00:00Z')) / 86400000);
-
-// Combined Starting Lineups — schedule-driven links (Prompt 11). Deliberately
-// sourced from nzihl-season-data's `upcoming` field, NOT boxscores.json like
-// every other schedule-driven section on this page: `upcoming` already
-// covers the whole season with no lookahead cap and is keyed by teamID, so
-// no ALIASES name-matching workaround is needed (same reasoning as
-// team/index.html's schedule widget, the other consumer of this field —
-// see nzihl_season_data_warehouse.md). teamID->slug/name/logo is its own
-// small map (mirrors the README's REG table) rather than reusing the
-// NZIHL/NZWIHL name arrays above, because `upcoming` entries carry raw
-// esportsdesk names ("Red Devils", and NZWIHL's "Dunedin Thunder" for the
-// WOMEN'S team) that don't exact-match those arrays' `nm` field.
-const SL_TEAMID = {
-  674110:{slug:"pure-nz-admirals",      name:"Pure NZ Admirals",      logo:"Pure-NZ-Admirals-2000x2000.png"},
-  675633:{slug:"canterbury-red-devils", name:"Canterbury Red Devils", logo:"Red Devils 2000x2000r.png"},
-  675634:{slug:"dunedin-thunder",       name:"Dunedin Thunder",       logo:"Dunedin_Thunder.png"},
-  675635:{slug:"skycity-stampede",      name:"SkyCity Stampede",      logo:"Skycity Stampede 2000x2000.png"},
-  674109:{slug:"botany-swarm",          name:"Botany Swarm",          logo:"Botany Swarm 2000x2000.png"},
-  675636:{slug:"auckland-steel",        name:"Auckland Steel",        logo:"Auckland-Steel-White.png"},
-  675637:{slug:"canterbury-inferno",    name:"Canterbury Inferno",    logo:"Inferno-White.png"},
-  675638:{slug:"dunedin-thunder-women", name:"Dunedin Thunder Women", logo:"thunder-women-white.png"},
-  675639:{slug:"wakatipu-wild",         name:"Wakatipu Wild",         logo:"Wakatipu-wild-white.png"},
-};
-// Portal's usual lookahead window (its other schedule-driven sections get
-// the same effect via the upstream roster pipeline's in_core_window flag,
-// which this warehouse field doesn't carry — see nzihl_roster_schedule_pipeline.md's
-// "4-day PDF window"). daysPast() is negative for future dates, so "within
-// the next N days" is -N <= daysPast <= 0.
-const SL_WINDOW_DAYS = 4;
-async function loadCombinedLineups(){
-  const el = document.getElementById('sl-combined');
-  if(!el) return;
+const BOXSCORE_SOURCES = [
+  "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",
+  "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json",
+];
+const mlg = name => { const t = byName[name]; return t ? `<img class="mlg" loading="lazy" src="${logoUrl(t)}" alt="">` : ''; };
+async function loadGameDay(){
+  const el = document.getElementById('gameday-grid');
   try{
-    const [nzihl, nzwihl] = await Promise.all(["nzihl","nzwihl"].map(lg =>
-      fetch(`https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/${lg}.json`, {cache:"no-store"})
-        .then(r => r.ok ? r.json() : null).catch(()=>null)));
-    const todayISO = nzTodayISO();
+    const data = await Promise.all(BOXSCORE_SOURCES.map(u =>
+      fetch(u, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(()=>null)));
+    if(data.every(d => d === null)){ el.innerHTML = `<div class="card"><p class="muted-note">Couldn't load fixtures — try again shortly.</p></div>`; return; }
     const games = [];
-    [["NZIHL", nzihl], ["NZWIHL", nzwihl]].forEach(([label, d]) => {
-      if(d && Array.isArray(d.upcoming)) d.upcoming.forEach(g => games.push({...g, league: label}));
-    });
-    const fresh = games
-      .filter(g => { const dp = daysPast(g.date, todayISO); return dp <= 0 && dp >= -SL_WINDOW_DAYS; })
-      .sort((a,b) => (a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+    data.forEach(d => { if(d && Array.isArray(d.games)) d.games.forEach(g => games.push({...g, league:d.league})); });
+    const todayISO = nzTodayISO();
+    const fresh = games.filter(g => g.in_core_window !== false && daysPast(g.date || g.datetime, todayISO) <= STALE_CUTOFF_DAYS);
     if(!fresh.length){
-      el.innerHTML = `<div class="game card" style="opacity:.55"><div class="day">No games in the next ${SL_WINDOW_DAYS} days</div>
+      el.innerHTML = `<div class="game card" style="opacity:.55"><div class="day">No games this week</div>
         <div class="match">Check back closer to the next fixture</div></div>`;
       return;
     }
-    const fmtDay = iso => { try{ return new Date(iso+'T00:00:00').toLocaleDateString('en-NZ',
-      {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }catch(_){ return iso; } };
-    const fmtTime = hhmm => { if(!hhmm) return ''; const [h,m]=String(hhmm).split(':').map(Number);
-      if(Number.isNaN(h)||Number.isNaN(m)) return ''; const h12=((h+11)%12)+1;
-      return `${h12}:${String(m).padStart(2,'0')}${h>=12?'pm':'am'}`; };
-    // Verified against a real fixture (2026-07-14): `upcoming`'s `home`/`away`
-    // keys are the game's true home/away sides (not just "listed first") —
-    // home goes in the graphic's home= param and renders on the rink's left,
-    // matching every other consumer's away-@-home convention on this page.
+    fresh.sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
+    const fmt = g => { try{ return new Date(g.datetime).toLocaleDateString('en-NZ',
+      {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }catch(_){ return g.date; } };
     el.innerHTML = fresh.map(g => {
-      const hi = SL_TEAMID[g.home.teamID], ai = SL_TEAMID[g.away.teamID];
-      const when = `${g.league} · ${fmtDay(g.date)}${g.time ? ' · ' + fmtTime(g.time) : ''}`;
-      const awayLg = ai ? `<img class="mlg" loading="lazy" src="${logoUrl({logo:ai.logo})}" alt="">` : '';
-      const homeLg = hi ? `<img class="mlg" loading="lazy" src="${logoUrl({logo:hi.logo})}" alt="">` : '';
-      const inner = `<div class="day">${when}</div>
-        <div class="match">${awayLg}${(ai&&ai.name)||g.away.name} <span>@</span> ${homeLg}${(hi&&hi.name)||g.home.name}</div>
-        <div class="meta">Combined Starting Lineups →</div>`;
-      if(!hi || !ai) return `<div class="game card" style="opacity:.55">${inner}</div>`;
-      const url = `startinglineup/combined/?home=${hi.slug}&away=${ai.slug}`;
-      return `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`;
+      const w = (g.league||'').toUpperCase().startsWith('NZW');
+      const gid = g.gameid || null;
+      const wq = w ? '&w=1' : '';
+      const ht = byName[g.home], at = byName[g.away];
+      const gpill = gid ? `<span class="gcode"><b>G</b>${gid}</span>` : `<span class="gcode"><b>G</b>TBC</span>`;
+      const acts = [
+        gid ? `<a class="pill ext" target="_blank" rel="noopener" href="summary/?g=${gid}${wq}">Summary</a>` : `<span class="pill" style="opacity:.4">Summary</span>`,
+        gid ? `<a class="pill ext" target="_blank" rel="noopener" href="scoringleaders/?g=${gid}${wq}">Leaders</a>` : `<span class="pill" style="opacity:.4">Leaders</span>`,
+        (ht && at) ? `<a class="pill ext" target="_blank" rel="noopener" href="startinglineup/combined/?home=${ht.slug}&away=${at.slug}">Lineups</a>` : '',
+        gid ? `<span class="pill cp" data-copy="${full(`summary/?g=${gid}${wq}`)}">Copy</span>` : '',
+      ].join('');
+      return `<div class="game card">
+        <div class="day${w?' blue':''}">${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''} ${gpill}</div>
+        <div class="match">${mlg(g.away)}${g.away} <span>@</span> ${mlg(g.home)}${g.home}</div>
+        <div class="meta"><b>${g.venue||''}</b></div>
+        <div class="links">${acts}</div>
+      </div>`;
     }).join('');
   }catch(_){
-    el.innerHTML = `<p class="muted-note">Couldn't load combined lineups — try again shortly.</p>`;
+    el.innerHTML = `<div class="card"><p class="muted-note">Couldn't load fixtures — try again shortly.</p></div>`;
   }
 }
-loadCombinedLineups();
+loadGameDay();
 
-// live latest roster releases
+/* ---------- ROSTERS ---------- */
 async function loadRosters(repo, elId){
   const el = document.getElementById(elId);
   try{
@@ -840,10 +429,6 @@ async function loadRosters(repo, elId){
     const d = await r.json();
     const assets = (d.assets||[]).filter(a=>a.name.toLowerCase().endsWith('.pdf'));
     if(!assets.length){ el.innerHTML = `<p class="muted-note">No PDF in latest release.</p>`; return; }
-    // Filenames are <YYYY-MM-DD>_<AWAY>_at_<HOME>.pdf. If the "latest" release
-    // is for a game more than STALE_CUTOFF_DAYS in the past, treat it as
-    // nothing-current rather than showing an already-played game as if it's
-    // this week's roster (the release itself still exists via "All rosters").
     const todayISO = nzTodayISO();
     const fresh = assets.filter(a=>{
       const m = a.name.match(/^(\d{4}-\d{2}-\d{2})_/);
@@ -856,138 +441,13 @@ async function loadRosters(repo, elId){
         <a class="btn dl" href="${a.browser_download_url}">PDF</a></div>`;
     }).join('');
   }catch(e){
-    el.innerHTML = `<p class="muted-note">Couldn’t load live — <a style="color:var(--accent)" target="_blank" rel="noopener" href="https://github.com/matchavez/${repo}/releases/latest">open latest release →</a></p>`;
+    el.innerHTML = `<p class="muted-note">Couldn't load live — <a style="color:var(--accent)" class="gh" target="_blank" rel="noopener" href="https://github.com/matchavez/${repo}/releases/latest">open latest release →</a></p>`;
   }
 }
 loadRosters('nzihl-broadcast-rosters','ros-nzihl');
 loadRosters('nzwihl-broadcast-rosters','ros-nzwihl');
 
-// live box-score links — auto-resolved by the roster pipeline (boxscores.json).
-// Falls back to the static cards already in #boxscore-grid if the fetch fails.
-const BOXSCORE_SOURCES = [
-  "https://raw.githubusercontent.com/matchavez/nzihl-broadcast-rosters/main/boxscores.json",
-  "https://raw.githubusercontent.com/matchavez/nzwihl-broadcast-rosters/main/boxscores.json",
-];
-// Known gameids for games the roster pipeline hasn't filled yet (manifest gameid=null).
-// Keyed "away|home|date". Self-clears once the pipeline publishes the id (g.gameid wins).
-const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
-const gidOf = g => g.gameid || KNOWN_GIDS[[g.away,g.home,g.date].join('|')] || null;
-const urlOf = g => {
-  const gid = gidOf(g);
-  return gid ? 'summary/?g=' + gid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '') : null;
-};
-// Same matchup/gameid resolution as urlOf(), just pointed at Team Scoring
-// Leaders instead of Game Summary — the two sections always show the same
-// games, so they share every bit of resolution logic (gidOf, KNOWN_GIDS,
-// STALE_CUTOFF_DAYS, in_core_window filtering) and only the base path differs.
-const urlOfLeaders = g => {
-  const gid = gidOf(g);
-  return gid ? 'scoringleaders/?g=' + gid + ((g.league||'').toUpperCase().startsWith('NZW') ? '&w=1' : '') : null;
-};
-const mlg = name => {
-  const u = logoOf(name);
-  return u ? `<img class="mlg" loading="lazy" src="${u}" alt="">` : '';
-};
-async function loadBoxscores(){
-  try{
-    const data = await Promise.all(BOXSCORE_SOURCES.map(u =>
-      fetch(u, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(()=>null)));
-    if(data.every(d => d === null)) return;  // fetch failed entirely — keep static fallback
-    const games = [];
-    data.forEach(d => { if(d && Array.isArray(d.games)) d.games.forEach(g => games.push({...g, league:d.league})); });
-    // Drop anything more than STALE_CUTOFF_DAYS past its date. The pipeline
-    // now self-prunes boxscores.json too, but this gives immediate effect
-    // without waiting for the next cron run, and is a safety net if a league
-    // has no upcoming game to replace an old one with.
-    //
-    // boxscores.json also carries games further out (up to 11 days, flagged
-    // in_core_window:false) so the /hockeyrosters page can show them as
-    // 'coming soon'. The portal keeps its original narrower window by only
-    // showing in_core_window:true entries (missing flag = older manifest
-    // entry from before this field existed, treated as core/true).
-    const todayISO = nzTodayISO();
-    const fresh = games.filter(g => g.in_core_window !== false && daysPast(g.date || g.datetime, todayISO) <= STALE_CUTOFF_DAYS);
-    if(!fresh.length){
-      const noGames = `<div class="game card" style="opacity:.55"><div class="day">No games this weekend</div>
-        <div class="match">Check back closer to the next fixture</div></div>`;
-      document.getElementById('boxscore-grid').innerHTML = noGames;
-      document.getElementById('leaders-grid').innerHTML = noGames;
-      return;
-    }
-    fresh.sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
-    const fmt = g => {
-      try{ return new Date(g.datetime).toLocaleDateString('en-NZ',
-        {weekday:'short',day:'numeric',month:'short',timeZone:'Pacific/Auckland'}); }
-      catch(_){ return g.date; }
-    };
-    document.getElementById('boxscore-grid').innerHTML = fresh.map(g => {
-      const gid = gidOf(g);
-      const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
-      const inner = `<div class="day">${when}</div>
-        <div class="match">${mlg(g.away)}${g.away} <span>@</span> ${mlg(g.home)}${g.home}</div>
-        <div class="meta"><b>${g.venue||''}</b>${gid ? ' · Game summary →' : ' · game summary TBC'}</div>`;
-      const url = urlOf(g);
-      return url
-        ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
-        : `<div class="game card" style="opacity:.55">${inner}</div>`;
-    }).join('');
-
-    document.getElementById('leaders-grid').innerHTML = fresh.map(g => {
-      const gid = gidOf(g);
-      const when = `${g.league} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}`;
-      const inner = `<div class="day">${when}</div>
-        <div class="match">${mlg(g.away)}${g.away} <span>@</span> ${mlg(g.home)}${g.home}</div>
-        <div class="meta"><b>${g.venue||''}</b>${gid ? ' · Scoring leaders →' : ' · scoring leaders TBC'}</div>`;
-      const url = urlOfLeaders(g);
-      return url
-        ? `<a class="game card" target="_blank" rel="noopener" href="${url}">${inner}</a>`
-        : `<div class="game card" style="opacity:.55">${inner}</div>`;
-    }).join('');
-
-    // "This Weekend" hero chips — one pill per live SERIES (same two teams,
-    // games <=3 days apart), not just the single soonest game. Two series can
-    // run concurrently (e.g. Swarm@Thunder Fri/Sat + Stampede@RedDevils
-    // Sat/Sun the same weekend) — each gets its own pill showing that
-    // series' next unplayed leg. Uses the full manifest (games, not the
-    // narrower core-window `fresh`) so "this weekend" always resolves to
-    // whichever weekend is soonest, even from the 11-day extended lookahead.
-    const now = Date.now();
-    const notFinished = g => {
-      const t = Date.parse(g.datetime || g.date);
-      return t && t > now - 3*3600e3;
-    };
-    const weekendSeriesFor = lg => {
-      const upcoming = games
-        .filter(g => (g.league||'').toUpperCase() === lg && notFinished(g))
-        .sort((a,b) => String(a.datetime||a.date).localeCompare(String(b.datetime||b.date)));
-      if(!upcoming.length) return [];
-      const t0 = Date.parse(upcoming[0].datetime || upcoming[0].date);
-      const weekend = upcoming.filter(g => Math.abs(Date.parse(g.datetime||g.date) - t0) <= 3*86400e3);
-      const bySeries = new Map();
-      weekend.forEach(g => {
-        const key = [g.away, g.home].sort().join('|');
-        if(!bySeries.has(key)) bySeries.set(key, g);  // weekend is already chronological — first hit is the next leg
-      });
-      return [...bySeries.values()];
-    };
-    const chips = [
-      ...weekendSeriesFor('NZIHL').map(g => ({ g, cls:'' })),
-      ...weekendSeriesFor('NZWIHL').map(g => ({ g, cls:'blue' })),
-    ];
-    if(chips.length){
-      document.getElementById('next-chips').innerHTML = chips.map(({g, cls}) => {
-        const url = urlOf(g);
-        const tag = cls === 'blue' ? 'NZWIHL' : 'NZIHL';
-        const attrs = url ? `href="${url}" target="_blank" rel="noopener"` : '';
-        return `<a class="next-chip ${cls} show" ${attrs}><span class="dot"></span><b>${tag}</b> ${g.away} @ ${g.home} · ${fmt(g)}${g.time ? ' · ' + g.time : ''}${g.venue ? ' · ' + g.venue : ''}</a>`;
-      }).join('');
-      document.getElementById('weekend-wrap').classList.add('show');
-    }
-  }catch(_){ /* keep static fallback */ }
-}
-loadBoxscores();
-
-// copy-to-clipboard — with inline "✓ Copied" feedback on the control itself
+/* ---------- copy-to-clipboard ---------- */
 const toast = document.getElementById('toast');
 function flash(msg){ toast.textContent = msg; toast.classList.add('on');
   clearTimeout(flash._t); flash._t = setTimeout(()=>toast.classList.remove('on'),1200); }
@@ -1005,56 +465,7 @@ document.addEventListener('click', e=>{
   });
 });
 
-// scroll-spy — the jump nav lights up as you move through the page
-(()=>{
-  const links = [...document.querySelectorAll('nav.jump a')];
-  const secs  = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
-  const spy = new IntersectionObserver(es=>{
-    es.forEach(en=>{
-      if(!en.isIntersecting) return;
-      links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + en.target.id));
-    });
-  },{ rootMargin:'-15% 0px -75% 0px' });
-  secs.forEach(s => spy.observe(s));
-})();
-
-// section reveal — gentle ease-in as sections enter view (JS-gated so no-JS still shows everything)
-(()=>{
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  document.body.classList.add('anim');
-  const secs = [...document.querySelectorAll('main section')];
-  const rev = new IntersectionObserver(es=>es.forEach(en=>{
-    if(en.isIntersecting){ en.target.classList.add('in'); rev.unobserve(en.target); }
-  }),{ threshold:.06 });
-  secs.forEach(s=>{
-    const r = s.getBoundingClientRect();
-    if(r.top < innerHeight){ s.classList.add('in'); } else { rev.observe(s); }
-  });
-})();
-
-// cursor-follow glow — panels light up where the pointer is
-if(matchMedia('(pointer:fine)').matches){
-  document.addEventListener('pointermove', e=>{
-    const el = e.target.closest('.card,.team,.roster-col,.standings figure');
-    if(!el) return;
-    const r = el.getBoundingClientRect();
-    el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-    el.style.setProperty('--my', (e.clientY - r.top) + 'px');
-  }, {passive:true});
-}
-
-// scroll progress beam
-(()=>{
-  const pb = document.getElementById('pbar');
-  const upd = ()=>{
-    const h = document.documentElement;
-    const max = h.scrollHeight - window.innerHeight;
-    pb.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
-  };
-  addEventListener('scroll', upd, {passive:true}); upd();
-})();
-
-// live NZ clock in the eyebrow
+/* live NZ clock */
 (()=>{
   const ck = document.getElementById('clock');
   const tick = ()=>{ try{

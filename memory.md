@@ -2,6 +2,38 @@
 
 Self-context for Claude. README.md here is already extremely thorough and explicitly written for AI-assisted maintenance (data contracts, URL params, gotchas) — treat README.md as the primary source of truth for how each page works. This file covers what README.md doesn't: cross-repo relationships, process gotchas, and "what's in flight" framing. Last refreshed: 2026-07-11.
 
+## Portal redesign v2 → PRODUCTION (2026-07-14)
+The redesign2/ preview was promoted to production the same day Mat approved it
+("Put this into production, and I'll do tweaks with Sonnet"). Changes:
+- `nav.js` (repo root, NEW) — the shared top bar injected on EVERY page:
+  Portal + NZIHL + 6 clubs + NZWIHL + 4 clubs (crest + TLA, 13 links) + an
+  Ops pill pinned far right. Also injects shared CSS bits: `.gh` (octocat
+  glyph for GitHub-bound links) and `.gcode` (esportsdesk game-code pill).
+  Exposes `window.RD2` — the club/league registry (slugs, TLAs, logo
+  filenames, up/dvd dir names, roster repo, active flag). index.html and
+  team/index.html now consume RD2 instead of carrying their own team arrays
+  (league/ and warehouse/ still have their own copies — drift risk remains
+  there). Include with `<script src="<path>/nav.js" data-root="<path-to-root>">`.
+- `index.html` — full redesign: Game Day section merges Game Summary +
+  Scoring Leaders + Combined Lineups into one card per fixture with a
+  `G <gameid>` pill; per-team link walls replaced by an asset catalog whose
+  crest strips route to team pages (Activity Banner + Starting Lineup keep
+  full slug lists in <details> expanders — Mat's "hybrid" pick); Brand &
+  Reference merges brand + logos; diagnostics/test/data links all moved out
+  to `ops/`.
+- `team/index.html` — one-row mast (72px plate + name + `TLA · LEAGUE` +
+  palette chips inline right; crumbs dropped), consolidated roster button
+  row (PDF · Roster Portal · All releases), merged Brand & Reference card,
+  Player Lower Thirds card added to overlays.
+- `ops/index.html` (NEW) — sub-portal for Pre-Flight, Graphics QA, test/beta
+  pages, warehouse + data repos, source repos, 49ing Cockpit, Singular login.
+- `league/index.html` — untouched EXCEPT the nav.js include (Mat will tweak
+  with Sonnet; its own crumbs/team strip still there, slightly redundant now).
+- `redesign2/` — the preview that produced all this; kept in place (not
+  deleted without Mat's say-so). Its nav.js is a near-copy with a different
+  league-link path; don't edit it expecting production to change.
+Tweak rounds by Mat via Sonnet are expected on all of this.
+
 ## What this repo is
 The live portal + every deployed broadcast overlay page for NZIHL/NZWIHL. `https://matchavez.com/hockey/` via GitHub Pages, custom domain, deploy = push to `main`. Single-file HTML overlays, no build step, 1920×1080 YoloBox browser sources.
 
