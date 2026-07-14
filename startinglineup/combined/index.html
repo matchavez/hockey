@@ -174,8 +174,13 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    on top and blurs the stripe's own hard colour split; still below
    #hdrTitle (z-index:2). Blur radius 20px->32px per Mat's ask for a
    smoother transition -- #hdrSeamBlur's radius is untouched (20px), this
-   bump is scoped to the accent stripe only. */
-#hdrAccentBlur{position:absolute;left:880px;top:123px;width:80px;height:5px;z-index:1;
+   bump is scoped to the accent stripe only. 2026-07-16: box widened 40px
+   in BOTH directions (80px->160px total, i.e. 80px either side of x=920,
+   was 40px either side) per Mat's ask, chasing more smoothness the same
+   way -- left 880->840, width 80->160, right edge 960->1000. Still only
+   5px tall/top:123px (unchanged) and still fully independent of
+   #hdrSeamBlur, whose width (80px, 40 either side) is untouched. */
+#hdrAccentBlur{position:absolute;left:840px;top:123px;width:160px;height:5px;z-index:1;
   backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);pointer-events:none;}
 /* font-weight 700 (was 600), font-size 50px (was 48px, ~+5%) per Mat's
    2026-07-14 ask.
