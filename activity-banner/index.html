@@ -1124,7 +1124,22 @@ function fitWindow(){
   const scale=Math.min(innerWidth/1920, innerHeight/1080);
   const left=(innerWidth-1920*scale)/2;   // always horizontally centred
   const top=innerHeight-1080*scale;       // always bottom-anchored (letterbox lands on top only)
-  stage.style.transform=`translate(${left}px,${top}px) scale(${scale})`;
+  // CSS zoom instead of transform:scale (Mat, 2026-07-14): at the small scale
+  // factors used by the lowerthirds/ control-page preview iframe (~0.36,
+  // vs. a real 1920x1080 YoloBox capture which is always scale=1 and
+  // unaffected either way), transform:scale() on this ancestor combined
+  // with #l3's overflow:hidden+border-radius clip produced a compositor
+  // seam that ate most of the Player L3 headshot's border -- reproduced
+  // and confirmed by Claude (fed the exact ~696x391 iframe geometry
+  // directly). zoom performs real layout-level scaling instead of a
+  // post-paint bitmap transform, which eliminates the seam; verified clean
+  // at the same scale/geometry. Unlike transform, zoom's left/top are
+  // still read in the PARENT's (unzoomed) coordinate space, so the same
+  // left/top formulas above still apply unchanged.
+  stage.style.transform="none";
+  stage.style.left=`${left}px`;
+  stage.style.top=`${top}px`;
+  stage.style.zoom=String(scale);
 }
 addEventListener("resize",fitWindow);
 
