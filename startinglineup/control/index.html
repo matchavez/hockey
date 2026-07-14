@@ -256,7 +256,12 @@ async function saveSlot(slot, player){
   // optimistic local update either way — preview follows instantly
   if(player) LINEUP.slots[slot] = player; else delete LINEUP.slots[slot];
   renderTable(); renderPills(); updatePreview();
-  if(workerBroken){ setSaved("err","preview only"); return; }
+  // Always attempt the save, even if a PRIOR check marked the worker
+  // broken -- a transient blip (cold start, one bad edge hop) can clear
+  // seconds later, and short-circuiting here forever "preview only"'d
+  // every future pick for the rest of the session even after the worker
+  // recovered. This is also the fastest possible self-heal: any real save
+  // that succeeds proves the worker is back, so clear the stale banner.
   setSaved("saving","saving…");
   try{
     const r = await fetchWithTimeout(`${WORKER}/lineup/${TEAM_SLUG}`,{
@@ -266,21 +271,24 @@ async function saveSlot(slot, player){
     const txt = await r.text();
     let j; try{ j = JSON.parse(txt); }catch(e){ workerNotice("notdeployed"); setSaved("err","preview only"); return; }
     if(j.error){ setSaved("err","save failed"); return; }
-    LINEUP = j; setSaved("ok","saved");
+    LINEUP = j; workerNotice(null); setSaved("ok","saved");
   }catch(e){ workerNotice("net"); setSaved("err","offline"); }
 }
 async function clearAll(){
   LINEUP.slots = {};
   renderTable(); renderPills(); updatePreview();
-  if(workerBroken) return;
+  // Same as saveSlot: always attempt, never short-circuit on a stale
+  // workerBroken flag -- and clear that flag on any real success.
   try{
     const r = await fetchWithTimeout(`${WORKER}/lineup/${TEAM_SLUG}`,{
       method:"POST", cache:"no-store", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({action:"clear", token:CONTROL_TOKEN}),
     }, 8000);
-    const j = JSON.parse(await r.text());
-    if(!j.error){ LINEUP = j; setSaved("ok","cleared"); }
-  }catch(e){ /* preview already updated */ }
+    const txt = await r.text();
+    let j; try{ j = JSON.parse(txt); }catch(e){ workerNotice("notdeployed"); return; }
+    if(j.error) return;
+    LINEUP = j; workerNotice(null); setSaved("ok","cleared");
+  }catch(e){ workerNotice("net"); }
 }
 
 /* ====================== UI ====================== */
@@ -385,6 +393,15 @@ async function start(){
     return;
   }
   renderTable(); renderPicker(); updatePreview();
+  setInterval(pingWorkerIfBroken, 10000);
+}
+async function pingWorkerIfBroken(){
+  if(!workerBroken) return;
+  try{
+    const r = await fetchWithTimeout(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store"}, 6000);
+    JSON.parse(await r.text()); // just proving the worker is back and returning real JSON
+    workerNotice(null);
+  }catch(e){ /* still down — leave the banner up, try again next tick */ }
 }
 /* ====================== PASSWORD GATE (shared key with the L3 page) ====================== */
 const GATE_PASSWORD = "domigan";
