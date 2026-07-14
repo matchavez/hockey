@@ -798,12 +798,18 @@ function start(){
   // on this page. The black stroke is what keeps white-on-yellow legible;
   // only L2 gets the colour swap, matching the "only STAMPEDE inverts,
   // SKYCITY stays standard" instruction.
+  // 2026-07-16 (missed first pass): the bottom accent stripe (.hdrAccent,
+  // normally TH.hdrAccent/TA.hdrAccent = Stampede Yellow) also needs to
+  // flip to navy here -- left as yellow it's invisible against the new
+  // yellow half background instead of reading as a border. Flipped to
+  // STAMPEDE_INVERT_TEXT (navy) alongside everything else.
   const invertSide = stampedeInvertSide();
   if(invertSide){
     const half = document.getElementById("hdr").querySelector(`.hdrHalf.${invertSide}`);
     const grad = invertSide==="home" ? "90deg" : "270deg";
     half.style.background = `linear-gradient(${grad}, ${STAMPEDE_INVERT_BG} 0%, ${STAMPEDE_INVERT_BG} 72%, rgba(0,0,0,.08) 100%), ${STAMPEDE_INVERT_BG}`;
     document.getElementById(invertSide==="home" ? "hdrTeamHomeL2" : "hdrTeamAwayL2").style.color = STAMPEDE_INVERT_TEXT;
+    document.getElementById(invertSide==="home" ? "hdrAccentHome" : "hdrAccentAway").style.background = STAMPEDE_INVERT_TEXT;
   }
 
   panel.classList.add("show");
