@@ -589,11 +589,18 @@ const ADMIRALS_TEAM_ID = 674110, STAMPEDE_TEAM_ID = 675635;
 // ~3.6:1 and started reproducing the "navy text on navy-ish background
 // reads hollow" problem the whole invert was built to avoid. Don't push
 // this materially darker without re-checking contrast against #1D3056.
+// 2026-07-16: Mat then asked for exactly halfway between #DBAD06 (44%)
+// and #BD9505 (38%) -- 41% HSL, same hue/saturation -> #CCA106 (matches
+// a plain per-channel RGB average of the two, (219+189)/2=204, (173+149)/2=
+// 161, (6+5)/2~6, confirming the HSL interpolation and the naive RGB
+// midpoint agree here). Contrast vs #1D3056: ~5.38:1 -- sits neatly
+// between the other two (6.2:1 / 4.64:1), same margin-of-safety logic
+// applies.
 // If this tint needs reuse elsewhere, it isn't in the official hex cheat
 // sheet yet -- same situation as Swarm Rose/Admiral Blue (legibility
 // tints added ad hoc, formalised in the style guide later); flag to Mat
 // before treating it as brand-official outside this one override.
-const STAMPEDE_INVERT_BG = "#BD9505", STAMPEDE_INVERT_TEXT = "#1D3056";
+const STAMPEDE_INVERT_BG = "#CCA106", STAMPEDE_INVERT_TEXT = "#1D3056";
 function stampedeInvertSide(){
   if(!TH || !TA) return null;
   if(TH.id===STAMPEDE_TEAM_ID && TA.id===ADMIRALS_TEAM_ID) return "home";
