@@ -222,18 +222,16 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    the right edge, puts the gap's own midpoint at x≈920.0. If either word
    is ever changed, re-derive this constant (see comment) rather than
    guessing.
-   2026-07-16: nudged another 3px right per Mat's ask -- anchor -23px ->
-   -20px (less negative = shifts right). Purely a manual aesthetic tweak
-   layered on top of the derived -23px value above, not a re-derivation;
-   if "STARTING"/"LINEUPS" wording or size ever changes, re-derive from
-   the -23px baseline first, then re-apply these manual nudges on top.
-   2026-07-16 (later): another 2px right -- anchor -20px -> -18px.
-   2026-07-16 (later still): another 2px right -- anchor -18px -> -16px.
-   2026-07-16 (later still): another 3px right -- anchor -16px -> -13px.
-   2026-07-16 (final): backed up 1px left -- anchor -13px -> -14px. Final
-   headline anchor: -14px (started from the derived -23px baseline, net
-   +9px right across all the manual nudges above). */
-#hdrTitle{position:absolute;left:calc(50% - 14px);top:50%;transform:translate(-50%,-50%);
+   2026-07-16: five manual nudges applied on top of the derived -23px
+   value chasing "move it right" asks (-23->-20->-18->-16->-13->-14px,
+   net +9px right) -- REVERTED same day once a screenshot with an actual
+   measurement guide showed the gap had drifted 9px off the true seam
+   (the guide line landed exactly on the rink's centre-ice line at x=920,
+   confirming -23px was right all along and the nudges were chasing a
+   stale/cached render). Back to -23px, the mathematically-derived value
+   from the measurement above -- do not nudge this further without a
+   fresh live measurement (not a cached screenshot) confirming drift. */
+#hdrTitle{position:absolute;left:calc(50% - 23px);top:50%;transform:translate(-50%,-50%);
   font-size:50px;font-weight:700;letter-spacing:.1875em;color:#fff;white-space:nowrap;
   text-shadow:0 0 8px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.65),
     0 0 46px rgba(255,255,255,.4),0 2px 12px rgba(0,0,0,.65);
