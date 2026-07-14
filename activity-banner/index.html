@@ -142,13 +142,22 @@
      Also scaled the whole card up (was 1000x180/135) so the photo/text
      fill more of the box top-to-bottom -- less empty vertical space, not
      just a bigger box. */
-  #l3{position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(16px);
-    width:1320px;height:245px;border-radius:14px;overflow:hidden;
-    display:none;align-items:stretch;background:var(--l3dark);box-shadow:0 16px 48px rgba(0,0,0,.55);
+  /* Whole-card 15% shrink (Mat, 2026-07-15, trial -- "not sure if I'll
+     keep it"): every geometry value below (box size, border widths,
+     border-radius, padding, gaps, shadow offsets) x0.85. Font-size
+     declarations are DELIBERATELY untouched per Mat's ask -- text stays
+     full-size inside the smaller box. Known tradeoff: .l3name/.l3stat are
+     white-space:nowrap+overflow:hidden at their original (unscaled) font
+     size inside a narrower card, so a long name/stat line that fit before
+     can now clip where it didn't previously -- inherent to "smaller box,
+     same text," not a bug. */
+  #l3{position:absolute;left:50%;bottom:0;transform:translateX(-50%) translateY(14px);
+    width:1122px;height:208px;border-radius:12px;overflow:hidden;
+    display:none;align-items:stretch;background:var(--l3dark);box-shadow:0 14px 41px rgba(0,0,0,.55);
     opacity:0;z-index:4;
     transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1);}
   #l3.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0);}
-  #l3.noFact{height:180px;}
+  #l3.noFact{height:153px;}
   /* Photo: SQUARE (Mat, 2026-07-12 -- was a full-bleed portrait rectangle,
      which looked too elongated/stretched; "compress" it into a square by
      matching width to whichever height the card currently has). align-self
@@ -173,7 +182,7 @@
      it's seamless. overflow:hidden (already present) clips l3img and the
      logo/initials fallbacks to match automatically. */
   #l3 .l3photo{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;overflow:hidden;position:relative;
-    box-sizing:border-box;background:#1b2029;border:6px solid var(--l3ink);border-radius:14px;}
+    box-sizing:border-box;background:#1b2029;border:5px solid var(--l3ink);border-radius:12px;}
   #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
   /* No-photo fallback is a SECOND choice, not the default: prefer the team
      crest (so a missing headshot still balances the crest already on the right
@@ -181,11 +190,11 @@
      at all (DEFV). */
   #l3 .l3photologo{position:absolute;inset:0;display:none;align-items:center;justify-content:center;}
   #l3 .l3photologo img{max-width:70%;max-height:70%;object-fit:contain;
-    filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));}
+    filter:drop-shadow(0 2px 5px rgba(0,0,0,.4));}
   #l3 .l3initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-weight:800;font-size:56px;color:#4a525f;letter-spacing:.02em;}
-  #l3 .l3body{flex:1 1 auto;min-width:0;padding:20px 51px;display:flex;flex-direction:column;
-    justify-content:center;gap:10px;color:#fff;font-family:Inter,sans-serif;}
+  #l3 .l3body{flex:1 1 auto;min-width:0;padding:17px 43px;display:flex;flex-direction:column;
+    justify-content:center;gap:9px;color:#fff;font-family:Inter,sans-serif;}
   /* Line 1: jersey # + position + name, matching scoringleaders/index.html's
      .pline/.jnum pattern exactly -- jersey number smaller+bold+team-ink
      coloured, position same size as the name but also ink-coloured, name
@@ -205,7 +214,7 @@
   #l3 .l3stat{font-weight:800;font-size:38px;color:#fff;
     text-align:center;white-space:nowrap;overflow:hidden;}
   #l3 .l3stat .unit{font-weight:400;font-size:.56em;opacity:.65;}
-  #l3 .l3tonight{display:none;margin-top:1px;padding:4px 12px;border-radius:7px;
+  #l3 .l3tonight{display:none;margin-top:1px;padding:3px 10px;border-radius:6px;
     background:rgba(255,255,255,.16);font-weight:800;font-size:16px;letter-spacing:.02em;
     align-self:flex-start;}
   #l3 .l3tonight.show{display:inline-block;}
@@ -219,7 +228,7 @@
   #l3 .l3logowrap{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
     background:rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.09);}
   #l3 .l3logowrap img{max-width:60%;max-height:60%;object-fit:contain;display:none;
-    filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));}
+    filter:drop-shadow(0 3px 9px rgba(0,0,0,.4));}
   #l3 .l3logowrap img.show{display:block;}
 
   /* --- test controls (only with ?test=1) --- */
