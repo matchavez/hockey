@@ -551,17 +551,41 @@ const TEAMS = {
 
 // 2026-07-16: one-off MATCHUP-SPECIFIC header override, Mat's ask -- when
 // Pure NZ Admirals play SkyCity Stampede (either home/away order), the
-// STAMPEDE half of the header inverts: background becomes Stampede Yellow
-// (#FAC805, their own primary per the hex cheat sheet) instead of the
-// navy `dark` wash, and BOTH team-name lines become Stampede Navy
-// (#1D3056, their secondary) instead of white/yellow. Admirals' half is
-// completely untouched. Matched by teamID so it's independent of which
-// side is home/away. Same pattern as summary.html's applyMatchupAccents()
-// for the Swarm-vs-Red-Devils exception -- extend this id-pair-check +
-// override-object approach for any future one-off matchup colour ask
-// rather than hardcoding into the general per-team render path.
+// STAMPEDE half of the header inverts: background becomes a Stampede
+// half-dark gold (STAMPEDE_INVERT_BG below -- started as raw primary
+// #FAC805, later swapped for a purpose-derived half-dark tint, see that
+// constant's comment) instead of the navy `dark` wash, and the STAMPEDE
+// name line becomes Stampede Navy (#1D3056, their secondary) instead of
+// yellow (L1 "SKYCITY" stays standard white/black-outline, untouched).
+// Admirals' half is completely untouched. Matched by teamID so it's
+// independent of which side is home/away. Same pattern as summary.html's
+// applyMatchupAccents() for the Swarm-vs-Red-Devils exception -- extend
+// this id-pair-check + override-object approach for any future one-off
+// matchup colour ask rather than hardcoding into the general per-team
+// render path.
 const ADMIRALS_TEAM_ID = 674110, STAMPEDE_TEAM_ID = 675635;
-const STAMPEDE_INVERT_BG = "#FAC805", STAMPEDE_INVERT_TEXT = "#1D3056";
+// 2026-07-16: STAMPEDE_INVERT_BG moved off the raw primary #FAC805 onto a
+// new "Stampede Half-Dark Gold" #DBAD06, per Mat's ask for a half-dark
+// yellow option to use as this headline background specifically. No
+// half-dark yellow existed before this -- the team's ACTUAL documented
+// half-dark (nzihl_team_colors.md) is navy #1D3056/#162543, chosen
+// specifically because "darkened yellow goes muddy" when you drop
+// lightness the naive way (uniformly scaling RGB toward black desaturates
+// warm hues into olive/brown). Derived this one differently to dodge that:
+// held saturation HIGH (95%, vs #FAC805's ~96%) while only moderately
+// dropping lightness (50%->44% HSL, hue unchanged ~47°) -- a deep amber/
+// gold rather than a muddy olive. Checked contrast against the header's
+// navy text (#1D3056, same colour used for the STAMPEDE line) via WCAG
+// relative luminance: #DBAD06 vs #1D3056 = ~6.2:1 (comfortably above the
+// 4.5:1 AA text minimum). Going darker than this starts to reproduce the
+// exact "navy text on navy-ish background reads hollow" problem the
+// original bright-yellow invert was built to avoid (verified -- a 34%-
+// lightness version only cleared ~3.6:1, too close for comfort). If this
+// tint needs reuse elsewhere, it isn't in the official hex cheat sheet
+// yet -- same situation as Swarm Rose/Admiral Blue (legibility tints
+// added ad hoc, formalised in the style guide later); flag to Mat before
+// treating it as brand-official outside this one override.
+const STAMPEDE_INVERT_BG = "#DBAD06", STAMPEDE_INVERT_TEXT = "#1D3056";
 function stampedeInvertSide(){
   if(!TH || !TA) return null;
   if(TH.id===STAMPEDE_TEAM_ID && TA.id===ADMIRALS_TEAM_ID) return "home";
