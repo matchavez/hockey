@@ -146,16 +146,34 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    don't meet on an abrupt hard edge -- a transparent strip straddling the
    seam (x=880..960, i.e. 40px either side of x=920) with backdrop-filter
    blur, so it blurs whatever's rendered behind it (the two solid-colour
-   .hdrHalf backgrounds -- the alternate-colour borderline itself) rather
-   than blurring its own (nonexistent) content. 2026-07-15: briefly
-   extended (z-index:1, moved after .hdrAccent in the DOM) to also catch
-   the accent stripe's hard colour split -- ROLLED BACK same day per Mat's
-   ask: back to z-index:auto, sitting BELOW .hdrAccent (z-index:1) in
-   paint order, so the blur is scoped to exactly the alternate-colour
-   borderline (the two .hdrHalf backgrounds) and the accent stripe stays
-   crisp, same as #hdrTitle (z-index:2). Width/placement unchanged --
-   still the same 40px either side of x=920. */
+   .hdrHalf backgrounds) rather than blurring its own (nonexistent)
+   content. History: 2026-07-15 this box was briefly widened to ALSO cover
+   .hdrAccent (same element, taller z-index, moved in the DOM) -- rolled
+   back, then briefly restored, then rolled back again 2026-07-16 because
+   sharing one blur box between the two backgrounds AND the 5px accent
+   stripe was the wrong model: the stripe is a different colour pair
+   (hdrAccent, e.g. red/yellow) at a different height than the halves
+   (dark gradient, e.g. maroon/navy), and Mat confirmed THIS box's result
+   on the halves already looks right on its own -- don't touch it. The
+   accent stripe now gets its OWN separate blur box, scoped to just its
+   5px band, immediately below. This box stays exactly as-is: full 128px
+   header height, blurs only what's visually behind it before .hdrAccent
+   and #hdrAccentBlur paint on top (both z-index:1, later in the DOM). */
 #hdrSeamBlur{position:absolute;left:880px;top:0;width:80px;height:128px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);pointer-events:none;}
+/* 2026-07-16: the accent stripe (.hdrAccent, 5px tall at y=123..128) needs
+   its own independent blur, separate from #hdrSeamBlur above -- it's a
+   different colour pair (team accent colours, not the dark gradient
+   halves) so blending it into the same blur box either left it untouched
+   (when #hdrSeamBlur excluded it) or over-blurred the good background
+   result trying to also cover it (when the two were merged). This box is
+   scoped to exactly the accent stripe's own bounds -- same 80px width (40
+   either side of the x=920 seam) as #hdrSeamBlur, but only 5px tall,
+   top:123px -- so it can't bleed into or affect the halves' blur at all.
+   Sits after .hdrAccent in the DOM with the same z-index:1, so it paints
+   on top and blurs the stripe's own hard colour split; still below
+   #hdrTitle (z-index:2). */
+#hdrAccentBlur{position:absolute;left:880px;top:123px;width:80px;height:5px;z-index:1;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);pointer-events:none;}
 /* font-weight 700 (was 600), font-size 50px (was 48px, ~+5%) per Mat's
    2026-07-14 ask.
@@ -273,6 +291,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
       <div id="hdrSeamBlur"></div>
       <div class="hdrAccent home" id="hdrAccentHome"></div>
       <div class="hdrAccent away" id="hdrAccentAway"></div>
+      <div id="hdrAccentBlur"></div>
       <div id="hdrTitle">STARTING LINEUPS</div>
     </div>
     <div id="ice">
