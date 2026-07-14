@@ -631,3 +631,52 @@ GOALTENDER — not reconciled, may be worth Mat's call either way.
 Commits: `9b6e365` (initial build), `681ea44` (header row-reverse fix), `357620c` (header
 max-width fix). See also [[nzihl-starting-lineup]], [[nzihl-graphics-qa-project]],
 [[nzihl-season-data-warehouse]], [[nzihl-team-page-schedule-widget]].
+
+### Combined Starting Lineups: evergreen `?team=<slug>` param (2026-07-14)
+Mat: "they also need a team slug ... same way as the Activity Banner Slugs; if a team uses their
+slug, it will update over time to ensure they have the game-appropriate graphic." Added
+`?team=<slug>` as an alternative to `?home=&away=` on `startinglineup/combined/index.html`.
+
+`TEAMS` gained an `id` field per team (the same teamIDs the portal's `SL_TEAMID` map and every
+other REG-style registry in this repo already use) — `null` for `auckland-mako` (stood down, no
+2026 games, never appears in the warehouse). `resolveTeamSlug(slug)` looks the team's `id` up in
+`nzihl-season-data`'s `upcoming` field for its league (the SAME field the portal's schedule-driven
+Combined Starting Lineups grid already reads — no new data source), takes the soonest entry for
+that teamID, and derives `HOME_SLUG`/`AWAY_SLUG` from that fixture's `home`/`away` teamIDs via a
+small `idToSlug()` reverse-lookup over `TEAMS`. Because `upcoming` only ever holds
+not-yet-played games (a completed one moves into the warehouse's `games` array), "soonest
+`upcoming` entry for this teamID" is always this team's next game — no date-window filtering
+needed, and a bookmarked URL naturally advances to the following fixture once the current one is
+played (the "update over time" behavior Mat asked for), matching `activity-banner`'s `?team=`
+resolve-once-per-load convention rather than continuous mid-session polling. `?home=`/`?away=`
+still take priority when both are given (used unchanged by the portal's per-fixture links, zero
+network round trip). Resolution failure (unknown slug, Mako, or no `upcoming` entry for that
+team — e.g. a bye week) leaves `HOME_SLUG`/`AWAY_SLUG` unset, which the existing `VALID` check
+turns into the same "render nothing" bad-slug convention as every other case on this page — no
+new failure mode introduced.
+
+Required restructuring the page's init flow from synchronous (`TH`/`TA`/`VALID`/`SIDE_HOME`/
+`SIDE_AWAY` computed as top-level `const`s at parse time) to a `resolveAndBuild()` async function
+(awaits `resolveTeamSlug()` only when `?team=` was given without explicit `?home=`/`?away=`, then
+computes the same values as `let`s) called from a new `boot()` that runs before `document.fonts.
+ready` triggers `start()` — `start()` itself is unchanged.
+
+Dry-run verified in Node against the live `nzihl.json`/`nzwihl.json` warehouse data (not just
+reasoned about): `?team=pure-nz-admirals` -> resolves SkyCity Stampede (home) vs Pure NZ Admirals
+(away), the team's actual soonest fixture (2026-07-24); `?team=canterbury-red-devils` and
+`?team=skycity-stampede` both correctly resolve to the SAME upcoming game (they play each other
+2026-07-18/19); `?team=auckland-mako` and an unknown slug both correctly return no resolution
+(no network call made for Mako, since `id` is `null`); `?team=wakatipu-wild` correctly returned
+no resolution too (nothing currently scheduled for Wild in `nzwihl.json`'s `upcoming` at the time
+of testing) — confirms the graceful "nothing scheduled yet" path, not just the happy path.
+
+Portal (`index.html`) gained a second evergreen grid, "Combined Starting Lineups Team Slugs"
+(Open/Copy per team, 9-team Mako-excluded list, `startinglineup/combined/?team=<slug>`),
+alongside the existing schedule-driven "Combined Starting Lineups" grid — same `slCard()`-style
+pattern as every other Team Slugs section (Game Summary, Team Scoring Leaders, Activity Banner,
+Starting Lineup), via a new `combinedTeamCard()` function.
+
+**Not yet Chrome-verified live** (dry-run only, against real warehouse data) — worth a live
+round-trip check next session: load `startinglineup/combined/?team=pure-nz-admirals`, confirm it
+renders the Stampede/Admirals matchup with both `/lineup/<slug>` channels polling correctly, and
+spot-check the new portal grid's Open/Copy links.

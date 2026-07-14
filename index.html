@@ -448,6 +448,11 @@
     <div id="sl-nzwihl" class="grid g3"></div>
     <div class="sec-head" style="margin:22px 0 14px"><span class="sec-txt"><h2 style="font-size:16px">Combined Starting Lineups <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Both teams' starting six on one rink &mdash; one link per scheduled game in the next few days, sourced from the season data warehouse</span></span></div>
     <div id="sl-combined" class="grid g2"></div>
+    <div class="sec-head" style="margin:22px 0 14px"><span class="sec-txt"><h2 style="font-size:16px">Combined Starting Lineups Team Slugs <span class="chip blue">Evergreen URL</span></h2><span class="sub">One URL per team &mdash; resolves this team's next scheduled fixture automatically and keeps updating as the schedule advances, same convention as Activity Banner's team slugs &middot; open or copy as a source</span></span></div>
+    <div class="league-label">NZIHL</div>
+    <div id="sl-combined-nzihl" class="grid g3"></div>
+    <div class="league-label blue">NZWIHL</div>
+    <div id="sl-combined-nzwihl" class="grid g3"></div>
   </section>
 
   <!-- ROSTERS -->
@@ -719,6 +724,27 @@ function slCard(t){
 // Same 9-team Mako-excluded list as the Activity Banner / Player L3 sections.
 document.getElementById('sl-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(slCard).join('');
 document.getElementById('sl-nzwihl').innerHTML = NZWIHL.map(slCard).join('');
+
+// Combined Starting Lineups Team Slugs (2026-07-14) — evergreen per-team
+// URL for startinglineup/combined/, same idea as Activity Banner's team
+// slugs: the page resolves this team's next scheduled fixture itself
+// (from nzihl-season-data's `upcoming` field, see combined/index.html's
+// resolveTeamSlug()), so ONE bookmarked URL per team keeps showing the
+// right opponent as the schedule moves game to game — no manual editing.
+// Distinct from the schedule-driven #sl-combined grid above, which links
+// one exact ?home=&away= URL per fixture in the next few days.
+function combinedTeamCard(t){
+  const sl = t.nm.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const graphic = `startinglineup/combined/?team=${sl}`;
+  const full = `https://matchavez.com/hockey/${graphic}`;
+  return `<div class="team">${idw(t)}<span class="acts">
+    <a class="pill ext" title="Open the graphic" target="_blank" rel="noopener" href="${graphic}">Open</a>
+    <a class="pill cp" title="Copy the static URL — paste as a browser source" data-copy="${full}" style="cursor:pointer">Copy</a></span></div>`;
+}
+// Mako excluded — no 2026 games means no fixture to ever resolve, same
+// reasoning as every other Mako-excluded evergreen slug list on this page.
+document.getElementById('sl-combined-nzihl').innerHTML  = NZIHL.filter(t=>t.nm!=="Auckland Mako").map(combinedTeamCard).join('');
+document.getElementById('sl-combined-nzwihl').innerHTML = NZWIHL.map(combinedTeamCard).join('');
 
 // Games/rosters older than this many days (past their date) are treated as
 // stale and hidden from the portal's "current" sections, rather than lingering

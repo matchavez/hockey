@@ -30,7 +30,7 @@ dependencies beyond the repo's own font files and the shared Cloudflare worker.
 | `lowerthirds/` | **Player Lower Thirds** (producer tool, not an overlay): phone control page — tap a tonight's-roster jersey pill, preview (shares the `activity-banner/?preview=` renderer), edit/toggle an auto-computed fact, Fire through a Cloudflare Worker Durable Object control channel to the `activity-banner/` already on air | `?team=` |
 | `startinglineup/` | **Starting Lineup** broadcast graphic: 1840×1000 opaque panel (transparent surround) on the bottom half of a vertical rink — six starters (LF/CF/RF/LD/RD/GK) as horizontal cards in an inverted pyramid. Evergreen browser source: state persists in the worker's `/lineup/<slug>` channel, polls every 10 s | `?team=` `?preview=` |
 | `startinglineup/control/` | **Starting Lineup control** (producer tool, not an overlay): director's picker — six slot buttons, tap a slot then a jersey pill, live preview iframe (the display page itself in `?preview=` mode), team switcher, domigan gate | `?team=` |
-| `startinglineup/combined/` | **Combined Starting Lineups**: both teams' starting six on ONE full landscape rink (home left / away right, home defends the left end), 12 compact cards, 1-2-3-3-2-1 — reads the same two `/lineup/<slug>` worker channels as the per-team page/control (no worker or control-page changes). Bad/unknown slug for either param, or a cross-league pair, renders nothing | `?home=` `?away=` `?worker=` `?previewHome=` `?previewAway=` |
+| `startinglineup/combined/` | **Combined Starting Lineups**: both teams' starting six on ONE full landscape rink (home left / away right, home defends the left end), 12 compact cards, 1-2-3-3-2-1 — reads the same two `/lineup/<slug>` worker channels as the per-team page/control (no worker or control-page changes). `?home=`/`?away=` for an exact matchup, OR a single evergreen `?team=<slug>` (2026-07-14) that resolves the team's next fixture from `nzihl-season-data`'s `upcoming` field, same convention as `activity-banner`'s `?team=`. Bad/unknown slug, a cross-league pair, or (for `?team=`) no resolvable fixture, renders nothing | `?home=` `?away=` `?team=` `?worker=` `?previewHome=` `?previewAway=` |
 | `assets/fonts/` | InterVariable (+Italic) woff2 — the 2026 house font | — |
 
 Common params across live pages: `?team=<slug>` picks the club's live/next game from the roster
@@ -366,6 +366,25 @@ Portal gained a schedule-driven "Combined Starting Lineups" mini-grid under the 
 section, sourced from `nzihl-season-data`'s `upcoming` field (teamID-keyed, next 4 days) — a
 deliberately different source than the rest of the portal's schedule sections (`boxscores.json`),
 matching `team/index.html`'s schedule widget's reasoning (see Shared infrastructure above).
+
+**2026-07-14 addition — evergreen `?team=<slug>` param.** Mat asked for this page to support a
+single team slug "the same way as the Activity Banner Slugs" so a bookmarked URL keeps showing
+the game-appropriate graphic as the schedule moves game to game, instead of needing a fresh
+`?home=&away=` URL for every fixture. `resolveTeamSlug()` looks up the given slug's teamID
+(now stored in the page's own `TEAMS` registry as `id`; `null` for Auckland Mako, which is stood
+down and never has a fixture) and finds its soonest entry in `nzihl-season-data`'s `upcoming`
+field for that team's league — the SAME source + field the schedule-driven grid above already
+uses, so no new data source was added. Because `upcoming` only ever lists games that haven't
+been played yet (a completed game moves into the warehouse's `games` array), "soonest entry for
+this teamID" is always "this team's next game" with no extra date-window filtering, and it
+naturally advances to the following fixture once the current one is played — no re-polling
+needed within a single page load, an OBS browser source just needs a reload to pick up a new
+resolve, same as `activity-banner`'s `?team=`. `?home=`/`?away=` still take priority when given
+(the portal's per-fixture links keep using them, no network round trip needed). No resolvable
+fixture (bye week, off-season, Mako) degrades to the same "render nothing" bad-slug convention
+as everywhere else on this page. Portal gained a second evergreen "Combined Starting Lineups
+Team Slugs" grid (Open/Copy per team, 9-team Mako-excluded list) alongside the existing
+schedule-driven one, mirroring the Activity Banner Team Slugs section's pattern.
 
 ## summary/
 

@@ -16,6 +16,17 @@
         /lineup/<slug> worker channels, same ones the per-team page and
         control/ already read/write. No control-page or worker changes.)
 
+   2026-07-14: also accepts a SINGLE evergreen slug, ?team=<slug> — same
+   convention as activity-banner/ticker/lowerthirds' ?team= URLs. Resolves
+   this team's next scheduled fixture from nzihl-season-data's `upcoming`
+   field (whole season, no lookahead cap) and derives home/away from that
+   fixture, so ONE bookmarked URL per team keeps showing the correct
+   opponent as the schedule advances game to game — no manual URL editing
+   between games, matching Activity Banner's "game-appropriate graphic"
+   behavior. ?home=&away= still work exactly as before (used by the
+   portal's schedule-driven per-fixture links) and take priority if given.
+   See resolveTeamSlug() below.
+
    1840x1000 opaque panel centered in a transparent 1920x1080 browser
    source (same convention as startinglineup/ and summary/). Full
    landscape rink drawn in SVG across the whole ice area — home defends
@@ -415,12 +426,19 @@ const PHOTO_BASE = "https://raw.githubusercontent.com/matchavez/nzihl-player-pho
 // per team, and several of them diverge meaningfully from `ink` (e.g. mako
 // ink #62656A vs overlay accent #BEC8D2 -- reusing `ink` here was the
 // mismatch Mat flagged as "missed colours").
+// id: this team's teamID in nzihl-season-data's warehouse (same IDs the portal's own
+// SL_TEAMID map and every other REG-style registry in this repo key off) -- used ONLY by
+// resolveTeamSlug() below to match a ?team=<slug> against the season data's `upcoming`
+// field. auckland-mako's is deliberately null: Mako is stood down with no 2026 games and
+// never appears in the warehouse, so ?team=auckland-mako short-circuits to "no game found"
+// (renders nothing) without even making the fetch -- same stood-down handling as every
+// other Mako-facing surface in this repo (see README.md's slug-rule note).
 const TEAMS = {
- "pure-nz-admirals":      {code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      lines:["PURE NZ","ADMIRALS"],   ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", hdrAccent:"#F7BE11", hdrLine2:"#FFCD2E"},
- "botany-swarm":          {code:"BSW", league:"nzihl",  name:"Botany Swarm",          lines:["BOTANY","SWARM"],       ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png", hdrAccent:"#F7AF28", hdrLine2:"#F7BA40"},
- "canterbury-red-devils": {code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", lines:["CANTERBURY","RED DEVILS"], ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF", hdrAccent:"#DC0000", hdrLine2:"#F02626"},
- "dunedin-thunder":       {code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
- "skycity-stampede":      {code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", hdrAccent:"#FAC805", hdrLine2:"#FAC805"},
+ "pure-nz-admirals":      {id:674110, code:"ADM", league:"nzihl",  name:"Pure NZ Admirals",      lines:["PURE NZ","ADMIRALS"],   ink:"#F7BE11", dark:"#081D48", logo:"Pure-NZ-Admirals-2000x2000.png", hdrAccent:"#F7BE11", hdrLine2:"#FFCD2E"},
+ "botany-swarm":          {id:674109, code:"BSW", league:"nzihl",  name:"Botany Swarm",          lines:["BOTANY","SWARM"],       ink:"#F7AF28", dark:"#441620", logo:"Botany Swarm 2000x2000.png", hdrAccent:"#F7AF28", hdrLine2:"#F7BA40"},
+ "canterbury-red-devils": {id:675633, code:"CRD", league:"nzihl",  name:"Canterbury Red Devils", lines:["CANTERBURY","RED DEVILS"], ink:"#E5242B", dark:"#550000", logo:"Red Devils 2000x2000r.png", textInk:"#FFFFFF", hdrAccent:"#DC0000", hdrLine2:"#F02626"},
+ "dunedin-thunder":       {id:675634, code:"DUN", league:"nzihl",  name:"Dunedin Thunder",       lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"Dunedin_Thunder.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
+ "skycity-stampede":      {id:675635, code:"SCS", league:"nzihl",  name:"SkyCity Stampede",      lines:["SKYCITY","STAMPEDE"],   ink:"#FAC805", dark:"#162543", logo:"Skycity Stampede 2000x2000.png", hdrAccent:"#FAC805", hdrLine2:"#FAC805"},
  // ^ hdrLine2 AND hdrAccent deliberately overridden to Stampede Yellow (#FAC805,
  // the club's own
  // primary per the Style Guide hex cheat sheet) INSTEAD of overlay.py's navy
@@ -431,11 +449,11 @@ const TEAMS = {
  // fixed" note below), so navy-on-navy read as hollow outlined text. Yellow
  // fill needs no stroke override -- reverted hdrLine2Stroke to the shared
  // default (black), matching every other team's convention.
- "auckland-mako":         {code:"MKO", league:"nzihl",  name:"Auckland Mako",         lines:["AUCKLAND","MAKO"],      ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png", hdrAccent:"#BEC8D2", hdrLine2:"#CAD4DE"},
- "auckland-steel":        {code:"AST", league:"nzwihl", name:"Auckland Steel",        lines:["AUCKLAND","STEEL"],     ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png", hdrAccent:"#96A6BC", hdrLine2:"#B2C0D2"},
- "canterbury-inferno":    {code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    lines:["CANTERBURY","INFERNO"], ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13", hdrAccent:"#FFB347", hdrLine2:"#FFBA5C"},
- "dunedin-thunder-women": {code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
- "wakatipu-wild":         {code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         lines:["WAKATIPU","WILD"],      ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png", hdrAccent:"#1D3056", hdrLine2:"#1D3056", hdrLine2Stroke:"#FFFFFF"},
+ "auckland-mako":         {id:null, code:"MKO", league:"nzihl",  name:"Auckland Mako",         lines:["AUCKLAND","MAKO"],      ink:"#62656A", dark:"#202222", logo:"Auckland Mako 2000x2000.png", hdrAccent:"#BEC8D2", hdrLine2:"#CAD4DE"},
+ "auckland-steel":        {id:675636, code:"AST", league:"nzwihl", name:"Auckland Steel",        lines:["AUCKLAND","STEEL"],     ink:"#9FB6C8", dark:"#18263E", logo:"Auckland-Steel-White.png", hdrAccent:"#96A6BC", hdrLine2:"#B2C0D2"},
+ "canterbury-inferno":    {id:675637, code:"CIN", league:"nzwihl", name:"Canterbury Inferno",    lines:["CANTERBURY","INFERNO"], ink:"#E0564E", dark:"#550000", logo:"Inferno-White.png", textInk:"#FF6A13", hdrAccent:"#FFB347", hdrLine2:"#FFBA5C"},
+ "dunedin-thunder-women": {id:675638, code:"DTW", league:"nzwihl", name:"Dunedin Thunder Women", lines:["DUNEDIN","THUNDER"],    ink:"#1E9E63", dark:"#012C1E", logo:"thunder-women-white.png", textInk:"#FDAD19", hdrAccent:"#FDAD19", hdrLine2:"#FDB42A"},
+ "wakatipu-wild":         {id:675639, code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         lines:["WAKATIPU","WILD"],      ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png", hdrAccent:"#1D3056", hdrLine2:"#1D3056", hdrLine2Stroke:"#FFFFFF"},
 };
 
 const SLOTS = ["LF","CF","RF","LD","RD","GK"];
@@ -456,14 +474,68 @@ if(Q.get("worker")) WORKER = Q.get("worker");
 const esc = s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const slugify = s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
-const HOME_SLUG = slugify(Q.get("home")||"");
-const AWAY_SLUG = slugify(Q.get("away")||"");
-const TH = TEAMS[HOME_SLUG] || null;
-const TA = TEAMS[AWAY_SLUG] || null;
-// Bad/unknown slug for either param, or two teams from different leagues:
-// render nothing (transparent source) — same bad-slug convention as
-// startinglineup/.
-const VALID = !!(TH && TA && TH.league === TA.league);
+let HOME_SLUG = slugify(Q.get("home")||"");
+let AWAY_SLUG = slugify(Q.get("away")||"");
+const TEAM_PARAM = slugify(Q.get("team")||"");
+
+// Same nzihl-season-data source + `upcoming` field the portal's own
+// schedule-driven Combined Starting Lineups links are generated from
+// (whole season, no lookahead cap, keyed by teamID — see index.html's
+// loadCombinedLineups()). Fetched only for the ?team= resolution path;
+// explicit ?home=&away= URLs never touch the network for this.
+const SEASON_DATA_URL = {
+  nzihl:  "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzihl.json",
+  nzwihl: "https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/nzwihl.json",
+};
+const idToSlug = id => Object.keys(TEAMS).find(k => TEAMS[k].id === id) || null;
+
+// Resolves a single evergreen ?team=<slug> into HOME_SLUG/AWAY_SLUG by
+// finding this team's soonest fixture in nzihl-season-data's `upcoming`
+// list. `upcoming` only ever holds games that haven't been played yet —
+// once a game is final it moves into the warehouse's `games` array — so
+// "soonest entry for this teamID" IS "this team's next game" with no extra
+// date-window filtering needed, and it naturally re-resolves to the
+// following fixture once the current one is played, the same evergreen
+// behavior activity-banner's ?team= already has. Returns true on success
+// (HOME_SLUG/AWAY_SLUG set); false leaves them unset, which VALID below
+// turns into the same "render nothing" bad-slug convention as everywhere
+// else on this page.
+async function resolveTeamSlug(teamSlug){
+  const T = TEAMS[teamSlug];
+  if(!T || T.id == null) return false;   // unknown slug, or Mako (no teamID — no games)
+  let d;
+  try{
+    const r = await fetch(SEASON_DATA_URL[T.league], {cache:"no-store"});
+    d = await r.json();
+  }catch(e){ return false; }
+  const up = (d && Array.isArray(d.upcoming)) ? d.upcoming : [];
+  const mine = up.filter(g => g && g.home && g.away && (g.home.teamID===T.id || g.away.teamID===T.id))
+    .sort((a,b)=> (a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
+  if(!mine.length) return false;         // bye week / nothing scheduled yet
+  const next = mine[0];
+  const homeSlug = idToSlug(next.home.teamID), awaySlug = idToSlug(next.away.teamID);
+  if(!homeSlug || !awaySlug) return false;
+  HOME_SLUG = homeSlug; AWAY_SLUG = awaySlug;
+  return true;
+}
+
+// Bad/unknown slug for either param, two teams from different leagues, or
+// (?team= path) no resolvable fixture: render nothing (transparent source)
+// — same bad-slug convention as startinglineup/. TH/TA/VALID/SIDE_HOME/
+// SIDE_AWAY are populated by resolveAndBuild() below, after any ?team=
+// resolution has had a chance to run — see the boot() call at the bottom
+// of this script.
+let TH, TA, VALID, SIDE_HOME, SIDE_AWAY;
+async function resolveAndBuild(){
+  if(TEAM_PARAM && !HOME_SLUG && !AWAY_SLUG){
+    await resolveTeamSlug(TEAM_PARAM);
+  }
+  TH = TEAMS[HOME_SLUG] || null;
+  TA = TEAMS[AWAY_SLUG] || null;
+  VALID = !!(TH && TA && TH.league === TA.league);
+  SIDE_HOME = TH ? makeSide("home", TH, HOME_SLUG) : null;
+  SIDE_AWAY = TA ? makeSide("away", TA, AWAY_SLUG) : null;
+}
 
 // Single JSON.parse of the already-URLSearchParams-decoded value — never
 // decodeURIComponent() it again (the "%-in-a-fact" double-decode bug,
@@ -505,8 +577,10 @@ const SIL_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
 function makeSide(key, T, slug){
   return { key, T, slug, CUR:{}, FIRST_PAINT:true, LAST_UPDATED:null };
 }
-const SIDE_HOME = TH ? makeSide("home", TH, HOME_SLUG) : null;
-const SIDE_AWAY = TA ? makeSide("away", TA, AWAY_SLUG) : null;
+// SIDE_HOME/SIDE_AWAY are built in resolveAndBuild() above (after any
+// ?team= resolution), not here — makeSide() just needs to be defined
+// before that runs, which function-hoisting guarantees regardless of
+// script order.
 
 function playerKey(p){ return p ? [p.number,p.name,p.photo||""].join("|") : ""; }
 
@@ -626,7 +700,12 @@ function start(){
     setInterval(()=>pollSide(SIDE_AWAY), 10000);
   }
 }
-if(document.fonts && document.fonts.ready){ document.fonts.ready.then(start); } else { start(); }
+async function boot(){
+  await resolveAndBuild();   // no-op unless ?team= was given without explicit ?home=&away=
+  if(document.fonts && document.fonts.ready){ await document.fonts.ready; }
+  start();
+}
+boot();
 </script>
 </body>
 </html>
