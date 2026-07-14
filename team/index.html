@@ -347,7 +347,7 @@ if(!team){
         <div class="standings-col">
           <div class="sec-head"><img class="sec-thumb" src="${ASSETS}/thumbs/standings.png" alt=""><span class="sec-txt"><h2>${league} Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · this club's league table</span></span></div>
           <div class="card standings-card" style="padding:10px">
-            <a target="_blank" rel="noopener" href="${standPng}"><img src="${standPng}?v=${Date.now()}" alt="${league} standings" style="display:block;width:100%;border-radius:10px;background:#000"></a>
+            <a target="_blank" rel="noopener" href="${standPng}"><img src="${standPng}?v=${Date.now()}" alt="${league} standings" style="display:block;width:100%;aspect-ratio:16/9;border-radius:10px;background:#000"></a>
             <div class="links" style="margin-top:10px">
               <a class="btn cp" data-copy="${standPng}">1920×1080</a>
               <a class="btn cp" data-copy="${stand1840}">1840×1000</a>
@@ -422,10 +422,16 @@ if(!team){
       </div>
     </section>`;
 
-  /* Spotlight — arrived from a portal crest link carrying #hl-<key>. Dims
-     every OTHER top-level section briefly and pulses a gold ring around the
-     matching card(s) so the eye lands exactly where the click promised,
-     instead of just dumping the visitor at the top of a dense page. */
+  /* Spotlight — arrived from a portal crest link carrying #hl-<key>. Jumps
+     straight to the matching card INSTANTLY (no smooth animation -- a
+     smooth glide meant the page visibly started at the top and the pulse
+     had often finished, or was mid-flight, by the time the scroll actually
+     arrived, same complaint as the old coarse #overlays/#lineup/#packs
+     anchors would never have had since those were native browser jumps).
+     Snaps again once the page has actually finished loading (images below
+     the fold, e.g. the standings PNG, can still reflow the layout after
+     the first jump) and only THEN starts the dim + gold-ring pulse, so the
+     highlight always fires while the user is actually looking at it. */
   (function spotlightFromHash(){
     const m = location.hash.match(/^#hl-(.+)$/);
     if(!m) return;
@@ -434,11 +440,20 @@ if(!team){
     if(!targets.length) return;
     const keepSections = new Set(targets.map(t => t.closest('section')).filter(Boolean));
     const allSections = [...document.querySelectorAll('#main > section')];
-    targets[0].scrollIntoView({behavior:'smooth', block:'center'});
-    allSections.forEach(s => { if(!keepSections.has(s)) s.classList.add('hl-dim'); });
-    requestAnimationFrame(() => targets.forEach(t => t.classList.add('hl-spot')));
-    setTimeout(() => allSections.forEach(s => s.classList.remove('hl-dim')), 1700);
-    setTimeout(() => targets.forEach(t => t.classList.remove('hl-spot')), 3600);
+    const jump = () => targets[0].scrollIntoView({block:'center'});
+    jump(); // instant (default 'auto' behavior) -- lands before first paint, like the old plain anchors did
+
+    const settle = new Promise(resolve => {
+      if(document.readyState === 'complete') resolve();
+      else window.addEventListener('load', resolve, {once:true});
+    });
+    Promise.race([settle, new Promise(r => setTimeout(r, 2200))]).then(() => {
+      jump(); // corrective re-snap in case a late image/iframe shifted the layout
+      allSections.forEach(s => { if(!keepSections.has(s)) s.classList.add('hl-dim'); });
+      requestAnimationFrame(() => targets.forEach(t => t.classList.add('hl-spot')));
+      setTimeout(() => allSections.forEach(s => s.classList.remove('hl-dim')), 1700);
+      setTimeout(() => targets.forEach(t => t.classList.remove('hl-spot')), 3600);
+    });
   })();
 
   /* Live latest roster PDF for this club — matches the release asset (named
