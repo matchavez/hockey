@@ -534,6 +534,26 @@ const TEAMS = {
  "wakatipu-wild":         {id:675639, code:"WLD", league:"nzwihl", name:"Wakatipu Wild",         lines:["WAKATIPU","WILD"],      ink:"#FAC805", dark:"#162543", logo:"Wakatipu-wild-white.png", hdrAccent:"#1D3056", hdrLine2:"#1D3056", hdrLine2Stroke:"#FFFFFF"},
 };
 
+// 2026-07-16: one-off MATCHUP-SPECIFIC header override, Mat's ask -- when
+// Pure NZ Admirals play SkyCity Stampede (either home/away order), the
+// STAMPEDE half of the header inverts: background becomes Stampede Yellow
+// (#FAC805, their own primary per the hex cheat sheet) instead of the
+// navy `dark` wash, and BOTH team-name lines become Stampede Navy
+// (#1D3056, their secondary) instead of white/yellow. Admirals' half is
+// completely untouched. Matched by teamID so it's independent of which
+// side is home/away. Same pattern as summary.html's applyMatchupAccents()
+// for the Swarm-vs-Red-Devils exception -- extend this id-pair-check +
+// override-object approach for any future one-off matchup colour ask
+// rather than hardcoding into the general per-team render path.
+const ADMIRALS_TEAM_ID = 674110, STAMPEDE_TEAM_ID = 675635;
+const STAMPEDE_INVERT_BG = "#FAC805", STAMPEDE_INVERT_TEXT = "#1D3056";
+function stampedeInvertSide(){
+  if(!TH || !TA) return null;
+  if(TH.id===STAMPEDE_TEAM_ID && TA.id===ADMIRALS_TEAM_ID) return "home";
+  if(TA.id===STAMPEDE_TEAM_ID && TH.id===ADMIRALS_TEAM_ID) return "away";
+  return null;
+}
+
 const SLOTS = ["LF","CF","RF","LD","RD","GK"];
 const POS_LABEL = {LF:"Forward", CF:"Forward", RF:"Forward", LD:"Defense", RD:"Defense", GK:"Goaltender"};
 // ^ matches startinglineup/index.html's ROLE_LABEL verbatim -- this page abbreviated to
@@ -763,6 +783,23 @@ function start(){
   document.getElementById("hdrTeamAwayL2").textContent = TA.lines[1];
   document.getElementById("hdrTeamAwayL2").style.color = TA.hdrLine2;
   document.getElementById("hdrTeamAwayL2").style.webkitTextStroke = `2px ${TA.hdrLine2Stroke || "#08080A"}`;
+
+  // Admirals-vs-Stampede matchup override (see stampedeInvertSide() above):
+  // re-paints ONLY the Stampede half after the normal render above --
+  // background to Stampede Yellow (dark sheen instead of the light sheen
+  // used on dark backgrounds, since the wash direction needs to invert
+  // too), both name lines to Stampede Navy. Runs after the generic block
+  // so it always wins for this one matchup; no-op (returns null) every
+  // other game.
+  const invertSide = stampedeInvertSide();
+  if(invertSide){
+    const half = document.getElementById("hdr").querySelector(`.hdrHalf.${invertSide}`);
+    const grad = invertSide==="home" ? "90deg" : "270deg";
+    half.style.background = `linear-gradient(${grad}, ${STAMPEDE_INVERT_BG} 0%, ${STAMPEDE_INVERT_BG} 72%, rgba(0,0,0,.08) 100%), ${STAMPEDE_INVERT_BG}`;
+    document.getElementById(invertSide==="home" ? "hdrTeamHomeL1" : "hdrTeamAwayL1").style.color = STAMPEDE_INVERT_TEXT;
+    document.getElementById(invertSide==="home" ? "hdrTeamHomeL2" : "hdrTeamAwayL2").style.color = STAMPEDE_INVERT_TEXT;
+  }
+
   panel.classList.add("show");
 
   if(PREVIEW_HOME){
