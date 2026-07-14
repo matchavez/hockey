@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- REDESIGN PREVIEW (2026-07-14) — proposed restyle of the team page.
+     Production team page untouched at /hockey/team/. Changes vs production:
+       · shared top bar (nav.js) — current club highlighted
+       · mast compressed to one row: 72px plate + name + TLA·league tag +
+         palette chips inline right (was ~260px of vertical stack + crumbs)
+       · breadcrumbs dropped (the bar IS the navigation now)
+       · roster card: latest-PDF + Roster Portal + All releases consolidated
+         into one button row
+       · Brand: logo download + style guide + hex sheet merged into one
+         "Brand & Reference" card
+       · GitHub-bound buttons carry the octocat glyph -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Page — Redesign Preview</title>
+<meta name="description" content="Redesign preview — every broadcast asset for one club in one place.">
+<link rel="icon" id="favicon" href="data:,">
+<style>
+  @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../../assets/fonts/InterVariable.woff2') format('woff2');}
+  :root{
+    --bg:#0a0b0d; --panel:#141619; --panel2:#1b1e22; --line:#2a2e34;
+    --txt:#f3f4f6; --muted:#9aa3ad; --gold:#f7be11; --accent:#3aa0ff; --live:#2ecc71;
+    --p1:#f7be11; --p2:#262a31; --p3:#262a31; --tx:#f7be11;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:var(--bg); color:var(--txt);
+    font-family:Inter,-apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;
+    font-feature-settings:"ss01" 1,"ss02" 1; line-height:1.5; }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:860px; margin:0 auto; padding:0 16px; }
+
+  .brand-wash{ position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(1100px 720px at 18% -10%, color-mix(in srgb, var(--p1) 34%, transparent), transparent 65%),
+      radial-gradient(900px 620px at 100% 105%, color-mix(in srgb, var(--p1) 22%, transparent), transparent 62%),
+      radial-gradient(420px 320px at 97% 3%, color-mix(in srgb, var(--p2) 16%, transparent), transparent 70%); }
+
+  /* mast — ONE compact row. The colour wash + 4px underline keep the identity;
+     the vertical space goes to content instead. */
+  header.hero{ padding:14px 0 13px; border-bottom:1px solid var(--line); position:relative; overflow:hidden; }
+  header.hero::before{ content:""; position:absolute; inset:0; pointer-events:none;
+    background: linear-gradient(128deg, color-mix(in srgb, var(--p1) 58%, transparent) 0%,
+      color-mix(in srgb, var(--p1) 34%, transparent) 45%,
+      color-mix(in srgb, var(--p2) 18%, transparent) 78%, transparent 100%); }
+  header.hero::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:4px;
+    background:linear-gradient(90deg, var(--p1) 0%, var(--p1) 60%, var(--p2) 85%, var(--p3) 100%); }
+  .hero .wrap{ position:relative; }
+  .idrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .logo-plate{ width:72px; height:72px; border-radius:16px; flex:0 0 auto;
+    background:color-mix(in srgb, var(--p1) 88%, #10131a 12%);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.10),
+      0 0 0 2px color-mix(in srgb, var(--p2) 55%, transparent); }
+  .logo-plate img{ width:54px; height:54px; object-fit:contain; filter:drop-shadow(0 2px 7px rgba(0,0,0,.55)); }
+  .idrow .who{ min-width:0; }
+  .idrow h1{ font-size:clamp(19px,3.4vw,27px); font-weight:800; margin:0; line-height:1.15; }
+  .idrow .lg-tag{ display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:800;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--tx); margin-top:3px; }
+  .idrow .palette{ margin-left:auto; display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+  @media(max-width:640px){ .idrow .palette{ margin-left:0; justify-content:flex-start; } }
+  .pal-chip{ display:flex; flex-direction:column; justify-content:center; min-width:74px;
+    padding:4px 9px; border-radius:8px; cursor:pointer; border:1px solid rgba(255,255,255,.14);
+    transition:transform .15s ease, box-shadow .2s ease; }
+  .pal-chip:hover{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.35); }
+  .pal-chip .hx{ font-family:ui-monospace,Menlo,monospace; font-size:11px; font-weight:800; letter-spacing:.01em; }
+  .pal-chip .rl{ font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; opacity:.7; }
+
+  /* standings + schedule widget */
+  .top-row{ display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+  .top-row .standings-col{ flex:1 1 400px; min-width:260px; }
+  .sched{ flex:0 0 240px; width:100%; max-width:240px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px 10px;
+    font-variant-numeric:tabular-nums; }
+  @media(max-width:560px){ .sched{ max-width:none; flex-basis:100%; } .top-row .standings-col{ flex-basis:100%; } }
+  .sched-hd{ font-size:12.5px; font-weight:700; color:var(--muted); padding-bottom:8px; margin-bottom:6px;
+    border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sched-hd b{ color:var(--tx); font-weight:800; }
+  .sched-rec{ color:var(--txt); font-weight:700; }
+  .sched-body{ overflow-x:hidden; display:flex; flex-direction:column; gap:1px; }
+  .sched-row{ display:grid; grid-template-columns:46px minmax(0,1fr) 38px; align-items:center; gap:6px;
+    font-size:11.5px; padding:4px 2px; border-radius:6px; white-space:nowrap; }
+  .sched-row:hover{ background:var(--panel2); }
+  .sched-row.future{ opacity:.68; }
+  .sd-date{ color:var(--muted); font-weight:600; min-width:0; white-space:nowrap; }
+  .sd-mu{ font-weight:700; letter-spacing:.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .sd-tag{ font-size:9.5px; font-weight:800; text-align:center; padding:2px 0; border-radius:5px; letter-spacing:.02em; min-width:0; white-space:nowrap; }
+  .tag-W{ background:rgba(46,204,113,.16); color:#3ee382; }
+  .tag-OTW, .tag-SOW{ background:rgba(163,230,53,.18); color:#bef264; }
+  .tag-OTL, .tag-SOL{ background:rgba(249,115,22,.18); color:#fb923c; }
+  .tag-L{ background:rgba(232,96,96,.18); color:#f87171; }
+  .sd-tag.tk{ background:transparent; color:var(--accent); font-weight:700; text-transform:none; }
+
+  section{ padding:22px 0 4px; }
+  .sec-head{ display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+  .sec-thumb{ width:88px; height:50px; object-fit:cover; border-radius:9px;
+    border:1px solid var(--line); background:#000; flex:0 0 auto; }
+  .sec-head .sec-txt{ min-width:0; }
+  .sec-head h2{ font-size:15px; font-weight:800; margin:0; }
+  .sec-head .sub{ font-size:12px; color:var(--muted); }
+  .lineup-preview{ position:relative; width:100%; aspect-ratio:16/9; border-radius:10px;
+    overflow:hidden; background:#000; border:1px solid var(--line); }
+  .lineup-preview iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .chip{ font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;
+    border:1px solid rgba(46,204,113,.35); color:var(--live); background:rgba(46,204,113,.07); }
+  .chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--live); margin:0; animation:pulse 2.4s ease-in-out infinite; }
+  .chip.blue{ border-color:rgba(90,160,255,.4); color:#7db2ff; background:rgba(90,160,255,.08); }
+  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,.45); } 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
+
+  .grid{ display:grid; gap:10px; grid-template-columns:repeat(2,1fr); }
+  @media(max-width:560px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+  .card h3{ margin:0 0 4px; font-size:14px; font-weight:700; }
+  .card p{ margin:0 0 10px; font-size:12px; color:var(--muted); }
+  .card p:last-of-type{ margin-bottom:0; }
+  .links{ display:flex; flex-wrap:wrap; gap:7px; margin-top:2px; align-items:center; }
+
+  .btn{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:6px 11px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt); cursor:pointer;
+    transition:color .15s ease, border-color .15s ease, background .15s ease, box-shadow .22s ease, transform .15s ease; }
+  .btn:hover{ transform:translateY(-1px); border-color:#3a3f47; }
+  .dl:hover,.cp:hover{ border-color:rgba(247,190,17,.55); color:#fff; box-shadow:0 0 0 1px rgba(247,190,17,.28), 0 0 16px rgba(247,190,17,.20); }
+  .ext:hover,.gh:hover{ border-color:rgba(58,160,255,.55); color:#fff; box-shadow:0 0 0 1px rgba(58,160,255,.25), 0 0 16px rgba(58,160,255,.20); }
+  .dl::before{ content:"↓"; } .ext::before{ content:"↗"; } .cp::before{ content:"⧉"; }
+  .dl::before,.ext::before,.cp::before{ margin-right:5px; opacity:.6; font-size:10px; font-weight:700; }
+  .copied{ color:var(--gold) !important; border-color:rgba(247,190,17,.6) !important; }
+  .copied::before{ content:"✓" !important; opacity:1 !important; }
+
+  .roster-item{ display:flex; align-items:center; gap:10px; font-size:12.5px; min-width:0; }
+  .roster-item .f{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .muted-note{ color:var(--muted); font-size:12px; margin:0; }
+
+  /* team picker (no ?team= given) */
+  .team{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--panel); border:1px solid var(--line); border-radius:11px;
+    padding:8px 12px 8px 8px; transition:border-color .15s, background .15s; }
+  .team:hover{ border-color:#3a3f47; background:#17191d; }
+  .team .idw{ display:flex; align-items:center; gap:9px; min-width:0; }
+  .team .lg{ width:28px; height:28px; object-fit:contain; flex:0 0 auto; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .team .nm{ font-size:13.5px; font-weight:600; }
+  .league-label{ font-size:11px; font-weight:800; letter-spacing:.14em; color:var(--muted);
+    text-transform:uppercase; margin:18px 2px 8px; display:flex; align-items:center; gap:8px; }
+  .league-label::before{ content:""; display:inline-block; width:14px; height:2px; background:var(--gold); border-radius:2px; }
+
+  footer{ margin-top:26px; border-top:1px solid var(--line); padding:18px 0 40px; color:var(--muted); font-size:12.5px; }
+  footer a{ color:var(--accent); }
+
+  #toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px);
+    background:#fff; color:#000; font-size:12.5px; font-weight:700; padding:9px 16px;
+    border-radius:20px; opacity:0; pointer-events:none; transition:all .2s ease; z-index:60; }
+  #toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .preview-note{ background:rgba(247,190,17,.08); border:1px solid rgba(247,190,17,.35);
+    color:var(--gold); font-size:11.5px; font-weight:700; text-align:center; padding:6px 12px; }
+  .preview-note a{ text-decoration:underline; text-underline-offset:2px; }
+</style>
+</head>
+<body>
+<script src="../nav.js" data-root=".."></script>
+
+<div class="preview-note">Redesign preview — the <a id="prod-link" href="../../team/">live team page</a> is unchanged.</div>
+
+<div class="brand-wash"></div>
+
+<header class="hero">
+  <div class="wrap"><div id="idrow" class="idrow"></div></div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<footer>
+  <div class="wrap">
+    Every asset on this page also lives on the <a href="../">portal</a> — this is the one-club view.
+    Diagnostics &amp; source repos are under <a href="../ops/">Ops</a>.
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+const { ASSETS, TEAMS, logoUrl, bySlug } = window.RD2;
+const enc = encodeURIComponent;
+
+/* Full per-role palette straight from the 2026 Style & Colour Guide hex cheat
+   sheet (same DATA array as 2026-nzihl-nzwihl-hex-cheat-sheet.html — keep in sync). */
+const PALETTES = {
+  "Pure NZ Admirals":      [["#081D48","Admiral Navy","Primary"],["#F7BE11","Admiral Gold","Secondary"]],
+  "Botany Swarm":          [["#782738","Swarm Maroon","Primary"],["#F7AF28","Swarm Honey","Secondary"],["#441620","Half-Dark","Scorebug BG"],["#C2455A","Swarm Rose","Legibility Tint · On-Dark Accent"]],
+  "SkyCity Stampede":      [["#FAC805","Stampede Yellow","Primary"],["#1D3056","Stampede Navy","Secondary"],["#162543","Half-Dark","Scorebug BG"],["#CCA106","Half-Dark Gold","Legibility Tint · Headline BG"]],
+  "Dunedin Thunder":       [["#025B3D","Thunder Forest","Primary"],["#FDAD19","Thunder Amber","Secondary"],["#012C1E","Half-Dark","Scorebug BG"]],
+  "Auckland Mako":         [["#62656A","Mako Steel","Primary"],["#202222","Mako Ink","Secondary"]],
+  "Canterbury Red Devils": [["#DC0000","Devil Red","Primary"],["#000000","Devil Black","Secondary"],["#550000","Half-Dark","Scorebug BG"]],
+  "Auckland Steel":        [["#1A2A44","Steel Navy","Primary"],["#8A9BB0","Brushed Silver","Secondary"],["#18263E","Half-Dark","Scorebug BG"]],
+  "Canterbury Inferno":    [["#B00020","Ember Red","Primary"],["#FF6A13","Flame Orange","Secondary"],["#111111","Coal Black","Tertiary"],["#550000","Half-Dark","Scorebug BG"]],
+  "Dunedin Thunder Women": [["#025B3D","Thunder Forest","Primary"],["#FDAD19","Thunder Amber","Secondary"],["#012C1E","Half-Dark","Scorebug BG"]],
+  "Wakatipu Wild":         [["#FAC805","Wild Gold","Primary"],["#1D3056","Wild Navy","Secondary"],["#162543","Half-Dark","Scorebug BG"]],
+};
+const textColor = hex => {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const L=(0.2126*r+0.7152*g+0.0722*b)/255;
+  return L>0.55 ? "#000" : "#fff";
+};
+const luminance = hex => {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return (0.2126*r+0.7152*g+0.0722*b)/255;
+};
+
+/* The Singular scorebug output is per-BROADCAST, not per-team — only these two
+   clubs share a wired output right now (see scorebug/index.html BUGMAP). */
+const SCOREBUG_WIRED = new Set(["canterbury-red-devils", "canterbury-inferno"]);
+
+const params = new URLSearchParams(location.search);
+const wantSlug = (params.get('team') || '').toLowerCase().trim();
+const team = bySlug[wantSlug] || null;
+if(team) document.getElementById('prod-link').href = `../../team/?team=${team.slug}`;
+
+const toast = document.getElementById('toast');
+function flash(msg){ toast.textContent = msg; toast.classList.add('on');
+  clearTimeout(flash._t); flash._t = setTimeout(()=>toast.classList.remove('on'),1200); }
+function copiedFx(b){ if(!b._label) b._label = b.textContent; b.textContent = 'Copied'; b.classList.add('copied');
+  clearTimeout(b._t); b._t = setTimeout(()=>{ b.textContent = b._label; b.classList.remove('copied'); },1200); }
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-copy]'); if(!b) return;
+  const txt = b.getAttribute('data-copy');
+  (navigator.clipboard?.writeText(txt) ?? Promise.reject()).then(()=>{ flash('Copied URL'); copiedFx(b); }).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy');}catch(_){} ta.remove(); flash('Copied URL'); copiedFx(b);
+  });
+});
+
+if(!team){
+  /* ---- TEAM PICKER — no (or unrecognised) ?team= given ---- */
+  document.title = "Choose a Team — Redesign Preview";
+  document.getElementById('idrow').innerHTML = `
+    <div class="who">
+      <h1>Choose your team</h1>
+      <div style="color:var(--muted);font-size:13px;margin-top:4px;max-width:520px">
+        Every broadcast link for one club, in one place — pick a team below or in the bar above.
+      </div>
+    </div>`;
+  const teamCard = t => `<a class="team" href="?team=${t.slug}"><span class="idw">
+    <img class="lg" loading="lazy" src="${logoUrl(t)}" alt=""><span class="nm">${t.nm}</span></span></a>`;
+  document.getElementById('main').innerHTML = `
+    <section>
+      <div class="league-label">NZIHL</div>
+      <div class="grid">${TEAMS.filter(t=>t.lg==="nzihl").map(teamCard).join('')}</div>
+      <div class="league-label">NZWIHL</div>
+      <div class="grid">${TEAMS.filter(t=>t.lg==="nzwihl").map(teamCard).join('')}</div>
+    </section>`;
+}else{
+  /* ---- SINGLE-TEAM VIEW ---- */
+  const sl = team.slug;
+  const league = team.lg.toUpperCase() === "NZWIHL" ? "NZWIHL" : "NZIHL";
+  const leagueSlug = team.lg;
+  const pal = PALETTES[team.nm] || [["#F7BE11","Gold","Primary"],["#262A31","Dark","Secondary"]];
+  const p1 = pal[0][0], p2 = (pal[1]||pal[0])[0], p3 = (pal[2]||pal[1]||pal[0])[0];
+  document.documentElement.style.setProperty('--p1', p1);
+  document.documentElement.style.setProperty('--p2', p2);
+  document.documentElement.style.setProperty('--p3', p3);
+  const tx = pal.reduce((best, cur) => luminance(cur[0]) > luminance(best[0]) ? cur : best)[0];
+  document.documentElement.style.setProperty('--tx', tx);
+  document.title = `${team.nm} — Redesign Preview`;
+  document.getElementById('favicon').href = logoUrl(team);
+
+  /* compressed one-row mast: plate | name + TLA·league | palette chips.
+     League indication now rides along in the small tag — no separate row. */
+  document.getElementById('idrow').innerHTML = `
+    <div class="logo-plate"><img src="${logoUrl(team)}" alt=""></div>
+    <div class="who">
+      <h1>${team.nm}</h1>
+      <div class="lg-tag">${team.tla} · ${league}</div>
+    </div>
+    <div class="palette">
+      ${pal.map(([hex,nm,role]) => `<div class="pal-chip" style="background:${hex};color:${textColor(hex)};border-color:${textColor(hex)==="#000"?"rgba(0,0,0,.18)":"rgba(255,255,255,.14)"}" title="${nm} — ${role} — click to copy" data-copy="${hex}">
+        <span class="hx">${hex}</span><span class="rl">${role}</span>
+      </div>`).join('')}
+    </div>`;
+
+  const standPng  = `${ASSETS}/${league}_Standings.png`;
+  const stand1840 = `${ASSETS}/${league}_Standings_1840x1000.png`;
+
+  const summaryBlack  = `../../summary/?team=${sl}&bg=black`;
+  const summaryOpaque = `../../summary/?team=${sl}&bg=opaque`;
+  const bannerPath    = `../../activity-banner/?team=${sl}`;
+  const tickerPath    = `../../ticker/?team=${sl}`;
+  const scorebugPath  = `../../scorebug/?team=${sl}`;
+  const lineupPath    = `../../startinglineup/?team=${sl}`;
+  const lineupControl = `../../startinglineup/control/?team=${sl}`;
+  const lineupCombined= `../../startinglineup/combined/?team=${sl}`;
+  const leadersBlack  = `../../scoringleaders/?team=${sl}&bg=black`;
+  const leadersOpaque = `../../scoringleaders/?team=${sl}&bg=opaque`;
+  const l3Path        = `../../lowerthirds/?team=${sl}`;
+  const full = p => `https://matchavez.com/hockey/${p.replace(/^(\.\.\/)+/,'')}`;
+
+  const overlayCard = (title, sub, chip, openLinks) => `
+    <div class="card">
+      <h3>${title} ${chip||''}</h3>
+      <p>${sub}</p>
+      <div class="links">${openLinks}</div>
+    </div>`;
+
+  const overlaysHtml = [
+    overlayCard("Game Summary", "Live scoring card · 1840×1000-style.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${summaryBlack}">Black</a>
+       <a class="btn ext" target="_blank" rel="noopener" href="${summaryOpaque}">Opaque</a>
+       <a class="btn cp" data-copy="${full(summaryBlack)}">Copy</a>`),
+    overlayCard("Team Scoring Leaders", "Each team's top-3 point scorers, live + season-form.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${leadersBlack}">Black</a>
+       <a class="btn ext" target="_blank" rel="noopener" href="${leadersOpaque}">Opaque</a>
+       <a class="btn cp" data-copy="${full(leadersBlack)}">Copy</a>`),
+    overlayCard("Activity Banner", "Transparent goal/penalty banner, no scorebug.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${bannerPath}">Open</a>
+       <a class="btn cp" data-copy="${full(bannerPath)}">Copy</a>`),
+    overlayCard("Player Lower Thirds", "Phone control page — fires through the Activity Banner.", '<span class="chip blue">Phone</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${l3Path}">Open</a>
+       <a class="btn cp" data-copy="${full(l3Path)}">Copy</a>`),
+    overlayCard("Ticker Page", "Scorebug + scrolling recap ticker.", '<span class="chip"><span class="dot"></span>Live</span>',
+      `<a class="btn ext" target="_blank" rel="noopener" href="${tickerPath}">Open</a>
+       <a class="btn cp" data-copy="${full(tickerPath)}">Copy</a>`),
+    SCOREBUG_WIRED.has(sl)
+      ? overlayCard("Scorebug", "Singular scorebug clip + bottom banner.", '<span class="chip"><span class="dot"></span>Live</span>',
+          `<a class="btn ext" target="_blank" rel="noopener" href="${scorebugPath}">Open</a>
+           <a class="btn cp" data-copy="${full(scorebugPath)}">Copy</a>`)
+      : `<div class="card"><h3>Scorebug</h3><p class="muted-note">Not wired for this club yet — each club needs its own Singular output id. Ask Mat to fill it in before publishing.</p></div>`,
+  ].join('');
+
+  const upZip = `${ASSETS}/up-next/zips/${sl.replace(/-/g,'_')}_upnext.zip`;
+  const upBrowse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/up-next/${enc(team.up)}`;
+  const dvdZip = `${ASSETS}/DVD%20Bounce%20Loops/zips/${sl.replace(/-/g,'_')}_dvd.zip`;
+  const dvdBrowse = `https://github.com/matchavez/nzihl-broadcast-assets/tree/main/DVD%20Bounce%20Loops/${team.dvd}`;
+
+  document.getElementById('main').innerHTML = `
+    <section id="standings">
+      <div class="top-row">
+        <div class="standings-col">
+          <div class="sec-head"><img class="sec-thumb" src="${ASSETS}/thumbs/standings.png" alt=""><span class="sec-txt"><h2>${league} Standings <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Rebuilt nightly · this club's league table</span></span></div>
+          <div class="card standings-card" style="padding:10px">
+            <a target="_blank" rel="noopener" href="${standPng}"><img src="${standPng}?v=${Date.now()}" alt="${league} standings" style="display:block;width:100%;border-radius:10px;background:#000"></a>
+            <div class="links" style="margin-top:10px">
+              <a class="btn cp" data-copy="${standPng}">1920×1080</a>
+              <a class="btn cp" data-copy="${stand1840}">1840×1000</a>
+              <a class="btn ext" target="_blank" rel="noopener" href="../../league/?league=${leagueSlug}">Full ${league} Page</a>
+            </div>
+          </div>
+        </div>
+        <div class="sched" id="sched-widget">
+          <div class="sched-hd" id="sched-hd">Loading form…</div>
+          <div class="sched-body" id="sched-body"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="lineup">
+      <div class="sec-head"><span class="sec-txt"><h2>Starting Lineup <span class="chip blue">Evergreen URL</span></h2><span class="sub">Starting six on a half-rink — live, set on the control page</span></span></div>
+      <div class="card" style="padding:10px">
+        <div class="lineup-preview"><iframe src="${lineupPath}" title="${team.nm} starting lineup" loading="lazy"></iframe></div>
+        <div class="links" style="margin-top:10px">
+          <a class="btn ext" target="_blank" rel="noopener" href="${lineupPath}">Open</a>
+          <a class="btn ext" target="_blank" rel="noopener" href="${lineupControl}">Control</a>
+          <a class="btn cp" data-copy="${full(lineupPath)}">Copy</a>
+        </div>
+      </div>
+      <div class="sec-head" style="margin:20px 0 12px"><span class="sec-txt"><h2 style="font-size:15px">Combined Starting Lineups <span class="chip blue">Evergreen URL</span></h2><span class="sub">Both teams' starting six on one rink — resolves ${team.nm}'s next fixture automatically</span></span></div>
+      <div class="card" style="padding:10px">
+        <div class="lineup-preview"><iframe src="${lineupCombined}" title="${team.nm} combined starting lineups" loading="lazy"></iframe></div>
+        <div class="links" style="margin-top:10px">
+          <a class="btn ext" target="_blank" rel="noopener" href="${lineupCombined}">Open</a>
+          <a class="btn cp" data-copy="${full(lineupCombined)}">Copy</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="overlays">
+      <div class="sec-head"><img class="sec-thumb" src="${ASSETS}/thumbs/live_game_summary.png" alt=""><span class="sec-txt"><h2>Broadcast Overlays</h2><span class="sub">Static per-club URLs — open or copy as a browser source</span></span></div>
+      <div class="grid">${overlaysHtml}</div>
+    </section>
+
+    <section id="roster">
+      <div class="sec-head"><img class="sec-thumb" src="${ASSETS}/thumbs/rosters.png" alt=""><span class="sec-txt"><h2>Game-Day Roster <span class="chip"><span class="dot"></span>Auto</span></h2><span class="sub">Latest fixture PDF for this club — portal &amp; archive alongside</span></span></div>
+      <div class="card">
+        <!-- consolidated: latest PDF + Roster Portal + All releases in ONE row -->
+        <div class="links" id="roster-links">
+          <span class="roster-item" id="roster-slot"><span class="muted-note">Loading latest…</span></span>
+          <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/hockeyrosters/">Roster Portal</a>
+          <a class="btn gh" target="_blank" rel="noopener" href="https://github.com/matchavez/${team.roster}/releases">All releases</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="packs">
+      <div class="sec-head"><img class="sec-thumb" src="${ASSETS}/thumbs/up_next.png" alt=""><span class="sec-txt"><h2>Graphics Packs</h2><span class="sub">Download the team pack, or browse the files</span></span></div>
+      <div class="grid">
+        <div class="card"><h3>Up Next</h3><p>Hero &amp; lower-third overlays for this matchup slot.</p>
+          <div class="links"><a class="btn dl" href="${upZip}">Zip</a><a class="btn gh" target="_blank" rel="noopener" href="${upBrowse}">Browse</a></div></div>
+        <div class="card"><h3>DVD Bounce Loop</h3><p>Seamless bouncing-logo MP4s, 4 corner variants (1080p50).</p>
+          <div class="links"><a class="btn dl" href="${dvdZip}">Zip</a><a class="btn gh" target="_blank" rel="noopener" href="${dvdBrowse}">Browse</a></div></div>
+      </div>
+    </section>
+
+    <section id="brand">
+      <div class="sec-head"><img class="sec-thumb" src="${ASSETS}/thumbs/brand.png" alt=""><span class="sec-txt"><h2>Brand &amp; Reference</h2><span class="sub">This club's mark + the shared guides, one card</span></span></div>
+      <div class="card">
+        <p>Colours are in the mast above — click a chip to copy its hex.</p>
+        <div class="links">
+          <a class="btn dl" href="${logoUrl(team)}">Logo PNG</a>
+          <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.html">Style Guide</a>
+          <a class="btn dl" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-style-guide.pdf">Guide PDF</a>
+          <a class="btn ext" target="_blank" rel="noopener" href="https://matchavez.com/nzihl-broadcast-assets/2026-nzihl-nzwihl-hex-cheat-sheet.html">Hex Sheet</a>
+        </div>
+      </div>
+    </section>`;
+
+  /* Live latest roster PDF for this club — matches the release asset (named
+     <date>_<AWAYCODE>_at_<HOMECODE>.pdf) whose code belongs to this team.
+     Codes come from boxscores.json (away_code/home_code). Same logic as
+     production, but the result renders inline in the consolidated button row. */
+  (async function loadRoster(){
+    const el = document.getElementById('roster-slot');
+    const repo = team.roster;
+    try{
+      const [relRes, bsRes] = await Promise.all([
+        fetch(`https://api.github.com/repos/matchavez/${repo}/releases?per_page=40`),
+        fetch(`https://raw.githubusercontent.com/matchavez/${repo}/main/boxscores.json`, {cache:"no-store"}).catch(()=>null),
+      ]);
+      if(!relRes.ok) throw new Error(String(relRes.status));
+      const releases = await relRes.json();
+      let codeMap = {};
+      if(bsRes && bsRes.ok){
+        const bs = await bsRes.json();
+        (bs.games||[]).forEach(g=>{ if(g.away) codeMap[g.away]=g.away_code; if(g.home) codeMap[g.home]=g.home_code; });
+      }
+      const myCode = codeMap[team.nm];
+      const hits = [];
+      releases.forEach(r=>{
+        (r.assets||[]).filter(a=>a.name.toLowerCase().endsWith('.pdf')).forEach(a=>{
+          const m = a.name.match(/^(\d{4}-\d{2}-\d{2})_([A-Za-z]+)_at_([A-Za-z]+)\.pdf$/i);
+          if(!m) return;
+          const [, date, away, home] = m;
+          const isMatch = myCode ? (away.toUpperCase()===myCode.toUpperCase() || home.toUpperCase()===myCode.toUpperCase()) : false;
+          if(isMatch) hits.push({date, name:a.name, url:a.browser_download_url});
+        });
+      });
+      if(!hits.length){ el.innerHTML = `<span class="muted-note">No roster yet this season</span>`; return; }
+      const uniq = [...new Map(hits.map(h=>[h.name,h])).values()].sort((a,b)=>a.date.localeCompare(b.date));
+      const todayISO = new Date().toLocaleDateString('en-CA', {timeZone:'Pacific/Auckland'});
+      const pick = uniq.find(h=>h.date >= todayISO) || uniq[uniq.length-1];
+      const label = pick.name.replace(/\.pdf$/i,'').replace(/_/g,' ');
+      el.innerHTML = `<a class="btn dl" href="${pick.url}" title="${label}">PDF · ${label}</a>`;
+    }catch(e){
+      el.innerHTML = `<span class="muted-note">Couldn't load live</span>`;
+    }
+  })();
+
+  /* Schedule/results widget — same data + logic as production (nzihl-season-data
+     archive, whole season, teamID-matched). */
+  (async function loadSchedule(){
+    const hd = document.getElementById('sched-hd');
+    const body = document.getElementById('sched-body');
+    const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const fmtDate = iso => { const d = new Date(iso + "T00:00:00"); return `${String(d.getDate()).padStart(2,"0")} ${MON[d.getMonth()]}`; };
+    const fmtTime = hhmm => { const [h,m] = hhmm.split(":").map(Number);
+      const h12 = ((h + 11) % 12) + 1; return `${h12}:${String(m).padStart(2,"0")}${h >= 12 ? "pm" : "am"}`; };
+    const ordinal = n => { const s=["th","st","nd","rd"], v=n%100; return `${n}${s[(v-20)%10]||s[v]||s[0]}`; };
+    try{
+      const leagueFile = league === "NZIHL" ? "nzihl.json" : "nzwihl.json";
+      const seasonRes = await fetch(`https://raw.githubusercontent.com/matchavez/nzihl-season-data/main/${leagueFile}`, {cache:"no-store"});
+      if(!seasonRes.ok) throw new Error(String(seasonRes.status));
+      const season = await seasonRes.json();
+      const games = season.games || [];
+
+      const ALIASES = { "Canterbury Red Devils": ["Red Devils"], "Dunedin Thunder Women": ["Dunedin Thunder"] };
+      const accepted = new Set([team.nm, ...(ALIASES[team.nm] || [])]);
+
+      const codeByTeamId = {};
+      let teamID = null;
+      games.forEach(g => ["away","home"].forEach(side=>{
+        const t = g[side];
+        if(t.teamID != null) codeByTeamId[t.teamID] = t.code;
+        if(teamID == null && accepted.has(t.name)) teamID = t.teamID;
+      }));
+
+      const resultFor = g => {
+        const us = g.away.teamID === teamID ? g.away : g.home;
+        const opp = g.away.teamID === teamID ? g.home : g.away;
+        const won = us.total > opp.total;
+        if(!g.finalType) return won ? "W" : "L";
+        return (g.finalType === "OT" ? "OT" : "SO") + (won ? "W" : "L");
+      };
+
+      let playedRows = [], playedIds = new Set();
+      if(teamID != null){
+        const played = games.filter(g => g.away.teamID === teamID || g.home.teamID === teamID)
+          .sort((a,b) => (a.date||"").localeCompare(b.date||"") || a.gameid - b.gameid);
+        playedIds = new Set(played.map(g => g.gameid));
+        playedRows = played.map(g=>{
+          const isAway = g.away.teamID === teamID;
+          const ac = codeByTeamId[g.away.teamID], hc = codeByTeamId[g.home.teamID];
+          const matchup = isAway
+            ? `${ac} ${g.away.total} @${hc} ${g.home.total}`
+            : `${ac} ${g.away.total} ${hc} ${g.home.total}`;
+          return { date: fmtDate(g.date), matchup, tag: resultFor(g), future: false };
+        });
+      }
+
+      if(teamID != null){
+        const tally = {};
+        games.forEach(g=>{
+          const aWon = g.away.total > g.home.total;
+          [[g.away, g.home, aWon], [g.home, g.away, !aWon]].forEach(([side, opp, won])=>{
+            const tid = side.teamID; if(tid == null) return;
+            const e = tally[tid] || (tally[tid] = { W:0, OTW:0, OTL:0, L:0, GF:0, GA:0 });
+            e.GF += side.total; e.GA += opp.total;
+            if(!g.finalType) e[won ? "W" : "L"]++; else e[won ? "OTW" : "OTL"]++;
+          });
+        });
+        const standings = Object.entries(tally).map(([tid,e]) => ({
+          tid, ...e, pts: e.W*3 + e.OTW*2 + e.OTL, gd: e.GF - e.GA,
+        })).sort((a,b) => b.pts - a.pts || (b.W+b.OTW) - (a.W+a.OTW) || b.gd - a.gd);
+        const rank = standings.findIndex(r => Number(r.tid) === teamID) + 1;
+        const us = tally[teamID];
+        const ourPts = us ? us.W*3 + us.OTW*2 + us.OTL : null;
+        hd.innerHTML = (rank && us)
+          ? `Currently <b>${ordinal(rank)}</b> <span class="sched-rec">(${us.W}-${us.OTW}-${us.OTL}-${us.L} ${ourPts}pts)</span>`
+          : "Form";
+      }
+
+      let upcomingRows = [];
+      if(teamID != null){
+        upcomingRows = (season.upcoming || [])
+          .filter(g => (g.away.teamID === teamID || g.home.teamID === teamID) && !playedIds.has(g.gameid))
+          .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time))
+          .map(g=>{
+            const isAway = g.away.teamID === teamID;
+            const ac = codeByTeamId[g.away.teamID] || "???", hc = codeByTeamId[g.home.teamID] || "???";
+            const matchup = isAway ? `${ac} @${hc}` : `${ac} - ${hc}`;
+            return { date: fmtDate(g.date), matchup, tag: fmtTime(g.time), future: true };
+          });
+      }
+
+      if(teamID == null && !hd.innerHTML.trim()){
+        hd.textContent = "No games yet this season";
+      }
+
+      const rows = [...playedRows, ...upcomingRows];
+      if(!rows.length){
+        body.innerHTML = `<p class="muted-note" style="margin:0;font-size:11.5px">No games played or scheduled yet.</p>`;
+      }else{
+        body.innerHTML = rows.map(r => `
+          <div class="sched-row${r.future ? " future" : ""}">
+            <span class="sd-date">${r.date}</span>
+            <span class="sd-mu">${r.matchup}</span>
+            <span class="sd-tag ${r.future ? "tk" : "tag-"+r.tag}">${r.tag}</span>
+          </div>`).join("");
+      }
+    }catch(e){
+      hd.textContent = "Schedule unavailable";
+      body.innerHTML = `<p class="muted-note" style="margin:0;font-size:11.5px">Couldn't load live — try again shortly.</p>`;
+    }
+  })();
+}
+</script>
+</body>
+</html>

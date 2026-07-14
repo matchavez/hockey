@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- REDESIGN PREVIEW (2026-07-14) — the Ops sub-portal. Collects everything
+     that isn't a consumable team asset: health checks, QA, test pages, data
+     repos, and external tools. These links previously lived in the portal's
+     hero pills, footer, and Warehouse section. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ops — NZ Hockey Broadcast Assets (Redesign Preview)</title>
+<meta name="description" content="Diagnostics, QA, test pages, data repos and external tools for the NZ hockey broadcast estate.">
+<link rel="icon" href="data:,">
+<style>
+  @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../../assets/fonts/InterVariable.woff2') format('woff2');}
+  :root{
+    --bg:#0a0b0d; --panel:#141619; --panel2:#1b1e22; --line:#2a2e34;
+    --txt:#f3f4f6; --muted:#9aa3ad; --gold:#f7be11; --accent:#3aa0ff; --live:#2ecc71;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:var(--bg); color:var(--txt);
+    font-family:Inter,-apple-system,"SF Pro Text",Segoe UI,Roboto,sans-serif;
+    font-feature-settings:"ss01" 1,"ss02" 1; line-height:1.5; }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:0 16px; }
+
+  header.hero{ padding:22px 0 18px; border-bottom:1px solid var(--line); position:relative; overflow:hidden; }
+  header.hero::before{ content:""; position:absolute; inset:-60% -20%; pointer-events:none;
+    background:
+      radial-gradient(640px 300px at 22% 35%, rgba(46,204,113,.10), transparent 62%),
+      radial-gradient(720px 330px at 78% 22%, rgba(58,160,255,.10), transparent 62%); }
+  .hero .wrap{ position:relative; }
+  .eyebrow{ font-size:11px; font-weight:800; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--live); margin:0 0 4px; }
+  .hero h1{ font-size:clamp(21px,3.6vw,30px); font-weight:800; margin:0; }
+  .hero .tag{ color:var(--muted); margin-top:4px; font-size:13px; max-width:680px; }
+
+  section{ padding:24px 0 6px; }
+  .sec-head{ margin-bottom:12px; }
+  .sec-head h2{ font-size:16px; font-weight:800; margin:0; }
+  .sec-head .sub{ font-size:12.5px; color:var(--muted); }
+
+  .grid{ display:grid; gap:12px; grid-template-columns:repeat(2,1fr); }
+  @media(max-width:560px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px; transition:transform .18s ease, border-color .18s ease, box-shadow .22s ease; }
+  a.card:hover{ transform:translateY(-2px); border-color:#3a3f47;
+    box-shadow:0 8px 26px rgba(0,0,0,.4), 0 0 0 1px rgba(58,160,255,.14); }
+  .card h3{ margin:0 0 4px; font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card p{ margin:0; font-size:12.5px; color:var(--muted); }
+  .links{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+
+  .btn{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:6px 11px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt); cursor:pointer;
+    transition:color .15s ease, border-color .15s ease, background .15s ease, box-shadow .22s ease, transform .15s ease; }
+  .btn:hover{ transform:translateY(-1px); border-color:#3a3f47; }
+  .btn.ext:hover,.btn.gh:hover{ border-color:rgba(58,160,255,.55); color:#fff;
+    box-shadow:0 0 0 1px rgba(58,160,255,.25), 0 0 16px rgba(58,160,255,.20); }
+  .ext::before{ content:"↗"; margin-right:5px; opacity:.6; font-size:10px; font-weight:700; }
+
+  .chip{ font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;
+    border:1px solid rgba(46,204,113,.35); color:var(--live); background:rgba(46,204,113,.07); }
+  .chip.blue{ border-color:rgba(58,160,255,.35); color:var(--accent); background:rgba(58,160,255,.07); }
+  .chip.beta{ border-color:rgba(247,190,17,.35); color:var(--gold); background:rgba(247,190,17,.07); }
+
+  footer{ margin-top:30px; border-top:1px solid var(--line); padding:20px 0 40px;
+    color:var(--muted); font-size:12.5px; }
+  footer a{ color:var(--accent); }
+
+  .preview-note{ background:rgba(247,190,17,.08); border:1px solid rgba(247,190,17,.35);
+    color:var(--gold); font-size:11.5px; font-weight:700; text-align:center; padding:6px 12px; }
+  .preview-note a{ text-decoration:underline; text-underline-offset:2px; }
+</style>
+</head>
+<body>
+<script src="../nav.js" data-root=".."></script>
+
+<div class="preview-note">Redesign preview — new sub-portal, nothing removed from the <a href="../../">live portal</a> yet.</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Diagnostics · QA · Data</div>
+    <h1>Ops</h1>
+    <div class="tag">Everything that isn't a consumable team asset — health checks, render QA, test pages, the data estate, and external tool logins. If a producer never needs it on game day, it lives here.</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="health">
+    <div class="sec-head"><h2>Health &amp; QA</h2><div class="sub">Run these before a broadcast weekend</div></div>
+    <div class="grid">
+      <a class="card" target="_blank" rel="noopener" href="../../preflight/">
+        <h3>Broadcast Pre-Flight <span class="chip"><span class="dot"></span>Live</span></h3>
+        <p>Producer health-check board — worker, manifests, per-team resolution, BUGMAP, copy-ready URLs + saved tuning.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="../../graphicstests/">
+        <h3>Broadcast Graphics QA <span class="chip"><span class="dot"></span>Live</span></h3>
+        <p>Per-club live-iframe render checks for every overlay family + DVD / Up Next / standings asset checks.</p>
+      </a>
+    </div>
+  </section>
+
+  <section id="testpages">
+    <div class="sec-head"><h2>Test Pages</h2><div class="sub">Overlay pages in ?test=1 / beta modes — for rehearsal, not air</div></div>
+    <div class="grid">
+      <a class="card" target="_blank" rel="noopener" href="../../activity-banner/?test=1">
+        <h3>Activity Banner test <span class="chip beta">Test</span></h3>
+        <p>Goal/penalty banner only, no scorebug — fires fake events.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="../../ticker/?test=1">
+        <h3>Ticker test <span class="chip beta">Test</span></h3>
+        <p>Scorebug + scrolling game ticker with test data.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="../../scorebug/?test=1">
+        <h3>Red Devils Scorebug + Live Banner <span class="chip beta">Beta</span></h3>
+        <p>Unified Singular scorebug clip + goal/penalty banner.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="../../scorebug/?team=canterbury-inferno&test=1">
+        <h3>Inferno Scorebug + Live Banner <span class="chip beta">Beta</span></h3>
+        <p>Same page, Inferno's wired output.</p>
+      </a>
+    </div>
+  </section>
+
+  <section id="data">
+    <div class="sec-head"><h2>Data Estate</h2><div class="sub">Warehouses and manifests the graphics feed from</div></div>
+    <div class="grid">
+      <a class="card" target="_blank" rel="noopener" href="../../warehouse/">
+        <h3>Data Warehouse <span class="chip"><span class="dot"></span>Live</span></h3>
+        <p>Full season game archive + every player/coach photo with stat lines, grouped by team, on one page.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-season-data">
+        <h3 class="gh" style="display:flex">nzihl-season-data</h3>
+        <p>Nightly scrape of every completed box score → nzihl.json / nzwihl.json, plus derived streaks, H2H, standings and the whole-season upcoming schedule.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-player-photos">
+        <h3 class="gh" style="display:flex">nzihl-player-photos</h3>
+        <p>Weekly Action scrapes every rostered player + coach headshot into photos/ + manifest.json — the source behind the warehouse's photo view.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets/blob/main/assets/name-overrides.json">
+        <h3 class="gh" style="display:flex">name-overrides.json</h3>
+        <p>The one canonical player-name override file every repo fetches (multi-word surnames, maiden-name parentheticals).</p>
+      </a>
+    </div>
+  </section>
+
+  <section id="repos">
+    <div class="sec-head"><h2>Source Repos</h2><div class="sub">All on GitHub</div></div>
+    <div class="grid">
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-assets">
+        <h3 class="gh" style="display:flex">nzihl-broadcast-assets</h3>
+        <p>Standings graphics, logos, Up Next packs, DVD loops, style guide — the asset factory.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/hockey">
+        <h3 class="gh" style="display:flex">hockey</h3>
+        <p>This portal and every live overlay page (summary, banners, lineups, ticker, scorebug…).</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzihl-broadcast-rosters">
+        <h3 class="gh" style="display:flex">nzihl-broadcast-rosters</h3>
+        <p>Daily roster PDFs + boxscores.json + stats.json for NZIHL.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/nzwihl-broadcast-rosters">
+        <h3 class="gh" style="display:flex">nzwihl-broadcast-rosters</h3>
+        <p>Same pipeline for NZWIHL.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://github.com/matchavez/hockeyrosters">
+        <h3 class="gh" style="display:flex">hockeyrosters</h3>
+        <p>The talent-facing roster-PDF download page at matchavez.com/hockeyrosters.</p>
+      </a>
+    </div>
+  </section>
+
+  <section id="external">
+    <div class="sec-head"><h2>External Tools</h2><div class="sub">Third-party logins &amp; dashboards</div></div>
+    <div class="grid">
+      <a class="card" target="_blank" rel="noopener" href="https://cockpit.49ing.ch/dashboard">
+        <h3>49ing Cockpit <span class="chip blue">External</span></h3>
+        <p>Encoder / stream monitoring dashboard.</p>
+      </a>
+      <a class="card" target="_blank" rel="noopener" href="https://app.singular.live/appinstances/6104631/control">
+        <h3>Christchurch Scorebug Login <span class="chip blue">External</span></h3>
+        <p>Singular.live control app for the wired scorebug outputs.</p>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Back to the <a href="../">portal preview</a> · consumable assets live on the team pages in the bar above.
+  </div>
+</footer>
+
+</body>
+</html>
