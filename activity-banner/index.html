@@ -158,8 +158,22 @@
      states, no extra JS needed. Border still IS the frame (no separate
      .l3accent bar); box-sizing:border-box keeps the 6px border inside the
      square rather than adding to it. */
+  /* border-radius added (Mat, 2026-07-15): matches #l3's own 14px card
+     radius. Two fixes in one: (1) the photo's top-left/bottom-left corners
+     sit flush against #l3's own rounded+clipped edge -- a square border
+     corner there fought the parent's round clip mask and bled/jaggied at
+     exactly those two corners (reported by Mat, visible in both circled
+     corners of his screenshot); giving the border its own matching 14px
+     radius makes the border's curve and the clip mask's curve coincide, so
+     there's nothing left to clip unevenly. (2) Mat also asked for no sharp
+     interior corner generally, so all four corners use the same radius,
+     not just the two that touch the card edge -- the top-right/bottom-right
+     corners reveal #l3's own background through the small rounded notch,
+     which is the same var(--l3dark) as l3body's implicit background, so
+     it's seamless. overflow:hidden (already present) clips l3img and the
+     logo/initials fallbacks to match automatically. */
   #l3 .l3photo{flex:0 0 auto;align-self:stretch;aspect-ratio:1/1;overflow:hidden;position:relative;
-    box-sizing:border-box;background:#1b2029;border:6px solid var(--l3ink);}
+    box-sizing:border-box;background:#1b2029;border:6px solid var(--l3ink);border-radius:14px;}
   #l3 .l3photo img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
   /* No-photo fallback is a SECOND choice, not the default: prefer the team
      crest (so a missing headshot still balances the crest already on the right
