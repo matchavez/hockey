@@ -325,6 +325,15 @@ if(!team){
   const scorebugPath  = `../scorebug/?team=${sl}`;
   const lineupPath     = `../startinglineup/?team=${sl}`;
   const lineupControl  = `../startinglineup/control/?team=${sl}`;
+  // Combined Starting Lineups evergreen team slug (2026-07-15) — resolves this
+  // team's next fixture from nzihl-season-data's `upcoming` field and shows
+  // both starting sixes on one rink, same convention as the per-team lineup
+  // page above and Activity Banner's ?team= slugs (see combined/index.html's
+  // resolveTeamSlug()). Degrades to a blank iframe with nothing scheduled
+  // (bye week) or for Auckland Mako (stood down, no 2026 games) — same
+  // accepted "renders cleanly, mostly empty" pattern already used for this
+  // club's other live overlays on this page (see NZIHL/NZWIHL comment above).
+  const lineupCombined = `../startinglineup/combined/?team=${sl}`;
   const leadersBlack   = `../scoringleaders/?team=${sl}&bg=black`;
   const leadersOpaque  = `../scoringleaders/?team=${sl}&bg=opaque`;
   const full = p => `https://matchavez.com/hockey/${p.replace(/^\.\.\//,'')}`;
@@ -392,6 +401,14 @@ if(!team){
           <a class="btn ext" target="_blank" rel="noopener" href="${lineupPath}">Open</a>
           <a class="btn ext" target="_blank" rel="noopener" href="${lineupControl}">Control</a>
           <a class="btn cp" data-copy="${full(lineupPath)}">Copy</a>
+        </div>
+      </div>
+      <div class="sec-head" style="margin:22px 0 14px"><span class="sec-txt"><h2 style="font-size:16px">Combined Starting Lineups <span class="chip blue">Evergreen URL</span></h2><span class="sub">Both teams' starting six on one rink — resolves ${team.nm}'s next fixture automatically, updates as the schedule advances</span></span></div>
+      <div class="card" style="padding:10px">
+        <div class="lineup-preview"><iframe src="${lineupCombined}" title="${team.nm} combined starting lineups" loading="lazy"></iframe></div>
+        <div class="links" style="margin-top:10px">
+          <a class="btn ext" target="_blank" rel="noopener" href="${lineupCombined}">Open</a>
+          <a class="btn cp" data-copy="${full(lineupCombined)}">Copy</a>
         </div>
       </div>
     </section>

@@ -686,3 +686,21 @@ no cards/rink/header) — the "no resolvable fixture" path degrades correctly. E
 `?home=canterbury-red-devils&away=botany-swarm` regression-checked unchanged (real data,
 correct sides). Portal's new "Combined Starting Lineups Team Slugs" grid renders correctly under
 the existing schedule-driven grid, both coexisting without layout collision.
+
+### Combined Starting Lineups link added to team/ pages (2026-07-15)
+Mat: "Add the Combined Starting Lineup Team Slug link to the team pages as appropriate." Added a
+second mini-section under team/index.html's existing "Starting Lineup" section (same page,
+`team/?team=<slug>`) — a `lineup-preview` iframe of `../startinglineup/combined/?team=<slug>`
+plus Open/Copy buttons, styled with the same "sec-head, font-size:16px, margin:22px 0 14px"
+sub-section convention the portal already uses for its own "Combined Starting Lineups" mini-grid.
+New `lineupCombined` const sits alongside the existing `lineupPath`/`lineupControl` consts.
+
+Applied uniformly to all 10 clubs, including Auckland Mako — deliberately NOT excluded, matching
+this page's own documented convention (see the NZIHL/NZWIHL array comment: Mako's live overlays
+"just resolve to no game... the page still renders cleanly, it's just mostly empty, which is an
+accurate reflection of the club's status"). A blank Combined-lineups iframe on Mako's page is the
+same kind of accurate-empty-state as its Game Summary/Activity Banner/Ticker cards already are,
+not a special case needing its own handling.
+
+See also [[nzihl_combined_lineups]] for the `?team=` resolution logic itself (unchanged here —
+this is purely a new link surface, no logic changes to `startinglineup/combined/`).

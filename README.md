@@ -468,7 +468,11 @@ footer beta list, it doesn't get both.
 `team/?team=<slug>` pulls together everything for one club: this club's league standings (both
 PNG sizes), Game Summary (Black/Opaque), **Team Scoring Leaders**, Activity Banner, Ticker,
 Scorebug (only where `BUGMAP`-wired — currently Red Devils + Inferno share the Christchurch
-output; other clubs show a "not wired" note instead of a dead link), live-fetched latest roster
+output; other clubs show a "not wired" note instead of a dead link), **Starting Lineup** (live
+preview iframe, Open/Control/Copy) plus, since 2026-07-15, **Combined Starting Lineups**
+(`startinglineup/combined/?team=<slug>` — live preview iframe, Open/Copy; resolves this club's
+next fixture automatically from `nzihl-season-data`'s `upcoming` field, same as the portal's
+"Combined Starting Lineups Team Slugs" grid), live-fetched latest roster
 PDF, Up Next + DVD Loop packs, logo, and the club's **full colour palette with hex values** (a
 local `PALETTES` map — every chip from the 2026 Style & Colour Guide hex cheat sheet's `DATA`
 array, not just a 2-colour ink/dark pair; keep both in sync). Branding is intentionally loud: the
