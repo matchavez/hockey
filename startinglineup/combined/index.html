@@ -788,15 +788,21 @@ function start(){
   // re-paints ONLY the Stampede half after the normal render above --
   // background to Stampede Yellow (dark sheen instead of the light sheen
   // used on dark backgrounds, since the wash direction needs to invert
-  // too), both name lines to Stampede Navy. Runs after the generic block
-  // so it always wins for this one matchup; no-op (returns null) every
-  // other game.
+  // too), club-name line (L2, "STAMPEDE") to Stampede Navy. Runs after the
+  // generic block so it always wins for this one matchup; no-op (returns
+  // null) every other game.
+  // 2026-07-16: L1 ("SKYCITY") deliberately NOT touched here -- Mat asked
+  // it stay the normal white + its existing default black text-stroke
+  // (from .hdrTeamL1's CSS, untouched by this override), same "every
+  // team's line1 is white/black-outline" convention used everywhere else
+  // on this page. The black stroke is what keeps white-on-yellow legible;
+  // only L2 gets the colour swap, matching the "only STAMPEDE inverts,
+  // SKYCITY stays standard" instruction.
   const invertSide = stampedeInvertSide();
   if(invertSide){
     const half = document.getElementById("hdr").querySelector(`.hdrHalf.${invertSide}`);
     const grad = invertSide==="home" ? "90deg" : "270deg";
     half.style.background = `linear-gradient(${grad}, ${STAMPEDE_INVERT_BG} 0%, ${STAMPEDE_INVERT_BG} 72%, rgba(0,0,0,.08) 100%), ${STAMPEDE_INVERT_BG}`;
-    document.getElementById(invertSide==="home" ? "hdrTeamHomeL1" : "hdrTeamAwayL1").style.color = STAMPEDE_INVERT_TEXT;
     document.getElementById(invertSide==="home" ? "hdrTeamHomeL2" : "hdrTeamAwayL2").style.color = STAMPEDE_INVERT_TEXT;
   }
 
