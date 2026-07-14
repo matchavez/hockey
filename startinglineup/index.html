@@ -43,8 +43,12 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
 #hdrLogo{width:96px;height:96px;object-fit:contain;flex:0 0 auto;
   filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));}
 #hdrText{flex:1 1 auto;min-width:0;}
+/* 2026-07-16: added the same 2px black outline the combined-lineups page
+   just picked up (-webkit-text-stroke:2px #08080A, matching hdrTeamL1/L2's
+   convention there) per Mat's ask to apply it everywhere "STARTING
+   LINEUP(S)" appears as a headline, not just the combined page. */
 #hdrTitle{font-size:52px;font-weight:900;letter-spacing:.015em;color:#fff;line-height:1.02;
-  white-space:nowrap;}
+  white-space:nowrap;-webkit-text-stroke:2px #08080A;paint-order:stroke fill;}
 #hdrTeam{font-size:25px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   margin-top:3px;white-space:nowrap;}
 #hdrLeague{flex:0 0 auto;height:94px;max-width:210px;object-fit:contain;opacity:.95;
