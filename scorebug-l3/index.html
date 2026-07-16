@@ -228,7 +228,7 @@ let SCOREBUG_SRC = SINGULAR(BUG_CHC);   // resolved per-team in start(); ?bug= o
 // px short of the red bar's true left edge, so transparent composition shows through. Nudge cropX UP
 // to eat it (or DOWN if the bar is clipped). Tune live: ?bs=scale,x,y,clipW,clipH[,cropX,cropY]
 //   e.g. ?bs=0.78,0,0,1000,172,402,500   (raise cropX 390 -> 402 to close left gap)
-let BUG = { scale:0.78, x:0, y:0, cropX:390, cropY:500, clipW:1000, clipH:172 };
+let BUG = { scale:0.78, x:0, y:0, cropX:395, cropY:500, clipW:1000, clipH:172 };
 
 const HOLD_GOAL = 10000;   // goal banner visible (ms)
 const HOLD_PEN  = 7000;    // penalty banner visible (ms)
