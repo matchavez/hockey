@@ -280,8 +280,8 @@ function placeBug(){
   clip.style.left=BUG.x+"px"; clip.style.top=BUG.y+"px";
   clip.style.width=BUG.clipW+"px"; clip.style.height=BUG.clipH+"px";
   // inside the clip, shift the full 1920x1080 composition so (cropX,cropY) -> (0,0)
-  f.style.left=(-BUG.scale*BUG.cropX)+"px";
-  f.style.top =(-BUG.scale*BUG.cropY)+"px";
+  f.style.left=Math.round(-BUG.scale*BUG.cropX)+"px";
+  f.style.top =Math.round(-BUG.scale*BUG.cropY)+"px";
   f.style.transform="scale("+BUG.scale+")";
   if(f.src!==SCOREBUG_SRC) f.src=SCOREBUG_SRC;
 }
