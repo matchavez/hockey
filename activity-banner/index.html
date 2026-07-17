@@ -355,7 +355,7 @@ const TESTMODE = Q.get("test")==="1";
 const NOBANNER = Q.get("nobanner")==="1";
 
 /* ====================== NAME / TEXT HELPERS ====================== */
-const decamel=s=>String(s||"").replace(/([a-z\.])([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
+const decamel=s=>String(s||"").replace(/([a-z\.])(?<!\b(?:Mac|Mc))([A-Z])/g,"$1 $2").replace(/([^\s(])\(/g,"$1 (").replace(/\)([^\s)])/g,") $1");
 // esportsdesk source data sometimes arrives ALL CAPS or all lower-case. Detect wholesale
 // one-case text (not stylised mixed case like "McDonald" or "O'Brien", which is left
 // untouched) and normalise to Title Case, capitalising after spaces/hyphens/apostrophes/
@@ -398,7 +398,7 @@ async function loadNameOverrides(){
   }catch(e){ /* keep the hardcoded fallback above -- never break an on-air graphic over this */ }
 }
 function stripParens(s){ PAREN_STRIPS.forEach(p=>{ s=s.replace(p.re,p.to); }); return s; }
-const surnameOverride=n=>SURNAME_OVERRIDES[decamel(n).trim().replace(/\s+/g," ").toLowerCase()]||null;
+function surnameOverride(n){const norm=decamel(n).trim().replace(/\s+/g," ").toLowerCase();if(SURNAME_OVERRIDES[norm])return SURNAME_OVERRIDES[norm];for(const k in SURNAME_OVERRIDES){if(norm===k||norm.endsWith(" "+k))return SURNAME_OVERRIDES[k];}return null;}
 function initSurname(n){const forced=surnameOverride(n);if(forced)return forced;const w=decamel(n).trim().split(/\s+/).filter(t=>!/^\(.*\)$/.test(t));return w.length>1?(w[0][0]+". "+w[w.length-1]):(w[0]||"");}
 function surnameUC(n){return initSurname(n).toUpperCase();}
 function surnameTC(n){return properCase(initSurname(n));}
