@@ -128,20 +128,36 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;
    make_text_sprite(), not approximate it -- font-weight 700 (was 800,
    overlay.py loads Inter at NAME_WEIGHT=700), letter-spacing ~0.04em
    (overlay.py's tracking=2px at a ~53.6px cap-height-39 em size -> 2/53.6,
-   was .08em, over-tracked), and -webkit-text-stroke added -- overlay.py's
+   was .08em, over-tracked), and a 2px black outline added -- overlay.py's
    make_text_sprite() draws every character with stroke_w=3 (a real
    outline), which the previous pass dropped entirely. Stroke colour is
    black (INK #08080A) by default, matching overlay.py's default
    stroke_fill; per-team stroke2 overrides (white, for stampede/wild --
    their hdrLine2 is a dark navy that a black outline would swallow) are
-   applied to line 2 only via JS, exactly like overlay.py's stroke2. */
+   applied to line 2 only via JS, exactly like overlay.py's stroke2.
+   2026-07-18: outline technique switched from -webkit-text-stroke to an
+   8-direction text-shadow (see outlineShadow() in JS below). Mat flagged
+   the team names looking blurry/ghosted on Chromium (fine on Safari) --
+   -webkit-text-stroke + paint-order:stroke fill under this page's runtime
+   #frame scale transform (fitWindow(), never an integer factor) is a
+   known Chromium/CEF rough edge: the stroked glyph outline doesn't get
+   the same pixel-snapping/hinting WebKit applies, so it renders soft/
+   doubled at non-integer scale. text-shadow composites as flat colour
+   layers instead of a stroked glyph path, which Chromium rasterizes
+   cleanly at any scale -- same visual result, no engine-specific blur.
+   Font-size itself was already a flat integer (36px) on both lines --
+   confirmed NOT the cause, don't "fix" it again if this comes up. */
 .hdrTeam{display:flex;flex-direction:column;font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:480px;line-height:1.12;}
 .hdrHalf.away .hdrTeam{text-align:right;align-items:flex-end;}
 /* 2026-07-15: name +8% (33->36px) per Mat's ask, alongside the logo bump. */
-.hdrTeamL1{font-size:36px;color:#fff;-webkit-text-stroke:2px #08080A;paint-order:stroke fill;}
-.hdrTeamL2{font-size:36px;-webkit-text-stroke:2px #08080A;paint-order:stroke fill;}
+.hdrTeamL1{font-size:36px;color:#fff;text-shadow:-2px -2px 0 #08080A,2px -2px 0 #08080A,
+  -2px 2px 0 #08080A,2px 2px 0 #08080A,-2px 0 0 #08080A,2px 0 0 #08080A,
+  0 -2px 0 #08080A,0 2px 0 #08080A;}
+.hdrTeamL2{font-size:36px;text-shadow:-2px -2px 0 #08080A,2px -2px 0 #08080A,
+  -2px 2px 0 #08080A,2px 2px 0 #08080A,-2px 0 0 #08080A,2px 0 0 #08080A,
+  0 -2px 0 #08080A,0 2px 0 #08080A;}
 .hdrAccent{position:absolute;left:0;top:123px;width:1840px;height:5px;z-index:1;}
 .hdrAccent.home{clip-path:polygon(0 0, 920px 0, 920px 100%, 0 100%);}
 .hdrAccent.away{clip-path:polygon(920px 0, 100% 0, 100% 100%, 920px 100%);}
@@ -708,6 +724,21 @@ function fitWindow(){
 }
 window.addEventListener("resize", fitWindow); fitWindow();
 
+/* ====================== TEXT OUTLINE (matches .hdrTeamL1/L2's static
+   text-shadow in CSS above) ======================
+   2026-07-18: built to replace .style.webkitTextStroke, which was causing
+   blurry/ghosted team-name text on Chromium (see CSS comment above
+   .hdrTeamL1). Same 8-direction flat-colour text-shadow the CSS uses,
+   parameterised so hdrTeamL2's per-team stroke2 override (white, for
+   stampede/wild) can still be applied dynamically at runtime. */
+function outlineShadow(color){
+  const o = 2; // px -- matches the prior -webkit-text-stroke:2px width
+  return [`-${o}px -${o}px 0 ${color}`, `${o}px -${o}px 0 ${color}`,
+    `-${o}px ${o}px 0 ${color}`, `${o}px ${o}px 0 ${color}`,
+    `-${o}px 0 0 ${color}`, `${o}px 0 0 ${color}`,
+    `0 -${o}px 0 ${color}`, `0 ${o}px 0 ${color}`].join(",");
+}
+
 /* ====================== TEXT FIT (shrink, never ellipsis) ====================== */
 function fitLine(el, base, min){
   const line = el.parentElement;
@@ -832,11 +863,11 @@ function start(){
   document.getElementById("hdrTeamHomeL1").textContent = TH.lines[0];
   document.getElementById("hdrTeamHomeL2").textContent = TH.lines[1];
   document.getElementById("hdrTeamHomeL2").style.color = TH.hdrLine2;
-  document.getElementById("hdrTeamHomeL2").style.webkitTextStroke = `2px ${TH.hdrLine2Stroke || "#08080A"}`;
+  document.getElementById("hdrTeamHomeL2").style.textShadow = outlineShadow(TH.hdrLine2Stroke || "#08080A");
   document.getElementById("hdrTeamAwayL1").textContent = TA.lines[0];
   document.getElementById("hdrTeamAwayL2").textContent = TA.lines[1];
   document.getElementById("hdrTeamAwayL2").style.color = TA.hdrLine2;
-  document.getElementById("hdrTeamAwayL2").style.webkitTextStroke = `2px ${TA.hdrLine2Stroke || "#08080A"}`;
+  document.getElementById("hdrTeamAwayL2").style.textShadow = outlineShadow(TA.hdrLine2Stroke || "#08080A");
 
   // Admirals-vs-Stampede matchup override (see stampedeInvertSide() above):
   // re-paints ONLY the Stampede half after the normal render above --
