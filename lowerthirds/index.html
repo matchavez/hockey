@@ -510,6 +510,36 @@ async function computeFact(identity){
     const idx=all.findIndex(r=>r.team_code===identity.team_code && String(r.number)===String(identity.number));
     if(idx>=0 && idx<10 && all[idx].pts>0) return `${identity.name} ranks ${ordinal(idx+1)} in ${league.toUpperCase()} scoring with ${all[idx].pts} points.`;
   }
+  // Mat, 2026-07-19: mirrors the "prior game" fallback added to the Team
+  // Scoring Leaders graphic (buildCandidates' lastgame candidate) — a
+  // goal/assist in the player's most recent game is a more interesting
+  // on-air fact than the round-number milestone check below, for a player
+  // who hasn't cleared the bigger thresholds above (team leader, league
+  // rank). Still yields to tonight's live tally and an active point streak,
+  // which are rarer/more immediate.
+  if(seasonData){
+    const log = seasonData.derived.player_game_logs && seasonData.derived.player_game_logs[pgKey(identity.name)];
+    if(log && log.games && log.games.length){
+      const sorted=[...log.games].sort((a,b)=>new Date(b.date)-new Date(a.date));
+      const lastGame = sorted[0];
+      if(lastGame && (lastGame.goals>0 || lastGame.assists>0)){
+        const lg=lastGame.goals, la=lastGame.assists;
+        let statText;
+        if(lg>0 && la>0) statText = `${lg} goal${lg===1?"":"s"} and ${la} assist${la===1?"":"s"}`;
+        else if(lg>0) statText = `${lg} goal${lg===1?"":"s"}`;
+        else statText = `${la} assist${la===1?"":"s"}`;
+        let text = `${identity.name} had ${statText} last game.`;
+        const gm = (seasonData.games||[]).find(x=>String(x.gameid)===String(lastGame.gameid));
+        if(gm && gm.away && gm.home && myTeamID!=null){
+          const isAway = String(gm.away.teamID)===String(myTeamID);
+          const isHome = String(gm.home.teamID)===String(myTeamID);
+          const opp = isAway ? gm.home : isHome ? gm.away : null;
+          if(opp && opp.name) text = `${identity.name} had ${statText} against ${opp.name} last game.`;
+        }
+        return text;
+      }
+    }
+  }
   if(teamStats){
     const me=(teamStats.skaters||[]).find(r=>String(r.number)===String(identity.number));
     if(me && me.gp>0){
