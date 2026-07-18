@@ -497,6 +497,11 @@ async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.
 const SCRAPE_HOST = "https://admin.esportsdesk.com";   // box-score live poll only -- standingsRowFor() now uses SEASON_DATA_URL, not this
 function boxURL(m,gid){return `${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+// Lets a ?team= slug carry a trailing digit (e.g. ?team=canterbury-red-devils1/2/3) that still
+// resolves to the same team -- handy for giving OBS/vMix browser sources distinct URLs (some
+// setups dedupe/cache identical URLs across multiple sources) while rendering identical content.
+// No real team slug ends in a digit, so stripping a trailing one is safe.
+const dedupeSlug=s=>slug(s).replace(/-?\d+$/,"");
 
 const SLUG_VIS = {
  "pure-nz-admirals": REG["674110"], "canterbury-red-devils": REG["675633"],
@@ -566,7 +571,7 @@ async function resolveTarget(){
   // box-score links are built from. Pick THIS team's live/next game. Static per-team URL:
   //   scorebug/?team=canterbury-red-devils  (or dunedin-thunder, botany-swarm, pure-nz-admirals,
   //   skycity-stampede, auckland-steel, canterbury-inferno, dunedin-thunder-women, wakatipu-wild …)
-  const slugTeam = slug(team || "canterbury-red-devils");   // default: Red Devils
+  const slugTeam = dedupeSlug(team || "canterbury-red-devils");   // default: Red Devils (strips a trailing OBS-dedupe digit, e.g. ...-devils1/2/3)
   // Fallback gameids for games the pipeline hasn't filled yet (manifest gameid=null); self-clears when gm.gameid arrives.
   const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
   const cands=[];
@@ -926,7 +931,7 @@ addEventListener("resize",fitWindow);
 async function start(){
   await loadNameOverrides();
   // pick this club's Singular scorebug (per-broadcast). ?bug= already won above if present.
-  const teamSlug = slug(Q.get("team")||"canterbury-red-devils");
+  const teamSlug = dedupeSlug(Q.get("team")||"canterbury-red-devils");
   TEAM_SLUG = teamSlug;   // Player L3 control-channel polling uses this same slug
   let bugFallback=false;
   if(!Q.get("bug")){
