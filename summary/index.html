@@ -179,10 +179,13 @@ const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:"", venue:""};
 const vis=id=>REG[id]||DEFV;
 // esportsdesk's own score-table header sometimes prints a shortened club name that reads as
 // the wrong team entirely -- e.g. Dunedin Thunder Women's row is headed just "Dunedin Thunder",
-// which looks like the NZIHL men's club, not the row's actual NZWIHL team. This overrides the
-// BANNER display only (by teamID) with Mat's preferred short form; matching/parsing logic
-// elsewhere still uses the raw scraped name untouched.
-const BANNER_NAME={ "675638":"Thunder Women" };
+// which looks like the NZIHL men's club, not the row's actual NZWIHL team. Mat's preference:
+// show the proper full name whenever it's derivable and fits (it is here -- teamID always
+// resolves it via REG/roster matching, and .nm has no width/overflow constraint -- "Canterbury
+// Red Devils" at 22 chars already renders fine, longer than this 21-char name). Only fall back
+// to a shorter form if a name is ever genuinely undisplayable. This overrides the BANNER text
+// only (by teamID); matching/parsing logic elsewhere still uses the raw scraped name untouched.
+const BANNER_NAME={ "675638":"Dunedin Thunder Women" };
 
 // ---- helpers -----------------------------------------------------------
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
