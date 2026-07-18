@@ -177,6 +177,12 @@ const REG={
 };
 const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:"", venue:""};
 const vis=id=>REG[id]||DEFV;
+// esportsdesk's own score-table header sometimes prints a shortened club name that reads as
+// the wrong team entirely -- e.g. Dunedin Thunder Women's row is headed just "Dunedin Thunder",
+// which looks like the NZIHL men's club, not the row's actual NZWIHL team. This overrides the
+// BANNER display only (by teamID) with Mat's preferred short form; matching/parsing logic
+// elsewhere still uses the raw scraped name untouched.
+const BANNER_NAME={ "675638":"Thunder Women" };
 
 // ---- helpers -----------------------------------------------------------
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -353,7 +359,7 @@ function parse(html){
 
 // ---- render (v9 visuals) ----------------------------------------------
 let LEAGUE_NAME="New Zealand Ice Hockey League", VENUE="";
-function teamObj(p){const v=vis(p.teamID);return {teamID:p.teamID,name:p.name,code:v.code||p.code,ink:v.ink,dark:v.dark,logo:v.logo,sog:p.sog,pp:p.pp,pim:p.pim,line:p.line,tot:p.tot};}
+function teamObj(p){const v=vis(p.teamID);return {teamID:p.teamID,name:BANNER_NAME[p.teamID]||p.name,code:v.code||p.code,ink:v.ink,dark:v.dark,logo:v.logo,sog:p.sog,pp:p.pp,pim:p.pim,line:p.line,tot:p.tot};}
 function washVectors(a,h){document.getElementById("wash").style.background=
   `linear-gradient(90deg, ${a.dark} 0%, ${a.dark} 6%, transparent 42%),`+
   `linear-gradient(270deg, ${h.dark} 0%, ${h.dark} 6%, transparent 42%)`;}
