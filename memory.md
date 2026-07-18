@@ -737,6 +737,34 @@ not a special case needing its own handling.
 See also [[nzihl_combined_lineups]] for the `?team=` resolution logic itself (unchanged here —
 this is purely a new link surface, no logic changes to `startinglineup/combined/`).
 
+### Combined Starting Lineups header text-shadow fix (2026-07-18)
+Mat flagged the header team names (e.g. "CANTERBURY / RED DEVILS") rendering blurry/ghosted on
+Chromium-family browsers, fine on Safari. Font-size on `.hdrTeamL1`/`.hdrTeamL2` was already a
+flat integer (36px both lines) — confirmed NOT the cause before touching anything. Root cause:
+`-webkit-text-stroke:2px` + `paint-order:stroke fill` under this page's runtime `#frame` scale
+transform (`fitWindow()`, `s = min(innerWidth/1920, innerHeight/1080)`, essentially never an
+integer) is a known Chromium/CEF rough edge — a stroked glyph outline doesn't get the same
+pixel-snapping/hinting WebKit applies at non-integer scale, so it renders soft/doubled.
+
+Fix: swapped the outline technique from `-webkit-text-stroke` to an 8-direction flat-colour
+`text-shadow` (composites as layered fills, not a stroked glyph path — renders identically
+across engines regardless of scale factor). Static default (black, `#08080A`) moved into CSS
+directly on `.hdrTeamL1`/`.hdrTeamL2`; the dynamic per-team override on L2 (white `stroke2` for
+stampede/wild, since their `hdrLine2` is a dark navy a black outline would swallow) now goes
+through a new `outlineShadow(color)` JS helper instead of `.style.webkitTextStroke`.
+
+Verified locally before pushing: cloned a headless Chromium (playwright, manually vendored the
+missing shared libs since the sandbox has no root/apt) and rendered the page at a deliberately
+non-integer scale (1383×778 viewport against the 1920×1080 frame) both before and after the
+change, then diffed the two screenshots pixel-by-pixel with all animations settled. The diff
+isolated cleanly to the header text pixels (expected — the outline technique changed) with zero
+difference anywhere else on the panel (cards, rink, logos, positions) — a real, faint sub-pixel
+antialiasing jitter shows up on ALL text between two independent page loads regardless of any
+code change, so a small nonzero diff floor elsewhere was expected and not a regression signal.
+Commit `d495495`. Couldn't get a live cross-browser (Chrome vs Safari) comparison in this
+session — Chrome extension wouldn't connect — so if Mat still sees the funny look after this
+ships, that's the next thing to check with an actual side-by-side screenshot.
+
 ## Repo litter sweep (2026-07-14)
 
 Mat asked for a general tidy-up pass after the redesign v2 promotion, plus explicit permission
