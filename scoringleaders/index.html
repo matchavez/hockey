@@ -279,6 +279,32 @@ function buildCandidates(p, games, teamTotalPts, rankFn, leagueShort, teamID, wh
     cands.push({type:"pointrate", text:`Points in ${pointGames} of ${games.length} games this season`});
   }
 
+  // Mat, 2026-07-19: a goal/assist in the prior game outranks the generic
+  // "restate the numbers" fallbacks below (team share, points/game, season
+  // total) — recency reads as a more interesting on-air fact than those do.
+  // It still yields to the rarer/bigger callouts above (season-high game,
+  // hot streak over the last 3, multi-point-game count, league rank).
+  const lastGame = games.length ? games[games.length-1] : null;
+  if(lastGame && (lastGame.goals + lastGame.assists) > 0){
+    const lg = lastGame.goals, la = lastGame.assists;
+    let statText;
+    if(lg > 0 && la > 0) statText = `${lg} goal${lg===1?"":"s"} and ${la} assist${la===1?"":"s"}`;
+    else if(lg > 0) statText = `${lg} goal${lg===1?"":"s"}`;
+    else statText = `${la} assist${la===1?"":"s"}`;
+    let text = `${statText} last game`;
+    if(Array.isArray(whGames)){
+      const gm = whGames.find(x => x.gameid === lastGame.gameid);
+      if(gm && gm.away && gm.home){
+        const isAway = teamID != null && String(gm.away.teamID) === String(teamID);
+        const isHome = teamID != null && String(gm.home.teamID) === String(teamID);
+        const opp = isAway ? gm.home : isHome ? gm.away : null;
+        const md = monthDay(lastGame.date);
+        if(opp && opp.name) text = `${statText} last game against ${opp.name}` + (md ? ` on ${md}` : "");
+      }
+    }
+    cands.push({type:"lastgame", text});
+  }
+
   // NOTE (Mat, 2026-07-09): dropped "X of Y points have come via goals" /
   // "N assists — a pass-first playmaker" — both just restate the G/A/Pts
   // numbers already sitting on line 2, not an actual "interesting stat."
