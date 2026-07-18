@@ -336,7 +336,17 @@ registerFamily({
     if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) after firing goal banner"};
     if(!btxt) return {status:"warn", msg:"banner text empty after fireTest — check render timing"};
     if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text (undefined/NaN) visible: \""+btxt.slice(0,70)+"\""};
-    return {status:"pass", msg:"goal banner rendered: \""+btxt.slice(0,80)+"\""};
+    // 2026-07-18: the checks above only exercise the synthetic fireTest() render path --
+    // that path was never broken. The real 2026-07-18 incident (CIN@AST, 4 missed goals) was
+    // in the LIVE box-score poller (tick()/parse()), which had zero diagnostics at the time,
+    // so nothing here would have caught it. window.__AB_DIAG (added same day) now tracks that
+    // poller's real health; surface it here so a future regression in the live-poll path fails
+    // this card even when the synthetic banner-render path above still passes clean.
+    const diag = win.__AB_DIAG;
+    if(!diag) return {status:"warn", msg:"goal banner OK (\""+btxt.slice(0,55)+"\") but window.__AB_DIAG missing — this club's page predates the 2026-07-18 poller-diagnostics fix"};
+    if(diag.okCount===0 && diag.failCount===0) return {status:"warn", msg:"goal banner OK (\""+btxt.slice(0,55)+"\"), but live poller hasn't completed a poll yet — no resolved game, or still loading"};
+    if(diag.consecFails>0) return {status:"fail", msg:"goal banner OK, but live box-score poll is failing: "+diag.lastError+" ("+diag.consecFails+" consecutive fail(s))"};
+    return {status:"pass", msg:"goal banner rendered: \""+btxt.slice(0,55)+"\" · live poll OK ("+diag.okCount+" ok, baseline "+diag.baselineGoals+"g/"+diag.baselinePens+"p)"};
   }
 });
 
