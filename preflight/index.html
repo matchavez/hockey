@@ -422,7 +422,7 @@ function buildBoard(){
     const tune=()=>{let q="";if(bs.value.trim())q+="&bs="+bs.value.replace(/^bs=/,"").trim();
                     if(tk.value.trim())q+="&tk="+tk.value.replace(/^tk=/,"").trim();return q;};
     wrap.appendChild(copyBtn("Ticker",()=>BASE+`ticker/?team=${t.slug}`+tune()));
-    wrap.appendChild(copyBtn("Scorebug",()=>BASE+`scorebug/?team=${t.slug}`+(bs.value.trim()?"&bs="+bs.value.replace(/^bs=/,"").trim():"")));
+    wrap.appendChild(copyBtn("Scorebug",()=>BASE+`scorebug-l3/?team=${t.slug}`+(bs.value.trim()?"&bs="+bs.value.replace(/^bs=/,"").trim():"")));
     wrap.appendChild(copyBtn("Banner",()=>BASE+`activity-banner/?team=${t.slug}`));
     wrap.appendChild(copyBtn("Player L3",()=>BASE+`lowerthirds/?team=${t.slug}`));
     wrap.appendChild(copyBtn("Lineup",()=>BASE+`startinglineup/?team=${t.slug}`));

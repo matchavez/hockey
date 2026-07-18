@@ -295,7 +295,7 @@ if(!team){
   const summaryOpaque = `../summary/?team=${sl}&bg=opaque`;
   const bannerPath    = `../activity-banner/?team=${sl}`;
   const tickerPath    = `../ticker/?team=${sl}`;
-  const scorebugPath  = `../scorebug/?team=${sl}`;
+  const scorebugPath  = `../scorebug-l3/?team=${sl}`;
   const lineupPath    = `../startinglineup/?team=${sl}`;
   const lineupControl = `../startinglineup/control/?team=${sl}`;
   const lineupCombined= `../startinglineup/combined/?team=${sl}`;
@@ -330,7 +330,7 @@ if(!team){
       `<a class="btn ext" target="_blank" rel="noopener" href="${tickerPath}">Open</a>
        <a class="btn cp" data-copy="${full(tickerPath)}">Copy</a>`, "ticker"),
     SCOREBUG_WIRED.has(sl)
-      ? overlayCard("Scorebug", "Singular scorebug clip + bottom banner.", '<span class="chip"><span class="dot"></span>Live</span>',
+      ? overlayCard("Scorebug", "Singular scorebug clip + bottom banner, plus Player L3s.", '<span class="chip"><span class="dot"></span>Live</span>',
           `<a class="btn ext" target="_blank" rel="noopener" href="${scorebugPath}">Open</a>
            <a class="btn cp" data-copy="${full(scorebugPath)}">Copy</a>`, "ticker")
       : `<div class="card" data-hl="ticker"><h3>Scorebug</h3><p class="muted-note">Not wired for this club yet — each club needs its own Singular output id. Ask Mat to fill it in before publishing.</p></div>`,
