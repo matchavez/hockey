@@ -451,7 +451,7 @@ function parse(html){
       const t=txt(el);
       if(/^(1ST|2ND|3RD|\dTH|OVERTIME|OT\d*|SHOOTOUT)(\s+PERIOD)?(\s*\d+)?$/i.test(t)&&!(el.querySelector&&el.querySelector("table"))){per=normP(t);return;}
       const tbl=(el.querySelector&&el.querySelector("table"))||(el.tagName==="TABLE"?el:null);
-      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties/i.test(c[0]))items.push({per,c});});
+      if(tbl)[...tbl.querySelectorAll("tr")].forEach(r=>{const c=[...r.children].map(txt);if(c[0]&&!/No Penalties|No Scoring/i.test(c[0]))items.push({per,c});});
     });
     return items;
   }
@@ -736,8 +736,24 @@ let lastGoalCount=0, lastPenCount=0;   // sanity guard against a short/bad espor
 let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="", CID=null, LID=null;
 let PREGAME=null;   // {away,home,venue,date,time,datetime} for the resolved target game, used by the pre-game confidence alert only
 
-async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
-async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
+// ---- ALWAYS-ON diagnostics (2026-07-18) ----------------------------------------------------
+// tick() used to swallow fetch errors, parse errors, AND count-guard skips with a bare `return`
+// and zero logging -- even outside ?test=1. That's how a real 2-period outage (Auckland Steel
+// vs Canterbury Inferno, 2026-07-18) went completely unexplained: by the time it was reported,
+// the live in-progress box score no longer existed to inspect, only the FINAL one. This object
+// gives every future incident a trail: open devtools on the live source (or run
+// `copy(JSON.stringify(window.__AB_DIAG))` in the vMix/OBS browser-source inspector) and you
+// have exact counts/timestamps/errors instead of reconstructing after the fact.
+window.__AB_DIAG = { pollCount:0, okCount:0, failCount:0, consecFails:0, skipCount:0,
+  lastPollAt:0, lastOkAt:0, lastError:"", lastErrorAt:0, baselinedAt:0, baselineGoals:0, baselinePens:0, log:[] };
+function diagLog(kind, detail){
+  const d=window.__AB_DIAG, ts=Date.now();
+  d.log.push({ts, kind, detail}); if(d.log.length>300) d.log.shift();  // ring buffer, ~1h of history at 12s cadence
+  if(kind==="error"||kind==="skip") console.warn("[activity-banner]", kind, detail);
+}
+
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.json();}
+async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.text();}
 // NO-CACHE origin: admin.esportsdesk.com mirrors the league sites with no CDN delay.
 function boxURL(m,gid){return `${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
@@ -789,27 +805,45 @@ let firstGoal=null, firstPen=null;     // captured for the test buttons
 async function tick(){
   if(!TARGET||!WORKER) return;
   CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
-  let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
+  const d=window.__AB_DIAG; d.pollCount++; d.lastPollAt=Date.now();
+  let P;
+  try{
+    P=parse(await getText(boxURL(TARGET.m,TARGET.gid)));
+    d.okCount++; d.consecFails=0; d.lastOkAt=Date.now();
+  }catch(e){
+    d.failCount++; d.consecFails++; d.lastError=String(e&&e.message||e); d.lastErrorAt=Date.now();
+    diagLog("error", d.lastError+" (consecutive fails: "+d.consecFails+")");
+    return;
+  }
   // esportsdesk occasionally returns 200 OK with a short/incomplete page (documented
   // flakiness -- see nzihl-roster-scraper-robustness / nzihl-player-photo-warehouse memory).
   // A genuine box score's goal/penalty counts can only grow during a game. If this poll comes
   // back with FEWER than the last accepted count, treat it as a bad read: skip the whole tick
   // (don't touch seen/baselined), keep whatever's already on screen, and let the next poll
   // retry -- rather than risking baseline corruption or a burst of stale "new" events later.
-  if(baselined && (P.goals.length<lastGoalCount || P.pens.length<lastPenCount)) return;
+  if(baselined && (P.goals.length<lastGoalCount || P.pens.length<lastPenCount)){
+    d.skipCount++;
+    diagLog("skip", "goals "+P.goals.length+"<"+lastGoalCount+" or pens "+P.pens.length+"<"+lastPenCount+" (guarded, not a real drop)");
+    return;
+  }
   lastGoalCount=P.goals.length; lastPenCount=P.pens.length;
   if(typeof LAST_PARSE!=="undefined") LAST_PARSE=P;   // feeds the Player Lower Thirds TONIGHT chip
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   // tag each goal with a display name (its own team)
   P.goals.forEach(g=>{ g.name = g.teamID===AWAYID?AWAYN : g.teamID===HOMEID?HOMEN : (vis(g.teamID).code||""); });
   if(P.goals[0]) firstGoal=P.goals[0]; if(P.pens[0]) firstPen=P.pens[0];
-  if(!baselined){ P.goals.forEach(g=>seen.add(sigGoal(g))); P.pens.forEach(p=>seen.add(sigPen(p))); baselined=true; return; }
+  if(!baselined){
+    P.goals.forEach(g=>seen.add(sigGoal(g))); P.pens.forEach(p=>seen.add(sigPen(p))); baselined=true;
+    d.baselinedAt=Date.now(); d.baselineGoals=P.goals.length; d.baselinePens=P.pens.length;
+    diagLog("baseline", "first successful poll at "+new Date(d.baselinedAt).toISOString()+" -- "+P.goals.length+" goal(s) + "+P.pens.length+" pen(s) already on the board were marked seen and will NOT fire (by design -- no retroactive firing)");
+    return;
+  }
   // new goals -- signatures still tracked even when NOBANNER suppresses the
   // actual banner, so toggling nobanner mid-game never backfills a burst of
   // "new" events it had been silently ignoring.
-  P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);if(!NOBANNER)fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
+  P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);diagLog("fire-goal",s);if(!NOBANNER)fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
   // new penalties (one at a time, queued)
-  P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);if(!NOBANNER)firePen(p,AWAYID,HOMEID);}});
+  P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);diagLog("fire-pen",s);if(!NOBANNER)firePen(p,AWAYID,HOMEID);}});
 }
 
 /* ====================== PLAYER LOWER THIRDS (added 2026-07-12) ======================
