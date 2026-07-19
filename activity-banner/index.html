@@ -672,6 +672,17 @@ function enqueue(job){
   queue.push(job); pump();
 }
 function pump(){
+  // 2026-07-20: live queue-depth/busy visibility in __AB_DIAG -- added after a
+  // full-game banner blackout (2026-07-19, SCS@CRD) that server-side auditing
+  // could not reproduce; the leading theory is a stale in-memory browser-source
+  // instance still running pre-fix code from before the 2026-07-18 "No Scoring"
+  // phantom-goal patch (0d6efc6), which floods this exact queue with junk jobs
+  // and starves every real goal/penalty banner behind it. If queue.length ever
+  // climbs and stays high while busy stays true, that's the smoking gun -- check
+  // this BEFORE re-auditing the data pipeline again.
+  const __d=window.__AB_DIAG; if(__d){ __d.queueLen=queue.length; __d.busy=busy;
+    if(queue.length>5 && !__d._queueWarned){ __d._queueWarned=true;
+      diagLog("queue-warn","queue depth "+queue.length+" -- possible runaway/stuck queue"); } }
   if(busy||!queue.length) return; busy=true;
   const job=queue.shift();
   const myToken=++avatarToken;
@@ -753,7 +764,18 @@ function diagLog(kind, detail){
 }
 
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.json();}
-async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.text();}
+const GETTEXT_TIMEOUT_MS = 8000;   // 2026-07-20: box-score poll fetch had NO timeout (unlike every
+// other fetch in this file) -- on a bad venue connection a single hung fetch could sit forever
+// without erroring, and since tick() has no concurrency guard, hung fetches pile up silently.
+// Bounded well under POLL_MS so a slow poll fails fast and the next interval tick isn't blocked.
+async function getText(u){
+  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),GETTEXT_TIMEOUT_MS);
+  try{
+    const r=await fetch(SHIM(u),{cache:"no-store",signal:ctrl.signal});
+    if(!r.ok)throw new Error("HTTP "+r.status+" "+u);
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
 // NO-CACHE origin: admin.esportsdesk.com mirrors the league sites with no CDN delay.
 function boxURL(m,gid){return `${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
