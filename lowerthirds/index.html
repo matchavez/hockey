@@ -476,39 +476,48 @@ async function computeFact(identity){
     if(tonight.g+tonight.a>=2) return `${identity.name} is up to ${tonight.g}G ${tonight.a}A tonight.`;
   }
   if(seasonData){
+    // Mat, 2026-07-20: the point-streak and prior-game facts are merged into
+    // one check, not two competing ones. Reason: a 3+ game point streak is
+    // only possible if the most recent logged game ALSO has a point in it
+    // (the streak count starts from that game and counts backward) — so
+    // "streak" and "prior game" were never really separable outcomes, one
+    // always implied the other. Ranking them as separate priority tiers
+    // made the lower one permanently unreachable. Now a qualifying streak
+    // enriches the same sentence instead of racing it:
+    //   "Mikael Guerin had 1 goal against SkyCity Stampede last game."
+    //   "Alex Gagnon has a point in 5 straight games, with 2 goals and
+    //    1 assist against Dunedin Thunder last game."
+    // CAVEAT (pre-existing, not introduced here): player_game_logs only
+    // stores games where the player recorded a point — scoreless games are
+    // omitted rather than logged as zero. So this streak count can overstate
+    // a TRUE consecutive run if a scoreless game got skipped in the log
+    // rather than breaking it; fixing that needs a warehouse-side change
+    // (log every game, not just scoring ones), not a fix in this function.
     const log = seasonData.derived.player_game_logs && seasonData.derived.player_game_logs[pgKey(identity.name)];
-    if(log && log.games && log.games.length>=3){
-      const sorted3=[...log.games].sort((a,b)=>new Date(b.date)-new Date(a.date));
-      let n=0;
-      for(const gm of sorted3){ if(gm.goals>0||gm.assists>0){ n++; } else break; }
-      if(n>=3) return `${identity.name} has a point in ${n} straight games.`;
-    }
-    // Mat, 2026-07-19: mirrors the "prior game" fallback added to the Team
-    // Scoring Leaders graphic (buildCandidates' lastgame candidate). Placed
-    // ABOVE the team head-to-head check on purpose — H2H is a team-wide fact
-    // that applies identically to every player on the roster, so left
-    // unchecked it was winning out over a real personal highlight (verified
-    // live against Guerin: a goal in his last game was still losing to the
-    // generic "trail the season series" line before this fix). Still yields
-    // to tonight's live tally and an active 3+ game point streak above.
     if(log && log.games && log.games.length){
-      const sortedLast=[...log.games].sort((a,b)=>new Date(b.date)-new Date(a.date));
-      const lastGame = sortedLast[0];
+      const sortedGames=[...log.games].sort((a,b)=>new Date(b.date)-new Date(a.date));
+      const lastGame = sortedGames[0];
       if(lastGame && (lastGame.goals>0 || lastGame.assists>0)){
+        let n=0;
+        for(const gm of sortedGames){ if(gm.goals>0||gm.assists>0){ n++; } else break; }
+
         const lg=lastGame.goals, la=lastGame.assists;
         let statText;
         if(lg>0 && la>0) statText = `${lg} goal${lg===1?"":"s"} and ${la} assist${la===1?"":"s"}`;
         else if(lg>0) statText = `${lg} goal${lg===1?"":"s"}`;
         else statText = `${la} assist${la===1?"":"s"}`;
-        let text = `${identity.name} had ${statText} last game.`;
+
+        let opp=null;
         const gm = (seasonData.games||[]).find(x=>String(x.gameid)===String(lastGame.gameid));
         if(gm && gm.away && gm.home && myTeamID!=null){
           const isAway = String(gm.away.teamID)===String(myTeamID);
           const isHome = String(gm.home.teamID)===String(myTeamID);
-          const opp = isAway ? gm.home : isHome ? gm.away : null;
-          if(opp && opp.name) text = `${identity.name} had ${statText} against ${opp.name} last game.`;
+          opp = isAway ? gm.home : isHome ? gm.away : null;
         }
-        return text;
+        const lastGameClause = (opp && opp.name) ? `${statText} against ${opp.name} last game` : `${statText} last game`;
+
+        if(n>=3) return `${identity.name} has a point in ${n} straight games, with ${lastGameClause}.`;
+        return `${identity.name} had ${lastGameClause}.`;
       }
     }
     if(myTeamID!=null && oppTeamID!=null){
