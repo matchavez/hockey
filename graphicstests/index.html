@@ -375,7 +375,7 @@ registerFamily({
   id:"ticker", title:"Ticker", w:1920, h:1080, scale:.16, settleMs:1400,
   note:"ticker/?team=<slug>&test=1 — feeds a real prior game (2519940) through the live parser so the ticker has real events to lay out, while ?team= drives that club's scorebug crest/colour.",
   buildUrl: t => `${BASE}ticker/?team=${t.slug}&test=1`,
-  check: async (doc) => {
+  check: async (doc, win) => {
     await sleep(300);
     const broken=brokenImages(doc);
     const track=doc.getElementById("track");
@@ -383,7 +383,10 @@ registerFamily({
     if(broken.length) return {status:"fail", msg:broken.length+" broken image(s) (crest/bug likely)"};
     if(!nItems) return {status:"warn", msg:"ticker track has 0 items — demo game may not have resolved"};
     if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
-    return {status:"pass", msg:nItems+" ticker item(s) laid out, crest loaded"};
+    const diag = win.__DIAG;
+    if(!diag) return {status:"warn", msg:nItems+" ticker item(s) laid out, but window.__DIAG missing — predates the 2026-07-20 resilience fix"};
+    if(diag.consecFails>0) return {status:"fail", msg:"ticker rendered, but live box-score poll is failing: "+diag.lastError+" ("+diag.consecFails+" consecutive fail(s))"};
+    return {status:"pass", msg:nItems+" ticker item(s) laid out, crest loaded · live poll OK ("+diag.okCount+" ok)"};
   }
 });
 
@@ -408,7 +411,10 @@ registerFamily({
     if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
     if(!btxt) return {status:"warn", msg:"scorebug crest OK, but banner text empty after fireTest"};
     if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible: \""+btxt.slice(0,70)+"\""};
-    return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\""};
+    const diag = win.__DIAG;
+    if(!diag) return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\" (window.__DIAG missing — predates 2026-07-20 fix)"};
+    if(diag.consecFails>0) return {status:"fail", msg:"banner render OK, but live box-score poll is failing: "+diag.lastError+" ("+diag.consecFails+" consecutive fail(s))"};
+    return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\" · live poll OK"};
   }
 });
 
@@ -433,7 +439,11 @@ registerFamily({
     if(broken2.length>broken1.length) return {status:"fail", msg:"goal banner introduced a broken image"};
     if(!btxt) return {status:"warn", msg:"crest OK, banner text empty after fireTest"};
     if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
-    return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\""};
+    const diag = win.__DIAG;
+    if(!diag) return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\" (window.__DIAG missing — predates 2026-07-20 fix)"};
+    if(diag.consecFails>0) return {status:"fail", msg:"banner render OK, but live box-score poll is failing: "+diag.lastError+" ("+diag.consecFails+" consecutive fail(s))"};
+    if(typeof win.pollControl!=="function") return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\" · live poll OK"};
+    return {status:"pass", msg:"crest+bug OK; goal banner: \""+btxt.slice(0,70)+"\" · live poll OK"};
   }
 });
 
@@ -452,6 +462,8 @@ registerFamily({
       return {status:"warn", msg:msg||"no matchup rendered (nameA/nameB empty) — check manifest/LAST_GAME fallback"};
     }
     if(hasPlaceholderText(doc)) return {status:"warn", msg:"placeholder text visible"};
+    const diag = win.__DIAG;
+    if(diag && diag.usedStaleFallback) return {status:"warn", msg:esc(nameA)+" vs "+esc(nameB)+" — rendered from the STALE LAST_GAME fallback, not live data (window.__DIAG.usedStaleFallback)"};
     return {status:"pass", msg:esc(nameA)+" vs "+esc(nameB)};
   }
 });
