@@ -73,6 +73,45 @@ header#hdr{height:333px;flex:0 0 auto;display:grid;grid-template-columns:auto 1f
 .pline .unit{font-weight:300;font-size:.6em;} /* the G / A / Pts unit letters on the stat line */
 .pline .pm{font-weight:300;} /* the +/- value */
 
+/* League-leader callout (Mat, 2026-07-20): wraps a stat NUMBER (not the whole
+   line) when that value is #1 or tied for #1 across the whole league, computed
+   from the exact same source (stats_1team.cfm) as every displayed number on
+   this page — so the box can never disagree with what's on screen. Padding is
+   applied before fitPlayerText() measures the line, so the shrink-to-fit pass
+   already accounts for the box; no separate layout handling needed.
+   Two animations doing different jobs: `leaderSheen` is a diagonal light
+   streak sweeping through the fill (the "shimmer"), `leaderPulse` is a slow
+   breathing glow on the border/shadow so the box reads as "alive" even
+   between sweeps. Both loop independently and slowly (3.4s / 2.6s) — fast
+   enough to catch the eye on a broadcast, slow enough not to strobe on camera. */
+.statval{position:relative;display:inline-block;}
+.statval.leader{
+  padding:0 .22em;
+  margin:0 -.02em;
+  border-radius:.22em;
+  color:#241a02;
+  font-weight:800;
+  border:2px solid #ffd76b;
+  background:
+    linear-gradient(115deg, transparent 0%, transparent 42%, rgba(255,255,255,.85) 50%, transparent 58%, transparent 100%),
+    linear-gradient(180deg, #ffe9a8 0%, #f7c94c 45%, #dd9d1f 100%);
+  background-size:260% 100%, 100% 100%;
+  background-position:180% 0, 0 0;
+  background-repeat:no-repeat;
+  box-shadow:0 0 0 0 rgba(255,196,54,.0);
+  animation:leaderSheen 3.4s ease-in-out infinite, leaderPulse 2.6s ease-in-out infinite;
+}
+@keyframes leaderSheen{
+  0%{background-position:180% 0, 0 0;}
+  55%{background-position:180% 0, 0 0;}
+  90%{background-position:-80% 0, 0 0;}
+  100%{background-position:-80% 0, 0 0;}
+}
+@keyframes leaderPulse{
+  0%,100%{box-shadow:0 0 10px 0 rgba(255,196,54,.35), 0 0 0 0 rgba(255,196,54,.0);}
+  50%{box-shadow:0 0 22px 3px rgba(255,196,54,.85), 0 0 0 3px rgba(255,196,54,.18);}
+}
+
 #msg{position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;text-align:center;
   color:var(--sub);font-size:28px;font-weight:600;padding:60px;line-height:1.5;background:var(--bg);}
 </style>
@@ -131,6 +170,16 @@ const REG = {
 const DEFV={ink:"#9aa3ad", dark:"#262a31", logo:"", venue:"", name:""};
 const vis = id => REG[id] || DEFV;
 const NAME_TO_ID = Object.fromEntries(Object.entries(REG).map(([id,v]) => [v.name, id]));
+
+// Which REG ids belong to which league — used to fetch every OTHER team in
+// the current game's league so the "league leader" gold box (Mat, 2026-07-20)
+// can be computed from the exact same source (stats_1team.cfm) as the two
+// displayed teams' own numbers, rather than mixing in a different data
+// pipeline that could disagree with what's on screen.
+const LEAGUE_TEAM_IDS = {
+  nzihl:  ["674110", "675633", "675634", "675635", "674109"],
+  nzwihl: ["675636", "675637", "675638", "675639"],
+};
 
 // ---- helpers ---------------------------------------------------------------
 const slug = s => s.toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
@@ -555,7 +604,7 @@ function photoEl(p, ink, size, hideAll){
   return el;
 }
 
-function rowEl(p, team, side, hideAllPhotos){
+function rowEl(p, team, side, hideAllPhotos, leagueMax){
   const ink = team.ink;
   const row = document.createElement("div");
   row.className = "prow " + side;
@@ -575,10 +624,19 @@ function rowEl(p, team, side, hideAllPhotos){
   line1.className = "pline";
   line1.innerHTML = `<span class="jnum" style="color:${ink}">${p.jersey}</span> <span style="color:${ink}">${p.pos||""}</span> ${p.name}`;
 
-  // Line 2: "20 G  11 A  31 Pts  +13" — unit letters lighter/smaller, +/- value lighter too
+  // Line 2: "20 G  11 A  31 Pts  +13" — unit letters lighter/smaller, +/- value lighter too.
+  // League-leader gold box (Mat, 2026-07-20): wraps just the number, only
+  // when it equals the league max AND the max is actually >0 (never badge a
+  // 0 as a "leader" in an early/scoreless stretch of the season). Ties all
+  // get the box too — "or equal first" was explicit in the ask.
+  const lm = leagueMax || {g:0, a:0, pts:0};
+  const gLead = lm.g > 0 && p.g === lm.g;
+  const aLead = lm.a > 0 && p.a === lm.a;
+  const ptsLead = lm.pts > 0 && p.pts === lm.pts;
+  const statSpan = (val, isLeader) => `<span class="statval${isLeader ? " leader" : ""}">${val}</span>`;
   const line2 = document.createElement("div");
   line2.className = "pline";
-  line2.innerHTML = `${p.g} <span class="unit">G</span>\u00A0\u00A0${p.a} <span class="unit">A</span>\u00A0\u00A0${p.pts} <span class="unit">Pts</span>\u00A0\u00A0<span class="pm">${fmtPM(p.pm)}</span>`;
+  line2.innerHTML = `${statSpan(p.g, gLead)} <span class="unit">G</span>\u00A0\u00A0${statSpan(p.a, aLead)} <span class="unit">A</span>\u00A0\u00A0${statSpan(p.pts, ptsLead)} <span class="unit">Pts</span>\u00A0\u00A0<span class="pm">${fmtPM(p.pm)}</span>`;
 
   // Line 3: italic descriptor, no dots, smaller than lines 1/2
   const line3 = document.createElement("div");
@@ -602,11 +660,12 @@ function render(P){
   // Only omit photo slots when NONE of the 6 displayed players have a real photo —
   // a mixed team (some real photos, some misses) still shows initials for the misses.
   const hideAllPhotos = P.away.top.every(p => !p._photoImg) && P.home.top.every(p => !p._photoImg);
+  const leagueMax = P.leagueMax || {g:0, a:0, pts:0};
 
   const colA = document.getElementById("colA"); colA.innerHTML = "";
   const colB = document.getElementById("colB"); colB.innerHTML = "";
-  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left", hideAllPhotos)));
-  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right", hideAllPhotos)));
+  P.away.top.forEach(p => colA.appendChild(rowEl(p, A, "left", hideAllPhotos, leagueMax)));
+  P.home.top.forEach(p => colB.appendChild(rowEl(p, H, "right", hideAllPhotos, leagueMax)));
   fitPlayerText();
 }
 
@@ -714,12 +773,30 @@ async function tick(){
     const awayID = NAME_TO_ID[gm.away], homeID = NAME_TO_ID[gm.home];
     if(!awayID || !homeID) throw new Error("Unrecognised team name: " + gm.away + " / " + gm.home);
     const cid = TARGET.m.clientid, lid = TARGET.m.leagueid;
-    const [awayHtml, homeHtml] = await Promise.all([
+
+    // Every OTHER team in this league, so the league-leader gold box can be
+    // computed from the exact same live source as the two shown teams'
+    // numbers (see LEAGUE_TEAM_IDS comment). Away/home are fetched once and
+    // reused below, not double-fetched here.
+    const otherIDs = (LEAGUE_TEAM_IDS[league] || []).filter(id => id !== awayID && id !== homeID);
+    const [awayHtml, homeHtml, otherHtmls] = await Promise.all([
       getText(statsURL(awayID, cid, lid)),
       getText(statsURL(homeID, cid, lid)),
+      Promise.all(otherIDs.map(id => getText(statsURL(id, cid, lid)).catch(() => null))),
     ]);
     const awayRows = parseSkaterTable(awayHtml), homeRows = parseSkaterTable(homeHtml);
     const awayTop = top3(awayRows), homeTop = top3(homeRows);
+
+    // League-wide max G/A/Pts across every team currently fetched — a fetch
+    // failure for one other team just narrows the pool for this tick rather
+    // than blocking the render (same "best effort, never block the render"
+    // posture as fetchWarehouse below).
+    const leagueRows = [...awayRows, ...homeRows, ...otherHtmls.filter(Boolean).flatMap(parseSkaterTable)];
+    const leagueMax = {
+      g: Math.max(0, ...leagueRows.map(r => r.g)),
+      a: Math.max(0, ...leagueRows.map(r => r.a)),
+      pts: Math.max(0, ...leagueRows.map(r => r.pts)),
+    };
     // Preload every asset (both logos + all 6 photos) before touching the DOM — same
     // principle as activity-banner's gated reveal. On a refresh tick this means the
     // OLD (already-complete) render just keeps showing on screen for the extra second
@@ -744,6 +821,7 @@ async function tick(){
       leagueName: league==="nzwihl" ? "New Zealand Women's Ice Hockey League" : "New Zealand Ice Hockey League",
       logoAImg: assets.logoAImg,
       logoBImg: assets.logoBImg,
+      leagueMax,
     });
     renderedOnce = true; fitWindow();
     document.getElementById("stage").classList.add("ready"); // reveal only once real content is on screen
