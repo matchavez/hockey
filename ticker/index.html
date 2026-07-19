@@ -830,8 +830,37 @@ FONTS.then(()=>{ if(items.length){ dirty=true; if(holding)enterHold(); else if(!
 /* ====================== LIVE DETECTION ====================== */
 let TARGET=null, lastSig="";
 let lastGoodAwayTot=0, lastGoodHomeTot=0, lastGoodEvCount=0;   // sanity guard against a short/bad esportsdesk read
-async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
-async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
+// 2026-07-20 resilience pass -- see activity-banner/index.html + scorebug/index.html for the
+// full writeup (2026-07-19 SCS@CRD incident). Same fix ported here.
+window.__DIAG = { pollCount:0, okCount:0, failCount:0, consecFails:0, skipCount:0,
+  lastPollAt:0, lastOkAt:0, lastError:"", lastErrorAt:0, baselinedAt:0,
+  targetGid:null, targetResolvedAt:0, targetRetries:0, log:[] };
+function diagLog(kind, detail){
+  const d=window.__DIAG, ts=Date.now();
+  d.log.push({ts, kind, detail}); if(d.log.length>300) d.log.shift();
+  if(kind==="error"||kind==="skip") console.warn("[ticker]", kind, detail);
+}
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.json();}
+async function getJSONRetry(u, attempts, delayMs){
+  attempts=attempts||3; delayMs=delayMs||1200;
+  for(let i=0;i<attempts;i++){
+    try{ return await getJSON(u); }
+    catch(e){
+      diagLog("error","manifest fetch failed ("+u.split("/").pop()+", attempt "+(i+1)+"/"+attempts+"): "+(e&&e.message||e));
+      if(i<attempts-1) await new Promise(r=>setTimeout(r,delayMs));
+    }
+  }
+  return null;
+}
+const GETTEXT_TIMEOUT_MS = 8000;
+async function getText(u){
+  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),GETTEXT_TIMEOUT_MS);
+  try{
+    const r=await fetch(SHIM(u),{cache:"no-store",signal:ctrl.signal});
+    if(!r.ok)throw new Error("HTTP "+r.status+" "+u);
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
 function boxURL(m,gid){return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
@@ -841,7 +870,9 @@ async function resolveTarget(){
   if(g){const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");return {m,gid:g,gm:null};}
   const slugTeam=slug(team||"canterbury-red-devils");
   const cands=[];
-  for(const m of MANIFESTS){let data;try{data=await getJSON(m.url);}catch(e){continue;}
+  for(const m of MANIFESTS){
+    const data=await getJSONRetry(m.url);
+    if(!data) continue;
     (data.games||[]).forEach(gm=>{
       if(!gm.gameid)return;
       if(slug(gm.away)!==slugTeam&&slug(gm.home)!==slugTeam)return;
@@ -869,7 +900,16 @@ function liveEvents(P){
 }
 async function tickPoll(){
   if(!TARGET||!WORKER)return;
-  let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
+  const d=window.__DIAG; d.pollCount++; d.lastPollAt=Date.now();
+  let P;
+  try{
+    P=parse(await getText(boxURL(TARGET.m,TARGET.gid)));
+    d.okCount++; d.consecFails=0; d.lastOkAt=Date.now();
+  }catch(e){
+    d.failCount++; d.consecFails++; d.lastError=String(e&&e.message||e); d.lastErrorAt=Date.now();
+    diagLog("error", d.lastError+" (consecutive fails: "+d.consecFails+")");
+    return;
+  }
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   lastEv=liveEvents(P);
   const PNUM={"1":1,"2":2,"3":3,"OT":4,"SO":5};
@@ -917,13 +957,18 @@ async function tickPoll(){
   // A real game's score/event count can only grow. If a poll comes back LOWER than the last
   // accepted good read, treat it as a bad/truncated page and skip this tick entirely -- keep
   // whatever's already on screen rather than flashing a regressed/wrong score live.
-  if(!TESTMODE && (AWAYTOT<lastGoodAwayTot || HOMETOT<lastGoodHomeTot || lastEv.length<lastGoodEvCount)) return;
+  if(!TESTMODE && (AWAYTOT<lastGoodAwayTot || HOMETOT<lastGoodHomeTot || lastEv.length<lastGoodEvCount)){
+    d.skipCount++; diagLog("skip","away "+AWAYTOT+"<"+lastGoodAwayTot+" or home "+HOMETOT+"<"+lastGoodHomeTot+" or events "+lastEv.length+"<"+lastGoodEvCount+" (guarded, not a real drop)");
+    return;
+  }
   if(!TESTMODE){ lastGoodAwayTot=AWAYTOT; lastGoodHomeTot=HOMETOT; lastGoodEvCount=lastEv.length; }
   const all=lastEv.concat(extras);
   const sig=AWAYTOT+"-"+HOMETOT+"~P"+PERSDONE+"~S"+SOGA.join(".")+"/"+SOGH.join(".")
     +"~G"+GLS.map(g=>g.name+g.sv+"/"+g.sa).join(",")+"~"
     +all.map(e=>[e.kind,e.teamID,e.per,e.t,e.no,e.name,e.inf,e.flag].join("|")).join("~");
-  if(sig!==lastSig){ lastSig=sig; setItems(buildItems(all)); updDiag(all.length); }
+  if(sig!==lastSig){ lastSig=sig; setItems(buildItems(all)); updDiag(all.length);
+    if(!d.baselinedAt){ d.baselinedAt=Date.now(); diagLog("baseline","first render -- "+all.length+" event(s)"); }
+    else diagLog("update", all.length+" event(s), sig changed"); }
 }
 
 /* ====================== TEST MODE ======================
@@ -958,6 +1003,40 @@ function updDiag(n){ if(!TESTMODE)return;
   diag.textContent=(TARGET?("game "+TARGET.gid):"no-game")
     +" · "+(n!=null?n+" events":"")+" · "+SPEED+"px/s"; }
 
+const RESOLVE_RETRY_MS = 30000;
+function seedTargetState(target){
+  if(target&&target.m)LEAGUE=target.m.league;
+  if(target&&target.gm&&target.gm.venue)VENUE=target.gm.venue;
+  if(target&&target.gm){AWAYN=AWAYN||target.gm.away;HOMEN=HOMEN||target.gm.home;}
+}
+async function beginTickerPolling(target){
+  window.__DIAG.targetGid=target.gid; window.__DIAG.targetResolvedAt=Date.now();
+  diagLog("baseline-target","target resolved -- game "+target.gid+(window.__DIAG.targetRetries?(" (after "+window.__DIAG.targetRetries+" retr"+(window.__DIAG.targetRetries===1?"y":"ies")+")"):""));
+  await fetchLeaders();   // season context in place before the first strip renders
+  await tickPoll();
+  if(!items.length) setItems(buildItems([]));   // score line loops until the first event
+  if(!TESTMODE&&!lastEv.length&&!pregameKicked){ pregameKicked=true; fetchStandings(); findLastMeeting(); }
+  if(!TESTMODE)fetchFinal();
+  const t0=Date.now(); let n=0;
+  const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;}
+    if(++n%5===0){ fetchLeaders();   // leaders refresh ~every 60s, box score every 12s
+      if(!TESTMODE&&!ISFINAL)fetchFinal(); }
+    tickPoll(); },POLL_MS);
+}
+async function retryResolveTargetTicker(sinceMs){
+  if(Date.now()-sinceMs>RUN_CAP) return;
+  setTimeout(async ()=>{
+    window.__DIAG.targetRetries=(window.__DIAG.targetRetries||0)+1;
+    TARGET=await resolveTarget();
+    seedTargetState(TARGET);
+    GM=TARGET&&TARGET.gm;
+    if(TARGET){ await beginTickerPolling(TARGET); }
+    else{
+      diagLog("error","resolveTarget retry #"+window.__DIAG.targetRetries+" still found no game");
+      retryResolveTargetTicker(sinceMs);
+    }
+  }, RESOLVE_RETRY_MS);
+}
 async function start(){
   await loadNameOverrides();
   const teamSlug=slug(Q.get("team")||"canterbury-red-devils");
@@ -987,28 +1066,17 @@ async function start(){
   }else{
     TARGET=await resolveTarget();
   }
-  if(TARGET&&TARGET.m)LEAGUE=TARGET.m.league;
-  if(TARGET&&TARGET.gm&&TARGET.gm.venue)VENUE=TARGET.gm.venue;
-  if(TARGET&&TARGET.gm){AWAYN=AWAYN||TARGET.gm.away;HOMEN=HOMEN||TARGET.gm.home;}
-
+  seedTargetState(TARGET);
   updDiag();
   GM=TARGET&&TARGET.gm;
   if(TARGET&&WORKER){
-    await fetchLeaders();   // season context in place before the first strip renders
-    await tickPoll();
-    if(!items.length) setItems(buildItems([]));   // score line loops until the first event
-    if(!TESTMODE&&!lastEv.length&&!pregameKicked){ pregameKicked=true; fetchStandings(); findLastMeeting(); }
-    // NOTE 2026-07-11: this used to gate on PERSDONE>=3 — fine while PERSDONE was (incorrectly)
-    // reading ~3 from kickoff, but now that PERSDONE is the conservative event-driven value
-    // above, a scoreless/penalty-free third period would never reach 3 and FINAL would never
-    // get checked. fetchFinal() already self-guards (returns instantly once ISFINAL, or if
-    // there's no TARGET), so just call it — worst case is one harmless extra ~60s fetch/game.
-    if(!TESTMODE)fetchFinal();
-    const t0=Date.now(); let n=0;
-    const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;}
-      if(++n%5===0){ fetchLeaders();   // leaders refresh ~every 60s, box score every 12s
-        if(!TESTMODE&&!ISFINAL)fetchFinal(); }
-      tickPoll(); },POLL_MS);
+    await beginTickerPolling(TARGET);
+  } else if(WORKER && !TESTMODE){
+    // 2026-07-20: resolveTarget() failing on load used to mean dead forever, silently, for
+    // the entire ticker (score/events never render). Keep retrying the whole lookup instead.
+    if(!items.length) setItems(buildItems([]));
+    diagLog("error","resolveTarget found no game on initial load -- retrying every "+(RESOLVE_RETRY_MS/1000)+"s");
+    retryResolveTargetTicker(Date.now());
   } else if(!items.length){ setItems(buildItems([])); }
 }
 start();
