@@ -492,8 +492,38 @@ let lastGoalCount=0, lastPenCount=0;   // sanity guard against a short/bad espor
 let TARGET=null, AWAYID=null, HOMEID=null, AWAYN="", HOMEN="";
 let PREGAME=null;
 
-async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
-async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
+// 2026-07-20 resilience pass -- see scorebug/index.html + activity-banner/index.html for the
+// full writeup. Same fix ported here: window.__DIAG, retrying fetches, background retry loop
+// if the initial game lookup comes up empty.
+window.__DIAG = { pollCount:0, okCount:0, failCount:0, consecFails:0, skipCount:0,
+  lastPollAt:0, lastOkAt:0, lastError:"", lastErrorAt:0, baselinedAt:0, baselineGoals:0, baselinePens:0,
+  targetGid:null, targetResolvedAt:0, targetRetries:0, log:[] };
+function diagLog(kind, detail){
+  const d=window.__DIAG, ts=Date.now();
+  d.log.push({ts, kind, detail}); if(d.log.length>300) d.log.shift();
+  if(kind==="error"||kind==="skip") console.warn("[scorebug-l3]", kind, detail);
+}
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.json();}
+async function getJSONRetry(u, attempts, delayMs){
+  attempts=attempts||3; delayMs=delayMs||1200;
+  for(let i=0;i<attempts;i++){
+    try{ return await getJSON(u); }
+    catch(e){
+      diagLog("error","manifest fetch failed ("+u.split("/").pop()+", attempt "+(i+1)+"/"+attempts+"): "+(e&&e.message||e));
+      if(i<attempts-1) await new Promise(r=>setTimeout(r,delayMs));
+    }
+  }
+  return null;
+}
+const GETTEXT_TIMEOUT_MS = 8000;
+async function getText(u){
+  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),GETTEXT_TIMEOUT_MS);
+  try{
+    const r=await fetch(SHIM(u),{cache:"no-store",signal:ctrl.signal});
+    if(!r.ok)throw new Error("HTTP "+r.status+" "+u);
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
 const SCRAPE_HOST = "https://admin.esportsdesk.com";   // box-score live poll only -- standingsRowFor() now uses SEASON_DATA_URL, not this
 function boxURL(m,gid){return `${SCRAPE_HOST}/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 const slug=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
@@ -563,8 +593,9 @@ async function resolveTarget(){
   const lp=(Q.get("l")||Q.get("league")||"").toLowerCase();
   if(g){
     const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");
-    try{ const data=await getJSON(m.url); const gm=(data.games||[]).find(x=>String(x.gameid)===String(g));
-      if(gm) PREGAME={away:gm.away,home:gm.home,venue:gm.venue,date:gm.date,time:gm.time,datetime:gm.datetime}; }catch(e){}
+    const data=await getJSONRetry(m.url);
+    if(data){ const gm=(data.games||[]).find(x=>String(x.gameid)===String(g));
+      if(gm) PREGAME={away:gm.away,home:gm.home,venue:gm.venue,date:gm.date,time:gm.time,datetime:gm.datetime}; }
     return {m,gid:g};
   }
   // Reuse the ROSTER selector: same boxscores.json (current round) the portal's rosters +
@@ -575,7 +606,9 @@ async function resolveTarget(){
   // Fallback gameids for games the pipeline hasn't filled yet (manifest gameid=null); self-clears when gm.gameid arrives.
   const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
   const cands=[];
-  for(const m of MANIFESTS){let data;try{data=await getJSON(m.url);}catch(e){continue;}
+  for(const m of MANIFESTS){
+    const data=await getJSONRetry(m.url);
+    if(!data) continue;
     (data.games||[]).forEach(gm=>{
       const gid = gm.gameid || KNOWN_GIDS[[gm.away,gm.home,gm.date].join("|")] || null;
       if(!gid) return;
@@ -592,25 +625,40 @@ async function resolveTarget(){
 let firstGoal=null, firstPen=null;     // captured for the test buttons
 async function tick(){
   if(!TARGET||!WORKER) return;
-  let P; try{ P=parse(await getText(boxURL(TARGET.m,TARGET.gid))); }catch(e){ return; }
+  const d=window.__DIAG; d.pollCount++; d.lastPollAt=Date.now();
+  let P;
+  try{
+    P=parse(await getText(boxURL(TARGET.m,TARGET.gid)));
+    d.okCount++; d.consecFails=0; d.lastOkAt=Date.now();
+  }catch(e){
+    d.failCount++; d.consecFails++; d.lastError=String(e&&e.message||e); d.lastErrorAt=Date.now();
+    diagLog("error", d.lastError+" (consecutive fails: "+d.consecFails+")");
+    return;
+  }
   // esportsdesk occasionally returns 200 OK with a short/incomplete page (documented
   // flakiness -- see nzihl-roster-scraper-robustness / nzihl-player-photo-warehouse memory).
   // A genuine box score's goal/penalty counts can only grow during a game. If this poll comes
   // back with FEWER than the last accepted count, treat it as a bad read: skip the whole tick
   // (don't touch seen/baselined), keep whatever's already on screen, and let the next poll
   // retry -- rather than risking baseline corruption or a burst of stale "new" events later.
-  if(baselined && (P.goals.length<lastGoalCount || P.pens.length<lastPenCount)) return;
+  if(baselined && (P.goals.length<lastGoalCount || P.pens.length<lastPenCount)){
+    d.skipCount++; diagLog("skip","goals "+P.goals.length+"<"+lastGoalCount+" or pens "+P.pens.length+"<"+lastPenCount+" (guarded, not a real drop)");
+    return;
+  }
   lastGoalCount=P.goals.length; lastPenCount=P.pens.length;
   if(typeof LAST_PARSE!=="undefined") LAST_PARSE=P;   // feeds the Player Lower Thirds TONIGHT chip
   AWAYID=P.away.teamID; HOMEID=P.home.teamID; AWAYN=P.away.name; HOMEN=P.home.name;
   // tag each goal with a display name (its own team)
   P.goals.forEach(g=>{ g.name = g.teamID===AWAYID?AWAYN : g.teamID===HOMEID?HOMEN : (vis(g.teamID).code||""); });
   if(P.goals[0]) firstGoal=P.goals[0]; if(P.pens[0]) firstPen=P.pens[0];
-  if(!baselined){ P.goals.forEach(g=>seen.add(sigGoal(g))); P.pens.forEach(p=>seen.add(sigPen(p))); baselined=true; return; }
+  if(!baselined){ P.goals.forEach(g=>seen.add(sigGoal(g))); P.pens.forEach(p=>seen.add(sigPen(p))); baselined=true;
+    d.baselinedAt=Date.now(); d.baselineGoals=P.goals.length; d.baselinePens=P.pens.length;
+    diagLog("baseline","first successful poll -- "+P.goals.length+" goal(s) + "+P.pens.length+" pen(s) already on the board marked seen, will NOT fire");
+    return; }
   // new goals
-  P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
+  P.goals.forEach(g=>{const s=sigGoal(g);if(!seen.has(s)){seen.add(s);diagLog("fire-goal",s);fireGoal(g,AWAYID,HOMEID,AWAYN,HOMEN);}});
   // new penalties (one at a time, queued)
-  P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);firePen(p,AWAYID,HOMEID);}});
+  P.pens.forEach(p=>{const s=sigPen(p);if(!seen.has(s)){seen.add(s);diagLog("fire-pen",s);firePen(p,AWAYID,HOMEID);}});
 }
 
 /* ====================== PLAYER LOWER THIRDS (added 2026-07-12) ======================
@@ -928,6 +976,26 @@ function playAll(){ TEST_TEAMS.forEach(t=>{ fireTest(t,"goal",2400); fireTest(t,
 function fitWindow(){document.getElementById("stage").style.transform="scale("+Math.min(innerWidth/1920,innerHeight/1080)+")";}
 addEventListener("resize",fitWindow);
 
+const RESOLVE_RETRY_MS = 30000;
+function beginPolling(target){
+  window.__DIAG.targetGid=target.gid; window.__DIAG.targetResolvedAt=Date.now();
+  diagLog("baseline","target resolved -- game "+target.gid+(window.__DIAG.targetRetries?(" (after "+window.__DIAG.targetRetries+" retr"+(window.__DIAG.targetRetries===1?"y":"ies")+")"):""));
+  tick();
+  const t0=Date.now();
+  setInterval(()=>{ if(Date.now()-t0>RUN_CAP){return;} tick(); }, POLL_MS);
+}
+async function retryResolveTarget(sinceMs){
+  if(Date.now()-sinceMs>RUN_CAP) return;
+  setTimeout(async ()=>{
+    window.__DIAG.targetRetries=(window.__DIAG.targetRetries||0)+1;
+    TARGET=await resolveTarget();
+    if(TARGET){ beginPolling(TARGET); }
+    else{
+      diagLog("error","resolveTarget retry #"+window.__DIAG.targetRetries+" still found no game");
+      retryResolveTarget(sinceMs);
+    }
+  }, RESOLVE_RETRY_MS);
+}
 async function start(){
   await loadNameOverrides();
   // pick this club's Singular scorebug (per-broadcast). ?bug= already won above if present.
@@ -948,11 +1016,17 @@ async function start(){
   const diag=document.getElementById("diag");
   if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+(TARGET?("game "+TARGET.gid):"no-game")
     + (bugFallback?"  ·  ⚠ DEFAULT scorebug — set "+teamSlug+"'s Singular id before publish":""); }
-  if(TARGET&&WORKER){ await tick();
-    const t0=Date.now();
-    const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }
-  // ---- Player Lower Thirds: poll the same control channel the phone page fires to ----
-  if(WORKER){ pollControl(); setInterval(pollControl, 750); }
+  if(WORKER){
+    if(TARGET){ beginPolling(TARGET); }
+    else{
+      diagLog("error","resolveTarget found no game on initial load -- retrying every "+(RESOLVE_RETRY_MS/1000)+"s");
+      retryResolveTarget(Date.now());
+    }
+    // ---- Player Lower Thirds: poll the same control channel the phone page fires to ----
+    // (independent of TARGET resolution -- this is exactly why L3 can keep working even
+    // when the game lookup above is still retrying; see the 2026-07-19 incident writeup)
+    pollControl(); setInterval(pollControl, 750);
+  }
 }
 start();
 </script>
