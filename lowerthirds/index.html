@@ -228,8 +228,30 @@ async function withTimeout(promise, ms){
   const timeout = new Promise((_,reject)=>{ t=setTimeout(()=>reject(new Error("timeout")), ms); });
   try{ return await Promise.race([promise, timeout]); } finally{ clearTimeout(t); }
 }
-async function getJSON(u, ms){const r=await fetchWithTimeout(u,{cache:"no-store"}, ms||9000);if(!r.ok)throw 0;return r.json();}
-async function getText(u, ms){const r=await fetchWithTimeout(SHIM(u),{cache:"no-store"}, ms||10000);if(!r.ok)throw 0;return r.text();}
+async function getJSON(u, ms){const r=await fetchWithTimeout(u,{cache:"no-store"}, ms||9000);if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.json();}
+async function getText(u, ms){const r=await fetchWithTimeout(SHIM(u),{cache:"no-store"}, ms||10000);if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.text();}
+// 2026-07-20 resilience pass -- see activity-banner/index.html for the full writeup. This page
+// is operator-facing (a human is actively looking at it to fire L3s, with a visible Retry button
+// on failure already), so the risk profile is lower than the silent background overlays -- but a
+// quick in-call retry on the manifest fetch still means the operator sees the "couldn't resolve"
+// error less often for what's usually just a transient blip, not a real outage.
+window.__DIAG = window.__DIAG || { targetGid:null, targetRetries:0, log:[] };
+function diagLog(kind, detail){
+  const d=window.__DIAG, ts=Date.now();
+  d.log = d.log||[]; d.log.push({ts, kind, detail}); if(d.log.length>300) d.log.shift();
+  if(kind==="error") console.warn("[lowerthirds]", kind, detail);
+}
+async function getJSONRetry(u, attempts, delayMs){
+  attempts=attempts||3; delayMs=delayMs||1000;
+  for(let i=0;i<attempts;i++){
+    try{ return await getJSON(u); }
+    catch(e){
+      diagLog("error","manifest fetch failed ("+u.split("/").pop()+", attempt "+(i+1)+"/"+attempts+"): "+(e&&e.message||e));
+      if(i<attempts-1) await new Promise(r=>setTimeout(r,delayMs));
+    }
+  }
+  return null;
+}
 
 // SINGLE SOURCE OF TRUTH (2026-07-13): fetched from nzihl-broadcast-assets'
 // name-overrides.json by loadNameOverrides() (awaited at the top of start()).
@@ -320,7 +342,8 @@ let workerBroken=false;
 async function resolveGame(teamSlug){
   const cands=[];
   for(const m of MANIFESTS){
-    let data; try{ data=await getJSON(m.url); }catch(e){ continue; }
+    const data=await getJSONRetry(m.url);
+    if(!data) continue;
     (data.games||[]).forEach(gm=>{
       if(!gm.gameid) return;
       if(slug(gm.away)!==teamSlug && slug(gm.home)!==teamSlug) return;
@@ -339,7 +362,8 @@ async function resolveGame(teamSlug){
   // Fallback: nzihl-season-data's uncapped `upcoming` list (no lookahead cap,
   // unlike boxscores.json's 11-day window — catches games further out).
   for(const [league,url] of Object.entries(SEASON_DATA_URLS)){
-    let data; try{ data=await getJSON(url); }catch(e){ continue; }
+    const data=await getJSONRetry(url);
+    if(!data) continue;
     const m=MANIFESTS.find(x=>x.league===league);
     const ups=(data.upcoming||[]).filter(u=>slug(u.away.name)===teamSlug || slug(u.home.name)===teamSlug);
     if(ups.length){
@@ -723,7 +747,9 @@ async function start(){
   }
   try{
     GAME = await withTimeout(resolveGame(teamSlug), 12000);
+    if(GAME){ window.__DIAG.targetGid=GAME.gid; }
   }catch(e){
+    diagLog("error","resolveGame timed out/threw: "+(e&&e.message||e));
     showLoadFail("Couldn\'t resolve tonight\'s game in time — check your connection.");
     return;
   }
