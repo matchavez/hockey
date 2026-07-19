@@ -668,14 +668,32 @@ const idToSlug = id => Object.keys(TEAMS).find(k => TEAMS[k].id === id) || null;
 // (HOME_SLUG/AWAY_SLUG set); false leaves them unset, which VALID below
 // turns into the same "render nothing" bad-slug convention as everywhere
 // else on this page.
+// 2026-07-20 resilience pass -- see activity-banner/index.html for the full writeup. Lower
+// priority than the live broadcast overlays (this is pre-game content, only exercised in the
+// ?team= shorthand mode, and a failure here renders visibly blank rather than silently wrong)
+// but a bad fetch still shouldn't give up after one try.
+window.__DIAG = window.__DIAG || { log:[] };
+function diagLog(kind, detail){
+  const d=window.__DIAG, ts=Date.now();
+  d.log=d.log||[]; d.log.push({ts, kind, detail}); if(d.log.length>300) d.log.shift();
+  if(kind==="error") console.warn("[startinglineup-combined]", kind, detail);
+}
+async function fetchJSONRetry(u, attempts, delayMs){
+  attempts=attempts||3; delayMs=delayMs||1000;
+  for(let i=0;i<attempts;i++){
+    try{ const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status+" "+u); return await r.json(); }
+    catch(e){
+      diagLog("error","fetch failed ("+u.split("/").pop()+", attempt "+(i+1)+"/"+attempts+"): "+(e&&e.message||e));
+      if(i<attempts-1) await new Promise(r=>setTimeout(r,delayMs));
+    }
+  }
+  return null;
+}
 async function resolveTeamSlug(teamSlug){
   const T = TEAMS[teamSlug];
   if(!T || T.id == null) return false;   // unknown slug, or Mako (no teamID — no games)
-  let d;
-  try{
-    const r = await fetch(SEASON_DATA_URL[T.league], {cache:"no-store"});
-    d = await r.json();
-  }catch(e){ return false; }
+  const d = await fetchJSONRetry(SEASON_DATA_URL[T.league]);
+  if(!d) return false;
   const up = (d && Array.isArray(d.upcoming)) ? d.upcoming : [];
   const mine = up.filter(g => g && g.home && g.away && (g.home.teamID===T.id || g.away.teamID===T.id))
     .sort((a,b)=> (a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
