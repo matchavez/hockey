@@ -756,7 +756,13 @@ let PREGAME=null;   // {away,home,venue,date,time,datetime} for the resolved tar
 // `copy(JSON.stringify(window.__AB_DIAG))` in the vMix/OBS browser-source inspector) and you
 // have exact counts/timestamps/errors instead of reconstructing after the fact.
 window.__AB_DIAG = { pollCount:0, okCount:0, failCount:0, consecFails:0, skipCount:0,
-  lastPollAt:0, lastOkAt:0, lastError:"", lastErrorAt:0, baselinedAt:0, baselineGoals:0, baselinePens:0, log:[] };
+  lastPollAt:0, lastOkAt:0, lastError:"", lastErrorAt:0, baselinedAt:0, baselineGoals:0, baselinePens:0, log:[],
+  // 2026-07-20: target-resolution visibility -- resolveTarget() used to run ONCE at page load
+  // with no retry; a single bad manifest fetch (or the game simply not being in the manifest
+  // yet) left targetGid null FOREVER with zero on-screen signal, permanently killing all
+  // goal/penalty polling for the rest of the broadcast (cost the full SCS@CRD banner blackout,
+  // 2026-07-19 -- Player L3 kept working because it doesn't depend on this lookup at all).
+  targetGid:null, targetResolvedAt:0, targetRetries:0 };
 function diagLog(kind, detail){
   const d=window.__AB_DIAG, ts=Date.now();
   d.log.push({ts, kind, detail}); if(d.log.length>300) d.log.shift();  // ring buffer, ~1h of history at 12s cadence
@@ -764,6 +770,21 @@ function diagLog(kind, detail){
 }
 
 async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.json();}
+// 2026-07-20: resolveTarget()'s manifest fetch used to be a single try -- one transient
+// failure (network blip, GitHub raw hiccup) meant NO game ever got found, silently, for the
+// rest of that page's life. Short in-call retry for that failure mode; the slower background
+// retry loop in start() covers the "manifest genuinely doesn't have the game yet" case.
+async function getJSONRetry(u, attempts, delayMs){
+  attempts=attempts||3; delayMs=delayMs||1200;
+  for(let i=0;i<attempts;i++){
+    try{ return await getJSON(u); }
+    catch(e){
+      diagLog("error","manifest fetch failed ("+u.split("/").pop()+", attempt "+(i+1)+"/"+attempts+"): "+(e&&e.message||e));
+      if(i<attempts-1) await new Promise(r=>setTimeout(r,delayMs));
+    }
+  }
+  return null;
+}
 const GETTEXT_TIMEOUT_MS = 8000;   // 2026-07-20: box-score poll fetch had NO timeout (unlike every
 // other fetch in this file) -- on a bad venue connection a single hung fetch could sit forever
 // without erroring, and since tick() has no concurrency guard, hung fetches pile up silently.
@@ -797,8 +818,9 @@ async function resolveTarget(){
     const m=MANIFESTS.find(x=> Q.get("w")==="1"||lp.startsWith("nzw")||lp==="w" ? x.league==="nzwihl":x.league==="nzihl");
     // Best-effort: also pull this game's manifest record so the pre-game confidence alert
     // (away/home/venue/datetime) still works when a specific gameid is forced via ?g=.
-    try{ const data=await getJSON(m.url); const gm=(data.games||[]).find(x=>String(x.gameid)===String(g));
-      if(gm) PREGAME={away:gm.away,home:gm.home,venue:gm.venue,date:gm.date,time:gm.time,datetime:gm.datetime}; }catch(e){}
+    const data=await getJSONRetry(m.url);
+    if(data){ const gm=(data.games||[]).find(x=>String(x.gameid)===String(g));
+      if(gm) PREGAME={away:gm.away,home:gm.home,venue:gm.venue,date:gm.date,time:gm.time,datetime:gm.datetime}; }
     return {m,gid:g};
   }
   // Reuse the ROSTER selector: same boxscores.json (current round) the portal's rosters +
@@ -809,7 +831,9 @@ async function resolveTarget(){
   // Fallback gameids for games the pipeline hasn't filled yet (manifest gameid=null); self-clears when gm.gameid arrives.
   const KNOWN_GIDS = { "Botany Swarm|Pure NZ Admirals|2026-06-28": 2519938 };
   const cands=[];
-  for(const m of MANIFESTS){let data;try{data=await getJSON(m.url);}catch(e){continue;}
+  for(const m of MANIFESTS){
+    const data=await getJSONRetry(m.url);
+    if(!data) continue;   // both attempts failed -- move on to the other league's manifest, don't kill the whole lookup
     (data.games||[]).forEach(gm=>{
       const gid = gm.gameid || KNOWN_GIDS[[gm.away,gm.home,gm.date].join("|")] || null;
       if(!gid) return;
@@ -1222,6 +1246,26 @@ function fitWindow(){
 }
 addEventListener("resize",fitWindow);
 
+const RESOLVE_RETRY_MS = 30000;   // how often to re-attempt the whole game lookup if it comes up empty
+function beginPolling(target){
+  window.__AB_DIAG.targetGid=target.gid; window.__AB_DIAG.targetResolvedAt=Date.now();
+  diagLog("baseline","target resolved -- game "+target.gid+(window.__AB_DIAG.targetRetries?(" (after "+window.__AB_DIAG.targetRetries+" retr"+(window.__AB_DIAG.targetRetries===1?"y":"ies")+")"):""));
+  tick();
+  const t0=Date.now();
+  setInterval(()=>{ if(Date.now()-t0>RUN_CAP){return;} tick(); }, POLL_MS);
+}
+async function retryResolveTarget(sinceMs){
+  if(Date.now()-sinceMs>RUN_CAP) return;   // give up after the same window tick()'s own auto-stop uses
+  setTimeout(async ()=>{
+    window.__AB_DIAG.targetRetries=(window.__AB_DIAG.targetRetries||0)+1;
+    TARGET=await resolveTarget();
+    if(TARGET){ beginPolling(TARGET); }
+    else{
+      diagLog("error","resolveTarget retry #"+window.__AB_DIAG.targetRetries+" still found no game");
+      retryResolveTarget(sinceMs);
+    }
+  }, RESOLVE_RETRY_MS);
+}
 async function start(){
   await loadNameOverrides();
   fitWindow();
@@ -1241,9 +1285,18 @@ async function start(){
   const diag=document.getElementById("diag");
   if(TESTMODE){ diag.textContent = (WORKER?"live ":"no-worker ")+TEAM_SLUG+" · "+(TARGET?("game "+TARGET.gid):"no-game"); }
   if(!PREVIEW && !NOBANNER) showConfidenceAlert(PREGAME);   // pre-game only — internally guards against the game having started; suppressed when layered as an L3-only source (see NOBANNER above)
-  if(TARGET&&WORKER){ await tick();
-    const t0=Date.now();
-    const iv=setInterval(()=>{ if(Date.now()-t0>RUN_CAP){clearInterval(iv);return;} tick(); }, POLL_MS); }
+  if(WORKER){
+    if(TARGET){ beginPolling(TARGET); }
+    else{
+      // 2026-07-20: don't just give up. resolveTarget() already retries its own fetch a
+      // few times (getJSONRetry); if it STILL comes back empty (manifest fetch down harder
+      // than that, or the game just isn't in boxscores.json yet), keep re-trying the whole
+      // lookup on a slower cadence for the rest of the run-cap window instead of silently
+      // never polling again. This is the actual fix for the 2026-07-19 SCS@CRD blackout.
+      diagLog("error","resolveTarget found no game on initial load -- retrying every "+(RESOLVE_RETRY_MS/1000)+"s");
+      retryResolveTarget(Date.now());
+    }
+  }
 
   // ---- Player Lower Thirds ----
   if(PREVIEW){
