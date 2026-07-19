@@ -648,8 +648,41 @@ function showMsg(t){const m=document.getElementById("msg");m.style.display="flex
 function hideMsg(){document.getElementById("msg").style.display="none";}
 
 // ---- data flow ---------------------------------------------------------
-async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw 0;return r.json();}
-async function getText(u){const r=await fetch(SHIM(u),{cache:"no-store"});if(!r.ok)throw 0;return r.text();}
+// 2026-07-20 resilience pass -- see activity-banner/index.html for the full writeup (2026-07-19
+// SCS@CRD incident). This file's failure mode is actually worse in one way: instead of a one-shot
+// fetch failure leaving the page blank, it silently falls through to the hardcoded LAST_GAME table
+// below (which goes stale the moment a new round starts) and renders THAT game confidently, with
+// no on-screen indication it's not the current one. Retry first, and log loudly if the stale
+// fallback is ever actually used.
+window.__DIAG = { pollCount:0, okCount:0, failCount:0, consecFails:0, skipCount:0,
+  lastPollAt:0, lastOkAt:0, lastError:"", lastErrorAt:0, renderedOnceAt:0,
+  targetGid:null, targetResolvedAt:0, targetRetries:0, usedStaleFallback:false, log:[] };
+function diagLog(kind, detail){
+  const d=window.__DIAG, ts=Date.now();
+  d.log.push({ts, kind, detail}); if(d.log.length>300) d.log.shift();
+  if(kind==="error"||kind==="skip"||kind==="stale-fallback") console.warn("[summary]", kind, detail);
+}
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status+" "+u);return r.json();}
+async function getJSONRetry(u, attempts, delayMs){
+  attempts=attempts||3; delayMs=delayMs||1200;
+  for(let i=0;i<attempts;i++){
+    try{ return await getJSON(u); }
+    catch(e){
+      diagLog("error","manifest fetch failed ("+u.split("/").pop()+", attempt "+(i+1)+"/"+attempts+"): "+(e&&e.message||e));
+      if(i<attempts-1) await new Promise(r=>setTimeout(r,delayMs));
+    }
+  }
+  return null;
+}
+const GETTEXT_TIMEOUT_MS = 8000;
+async function getText(u){
+  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),GETTEXT_TIMEOUT_MS);
+  try{
+    const r=await fetch(SHIM(u),{cache:"no-store",signal:ctrl.signal});
+    if(!r.ok)throw new Error("HTTP "+r.status+" "+u);
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
 function boxURL(m,gid){return `https://admin.esportsdesk.com/leagues/hockey_boxscores.cfm?clientid=${m.clientid}&leagueid=${m.leagueid}&gameid=${gid}&printPage=1&_=${Date.now()}`;}
 
 async function resolve(){
@@ -688,7 +721,8 @@ async function resolve(){
   };
   const cands=[];
   for(const m of MANIFESTS){
-    let data; try{ data=await getJSON(m.url);}catch(e){continue;}
+    const data=await getJSONRetry(m.url);
+    if(!data) continue;
     (data.games||[]).forEach(gm=>{
       const gid = gm.gameid || KNOWN_GIDS[[gm.away,gm.home,gm.date].join("|")] || null;
       if(!gid) return;
@@ -698,9 +732,12 @@ async function resolve(){
   if(!cands.length){
     const lg = LAST_GAME[slugTeam];
     if(lg){
+      window.__DIAG.usedStaleFallback=true;
+      diagLog("stale-fallback","live manifests had no game for \""+slugTeam+"\" after retry -- falling back to hardcoded LAST_GAME (gid "+lg.gid+"), which may be stale. Check window.__DIAG.usedStaleFallback before trusting this render.");
       const m = MANIFESTS.find(x=>x.league===lg.league) || MANIFESTS[0];
       return {m, gid:lg.gid, venue:"", leagueName: m.league==="nzwihl"?"New Zealand Women's Ice Hockey League":"New Zealand Ice Hockey League"};
     }
+    diagLog("error","no game found for \""+slugTeam+"\" (live manifests empty after retry, no LAST_GAME fallback either)");
     showMsg("No game found for “"+slugTeam+"”. Check the team slug, or that a game is scheduled."); return null;
   }
   const now=Date.now(), LIVE=5*3600*1000;                  // a game that started up to 5h ago still counts as "current"
@@ -729,9 +766,11 @@ async function tick(){
   // takes several seconds. Without this the stage sits blank but for the corner dot, which
   // reads as "stuck." Subsequent ticks reuse already-rendered content, so no message needed.
   if(!renderedOnce) showMsg("Loading live box score…");
+  const d=window.__DIAG; d.pollCount++; d.lastPollAt=Date.now();
   try{
     const html=await getText(boxURL(TARGET.m,TARGET.gid));
     const P=parse(html);
+    d.okCount++; d.consecFails=0; d.lastOkAt=Date.now();
     // esportsdesk occasionally returns 200 OK with a short/incomplete page (documented
     // flakiness -- see nzihl-roster-scraper-robustness / nzihl-player-photo-warehouse memory).
     // A real game's score/event counts can only grow. If this read comes back LOWER than the
@@ -739,25 +778,80 @@ async function tick(){
     // last good render on screen (retry on the next 15s poll) rather than flash a regressed score.
     const awayTot=P.away.tot||0, homeTot=P.home.tot||0, goalCount=(P.goals||[]).length, penCount=(P.pens||[]).length;
     if(renderedOnce && (awayTot<lastGoodAwayTot || homeTot<lastGoodHomeTot || goalCount<lastGoodGoalCount || penCount<lastGoodPenCount)){
+      d.skipCount++; diagLog("skip","away "+awayTot+"<"+lastGoodAwayTot+" or home "+homeTot+"<"+lastGoodHomeTot+" (guarded, not a real drop)");
       return;
     }
     lastGoodAwayTot=awayTot; lastGoodHomeTot=homeTot; lastGoodGoalCount=goalCount; lastGoodPenCount=penCount;
+    if(!d.renderedOnceAt) d.renderedOnceAt=Date.now();
     VENUE = TARGET.venue || vis(P.home.teamID).venue || "";
     LEAGUE_NAME = TARGET.leagueName;
     hideMsg(); render(P); renderedOnce=true; fitWindow();
     document.getElementById("stage").classList.add("ready"); // reveal only once real content is on screen
-  }catch(e){ if(!renderedOnce) showMsg("Couldn’t load the live box score — retrying…"); }
+  }catch(e){
+    d.failCount++; d.consecFails++; d.lastError=String(e&&e.message||e); d.lastErrorAt=Date.now();
+    diagLog("error", d.lastError+" (consecutive fails: "+d.consecFails+")");
+    if(!renderedOnce) showMsg("Couldn’t load the live box score — retrying…");
+  }
   finally{ if(dot){ const wait=Math.max(0,900-(Date.now()-t0)); setTimeout(()=>dot.classList.remove("scraping"),wait); } } // ensure ≥1 visible pulse, then OFF until next poll
+}
+const RESOLVE_RETRY_MS = 30000;
+function beginSummaryPolling(target){
+  CID=target.m.clientid; LID=target.m.leagueid;
+  window.__DIAG.targetGid=target.gid; window.__DIAG.targetResolvedAt=Date.now();
+  const wasStale=window.__DIAG.usedStaleFallback;
+  diagLog("baseline-target","target resolved -- game "+target.gid+(window.__DIAG.targetRetries?(" (after "+window.__DIAG.targetRetries+" retr"+(window.__DIAG.targetRetries===1?"y":"ies")+")"):"")+(wasStale?" [STALE FALLBACK -- see upgradeFromStaleFallback]":""));
+  tick();
+  const t0=Date.now();
+  setInterval(()=>{ if(Date.now()-t0>3.25*3600*1000){return;} tick(); }, 15000);
+  // 2026-07-20: don't just settle for a 3-week-stale game because the live manifest fetch
+  // happened to fail on load. If we're showing the LAST_GAME fallback, keep quietly checking
+  // in the background for the real live game to show up, and swap over the moment it does --
+  // same team, so all rendering machinery is untouched, just a fresher TARGET/tick loop.
+  if(wasStale) upgradeFromStaleFallback(t0);
+}
+async function upgradeFromStaleFallback(sinceMs){
+  if(Date.now()-sinceMs>3.25*3600*1000) return;
+  setTimeout(async ()=>{
+    if(Date.now()-sinceMs>3.25*3600*1000) return;
+    window.__DIAG.usedStaleFallback=false;   // reset so this attempt's own result is legible
+    const fresh=await resolve();
+    if(fresh && !window.__DIAG.usedStaleFallback && String(fresh.gid)!==String(TARGET&&TARGET.gid)){
+      diagLog("stale-upgrade","live game found (gid "+fresh.gid+") -- upgrading off the stale LAST_GAME fallback (was gid "+(TARGET&&TARGET.gid)+")");
+      TARGET=fresh; CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
+      window.__DIAG.targetGid=TARGET.gid; window.__DIAG.targetResolvedAt=Date.now();
+      renderedOnce=false;   // force a clean re-render against the correct game
+      tick();
+      return;   // stop the upgrade-check loop -- we're on live data now
+    }
+    window.__DIAG.usedStaleFallback=true;   // still stale -- restore the flag and keep checking
+    upgradeFromStaleFallback(sinceMs);
+  }, RESOLVE_RETRY_MS);
+}
+async function retrySummaryResolve(sinceMs){
+  if(Date.now()-sinceMs>3.25*3600*1000) return;
+  setTimeout(async ()=>{
+    window.__DIAG.targetRetries=(window.__DIAG.targetRetries||0)+1;
+    TARGET=await resolve();
+    if(TARGET){ beginSummaryPolling(TARGET); }
+    else{
+      diagLog("error","resolve() retry #"+window.__DIAG.targetRetries+" still found no game");
+      retrySummaryResolve(sinceMs);
+    }
+  }, RESOLVE_RETRY_MS);
 }
 async function start(){
   await loadNameOverrides();
   fitWindow();
   TARGET=await resolve();
-  if(!TARGET) return;
-  CID=TARGET.m.clientid; LID=TARGET.m.leagueid;
-  await tick();
-  const t0=Date.now();
-  const iv=setInterval(()=>{ if(Date.now()-t0>3.25*3600*1000){clearInterval(iv);return;} tick(); }, 15000);
+  if(!TARGET){
+    // 2026-07-20: used to just stop here, silently, forever, if resolve() (which by now has
+    // already retried its own fetches + tried the stale LAST_GAME fallback) still came up
+    // completely empty -- e.g. an unrecognised team slug with no LAST_GAME entry. Keep trying.
+    diagLog("error","resolve() found no game (and no LAST_GAME fallback) on initial load -- retrying every "+(RESOLVE_RETRY_MS/1000)+"s");
+    retrySummaryResolve(Date.now());
+    return;
+  }
+  beginSummaryPolling(TARGET);
 }
 start();
 </script>
