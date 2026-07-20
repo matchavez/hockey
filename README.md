@@ -216,10 +216,26 @@ A companion testing dashboard that actually loads each live overlay for every cl
 
 These don't appear on screen themselves — they're the automatic data-gathering that keeps everything above accurate without manual updates.
 
-- **Season Data Warehouse** (`matchavez/nzihl-season-data`) — a nightly scrape that saves every completed game into a permanent record, plus computed extras like win/loss streaks, head-to-head history between any two teams, and per-player game logs. This is what lets the Ticker mention "these two teams last played on..." or "Team X leads the season series."
+- **Season Data Warehouse** (`matchavez/nzihl-season-data`) — a scrape that runs 8 times a day and saves every completed game into a permanent record, plus computed extras like win/loss streaks, head-to-head history between any two teams, and per-player game logs. This is what lets the Ticker mention "these two teams last played on..." or "Team X leads the season series."
 - **Roster & Schedule Pipeline** (`matchavez/nzihl-broadcast-rosters`, `matchavez/nzwihl-broadcast-rosters`) — the daily automatic job that builds the roster PDFs (shown on the Roster PDFs page above) and keeps a short-term schedule file up to date for the upcoming games.
 - **Player Photo Warehouse** (`matchavez/nzihl-player-photos`) — a weekly automatic scrape that saves a permanent, versioned copy of every player's and coach's headshot (visible throughout the Game Summary, Player Lower Thirds, and Warehouse pages above), so broadcast graphics have a reliable photo to pull from instead of depending on the league website being up during a live show.
 - **Live Data Proxy** — the live overlays above (Scorebug, Activity Banner, Ticker, Live Game Summary, Team Scoring Leaders) can't reach the league's website directly from inside a web browser, so their real-time reads are scraped by a small Cloudflare agent sitting quietly in between, checked every few seconds during a game. See [`cloudflare.md`](cloudflare.md) for more information.
+
+---
+
+## 5. Automation schedules & manual triggers
+
+A quick reference for when things update on their own, and how to force a refresh on demand if something looks stale. (Checked directly against each repo's live GitHub Actions workflow file on 20 July 2026, not just recalled from memory.)
+
+- **Standings Graphic** — `matchavez/nzihl-broadcast-assets`, workflow `update-standings.yml`. Runs automatically once a night, **2am NZST**.
+- **Season Data Warehouse** — `matchavez/nzihl-season-data`, workflow `build.yml`. Runs **8 times a day, roughly every 3 hours around the clock** (04:30, 07:30, 10:30, 13:30, 16:30, 19:30, 22:30, 01:30 NZST) — the most frequent job in the whole estate, so a just-finished game's data usually lands within a few hours, not overnight.
+- **Roster & Schedule Pipeline** — `matchavez/nzihl-broadcast-rosters` and `matchavez/nzwihl-broadcast-rosters`, workflow `build-rosters.yml` in both. Runs once daily, **~5:30am NZST** (times to clear before the 7am NZ "rosters are ready" promise, allowing for GitHub's own scheduling drift). Both leagues run on identical schedules but fully independently of each other.
+- **Player Photo Warehouse** — `matchavez/nzihl-player-photos`, workflow `build-photos.yml`. Runs once a week, **Friday mornings, 7am NZST**.
+- **Cloudflare Worker (live data proxy + control channel)** — not on a schedule; it's always-on infrastructure, not a batch job. See `cloudflare.md`.
+
+**Every one of the four scheduled jobs above also supports a manual trigger** (GitHub → that repo → Actions tab → the workflow name → "Run workflow") — useful right after a game, or before a broadcast, without waiting for the next scheduled run.
+
+**Graphics with no automation at all** (Python scripts run by hand from Mat's project folder, each writing a fresh PNG in place): 2026 Season Schedule Graphic, Playoff Scenarios Graphic, Keys to the Series, CIHA Under-12 Lower Third. Each needs Python 3 + Pillow installed locally to run (`python3 render.py` from that graphic's own folder). Up Next Overlay and DVD Bounce Loops are a different case again — every combination was pre-built once as a one-time batch, not regenerated on any schedule; there's nothing to re-run unless a team's branding changes.
 
 ---
 
