@@ -74,29 +74,25 @@ A simple branded banner for the Canterbury Ice Hockey Association's Under-12 Sup
 
 These aren't static pictures — they're small web pages that broadcast software treats as a "browser source." Once added to OBS/vMix/YoloBox, they check the league's live box score every few seconds on their own and update themselves in real time — no one needs to type anything in during the game. Every capture below is the real, current page, live off tonight's actual data.
 
-### Scorebug + Live Banner *(Red Devils)*
+### Scorebug + Live Banner
 
 ![Scorebug](images/scorebug.png)
 
-The Red Devils' live scoreboard, showing the real score from their most recent game as this was captured. An automatic banner (below) pops up across the top whenever a goal or penalty happens.
+A live scoreboard for any team — score, shots, period and clock — that automatically pops up a banner across the top whenever a goal or penalty happens, styled in that team's own colours. It watches the live box score feed and reacts within seconds of a real update, and the same page can also put a Player Lower Third on screen (see below) from a producer's phone. This is the standard scoreboard overlay, and it works the same way for every club via `?team=<team>`.
 
 ![Activity Banner goal example](images/activity-banner.png)
 
-The goal/penalty banner in action — team colours, player name, and the details, styled to match the broadcast. It watches the live box score feed and reacts within seconds of a real update. (This example was triggered through the page's own test button, using real player names from the test data — the banner itself renders exactly as it would live.)
+The goal/penalty banner in action — team colours, player name, and the details. (This example was triggered through the page's own test button using real test data; the banner renders exactly as it would live.)
 
-**Live at:** `matchavez.com/hockey/scorebug/` (superseded for most broadcasts by Scorebug + Player L3s below, which does everything this does plus player features).
+**Exception:** the capture above happens to show the Canterbury Red Devils, because they're currently the only club — along with Canterbury Inferno, who share the same Christchurch broadcast — with a fully wired live scoreboard feed behind the banner. Every other team runs the identical page and gets the same banner and player features; it's only the live score readout that isn't connected for them yet. An older, banner-only version without Player Lower Third support also still exists for anyone who doesn't need the newer features.
+
+**Live at:** `matchavez.com/hockey/scorebug-l3/?team=<team>` (older banner-only version at `matchavez.com/hockey/scorebug/?team=<team>`).
 
 ### Activity Banner
 
 The same automatic goal/penalty banner shown above, but built as its own transparent layer with no scoreboard baked in — so it can sit over whatever scoreboard system a venue is already running. Works for every team except Auckland Mako (who aren't playing games this season).
 
 **Live at:** `matchavez.com/hockey/activity-banner/?team=<team>`.
-
-### Scorebug + Player L3s
-
-A combined scoreboard-and-banner page (visually identical to the Scorebug above) that also supports Player Lower Thirds — see below. This is the current recommended single source for any team needing both a scoreboard and goal/penalty/player banners in one browser source.
-
-**Live at:** `matchavez.com/hockey/scorebug-l3/?team=<team>`.
 
 ### Player Lower Thirds
 
