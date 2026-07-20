@@ -556,7 +556,7 @@ function pregameItems(){
   const va=vis(AWAYID), vh=vis(HOMEID);
   const A=`<span class="tm" style="color:${va.ink}">${esc(AWAYN)}</span>`;
   const H=`<span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span>`;
-  const lgCrest=`<span class="crest"><img src="${LEAGUE_LOGO[LEAGUE]||LEAGUE_LOGO.nzihl}" alt=""></span>`;
+  const lgCrest=`<span class="crest"><img src="${LEAGUE_LOGO[LEAGUE]||LEAGUE_LOGO.nzihl}" alt="" onerror="this.style.display='none'"></span>`;
   if(GM&&GM.datetime&&Date.now()<new Date(GM.datetime).getTime()+30*60000){
     const d=new Date(GM.datetime), today=new Date().toDateString()===d.toDateString();
     const when=today?"today":d.toLocaleDateString("en-NZ",{weekday:"long",day:"numeric",month:"long"});
@@ -611,7 +611,7 @@ const ADMAP={
 const AD=ADMAP[(Q.get("ad")||"").toLowerCase()]||null;
 function adItem(){
   const img=AD.img||LEAGUE_LOGO[LEAGUE]||LEAGUE_LOGO.nzihl;
-  return `<span class="crest"><img src="${img}" alt=""></span>`
+  return `<span class="crest"><img src="${img}" alt="" onerror="this.style.display='none'"></span>`
     +`<span class="sent">${esc(AD.lead)} <span class="tm" style="color:${AD.accent}">${esc(AD.brand)}</span>`
     +(AD.url?` — <span class="ms">${esc(AD.url)}</span>`:"")+`</span>`;
 }
@@ -637,9 +637,13 @@ function dividerItem(p,a,h,latest){
     +` <span class="tm" style="color:${vh.ink}">${esc(HOMEN)}</span> <span class="sc">${h}</span>${shots}${gl}</span>`;
 }
 function teamNameOf(id){return id===AWAYID?AWAYN:id===HOMEID?HOMEN:(vis(id).code||"");}
+// 2026-07-20: onerror hides just the <img> (never the parent .crest/.lsep box --
+// those are CSS-sized independent of image content specifically so rebuild()'s
+// track-width measurement stays stable) so a bad/missing logo filename degrades
+// to an empty (correctly-sized) slot instead of a broken-image icon on air.
 function crestHTML(id){const v=vis(id);
-  return v.logo?`<span class="crest"><img src="${LOGO+encodeURIComponent(v.logo)}" alt=""></span>`:`<span class="crest"></span>`;}
-function sepHTML(){return `<span class="lsep"><img src="${LEAGUE_LOGO[LEAGUE]||LEAGUE_LOGO.nzihl}" alt=""></span>`;}
+  return v.logo?`<span class="crest"><img src="${LOGO+encodeURIComponent(v.logo)}" alt="" onerror="this.style.display='none'"></span>`:`<span class="crest"></span>`;}
+function sepHTML(){return `<span class="lsep"><img src="${LEAGUE_LOGO[LEAGUE]||LEAGUE_LOGO.nzihl}" alt="" onerror="this.style.display='none'"></span>`;}
 // game-score line — ALWAYS the first message of the loop (Mat 2026-07-07):
 //   (away logo) Away Name 0 - 0 Home Name (home logo)
 function scoreItem(){

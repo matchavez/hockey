@@ -774,9 +774,12 @@ const SIL_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <path d="M18 92 C18 66 34 58 50 58 C66 58 82 66 82 92 Z" fill="#8a93a0"/></svg>`;
 
 // Per-side render state, so home and away channels can never blank each
-// other out or get their FIRST_PAINT/updated_at tracking confused.
+// other out or get their FIRST_PAINT/updated_at tracking confused. `busy`
+// (2026-07-20) is this side's own re-entrancy guard for pollSide() below --
+// kept per-side, not global, since home/away poll independently and must
+// stay independent (matching pollSide()'s own doc comment).
 function makeSide(key, T, slug){
-  return { key, T, slug, CUR:{}, FIRST_PAINT:true, LAST_UPDATED:null };
+  return { key, T, slug, CUR:{}, FIRST_PAINT:true, LAST_UPDATED:null, busy:false };
 }
 // SIDE_HOME/SIDE_AWAY are built in resolveAndBuild() above (after any
 // ?team= resolution), not here — makeSide() just needs to be defined
@@ -849,9 +852,19 @@ function renderAllSide(side, state){
 // silhouettes for that side, and every later poll that fails just leaves
 // the last-good render in place. Each side's channel is independent, so
 // one team's bad channel can never blank the other team's six cards.
+// 2026-07-20: added the same AbortController timeout + busy-flag guard as
+// startinglineup/'s pollLineup() -- see that file for the full writeup.
+// side.busy keeps home/away independent, matching the paragraph above.
 async function pollSide(side){
+  if(side.busy) return;
+  side.busy = true;
   try{
-    const r = await fetch(`${WORKER}/lineup/${side.slug}`, {cache:"no-store"});
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 7000);
+    let r;
+    try{
+      r = await fetch(`${WORKER}/lineup/${side.slug}`, {cache:"no-store", signal: ctrl.signal});
+    } finally { clearTimeout(t); }
     const txt = await r.text();
     let j; try{ j = JSON.parse(txt); }catch(e){ if(side.FIRST_PAINT) renderAllSide(side, null); return; }
     if(j.error){ if(side.FIRST_PAINT) renderAllSide(side, null); return; }
@@ -860,6 +873,8 @@ async function pollSide(side){
     renderAllSide(side, j);
   }catch(e){
     if(side.FIRST_PAINT) renderAllSide(side, null);
+  } finally {
+    side.busy = false;
   }
 }
 

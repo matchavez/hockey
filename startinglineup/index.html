@@ -318,9 +318,30 @@ function renderAll(state){
 }
 
 /* ====================== DATA ====================== */
+// 2026-07-20 (season-close reliability pass): added an AbortController timeout +
+// a busy-flag re-entrancy guard, mirroring the pattern already proven in
+// activity-banner's pollControl() (busy guard) and lowerthirds' pollState()
+// (explicit timeout) -- neither of those two files has BOTH, so this combines
+// them deliberately rather than copying either alone. Without the guard, a
+// single hung (not merely failed) fetch never reaches the catch block below,
+// and the 10s setInterval keeps firing regardless, stacking unbounded
+// concurrent requests against the same Durable Object. The timeout (7s, under
+// the 10s poll interval) bounds how long any single hang can last; the guard
+// bounds concurrency at 1 regardless of timing. Every existing behavior below
+// (fail-silent, FIRST_PAINT-only placeholder render, updated_at dedup) is
+// unchanged -- see nzihl-fresh-review-2026-07-20 memory for the fault-injection
+// tests that verified both the bug and the fix before this shipped.
+let lineupPollBusy = false;
 async function pollLineup(){
+  if(lineupPollBusy) return;   // a previous poll is still in flight -- never stack requests
+  lineupPollBusy = true;
   try{
-    const r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store"});
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 7000);
+    let r;
+    try{
+      r = await fetch(`${WORKER}/lineup/${TEAM_SLUG}`, {cache:"no-store", signal: ctrl.signal});
+    } finally { clearTimeout(t); }
     const txt = await r.text();
     // Worker not redeployed yet (non-JSON "missing ?url") or channel error:
     // still paint the six silhouette placeholders on first load — the graphic
@@ -330,8 +351,10 @@ async function pollLineup(){
     if(j.updated_at === LAST_UPDATED && !FIRST_PAINT) return;
     LAST_UPDATED = j.updated_at;
     renderAll(j);
-  }catch(e){ /* best effort — never blank an on-air graphic over a failed poll */
+  }catch(e){ /* best effort — never blank an on-air graphic over a failed poll (network error, or our own timeout abort) */
     if(FIRST_PAINT) renderAll(null);
+  } finally {
+    lineupPollBusy = false;
   }
 }
 
