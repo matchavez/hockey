@@ -1,0 +1,5 @@
+exclude:
+  - memory.md
+  - cloudflare.md
+  - playoff-readiness.md
+  - warehouse-audit.md
