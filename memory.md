@@ -5,8 +5,22 @@ separate README.md (data contracts, URL params, gotchas — written explicitly f
 AI-assisted maintenance) and memory.md (cross-repo relationships, process gotchas,
 running history). They were split before 2026-07-20; merged into one file that day
 at Mat's request, since both halves were already AI-facing and keeping them in sync
-was pure overhead. **README.md is now a short, human-facing project overview** —
-read it if you want the elevator-pitch tour; read *this* file for everything else.
+was pure overhead.
+
+**README.md is a different thing entirely (as of 2026-07-20): a full human-facing
+visual inventory of the whole NZIHL/NZWIHL broadcast estate** — real screenshots
+and plain-language descriptions of every on-air graphic, live overlay, and producer
+tool across ALL the `matchavez/*` broadcast repos, not just this one. It exists
+because this repo's Portal is the front door people actually land on, so Mat wants
+the full tour available right here even though several of the pictured assets
+(Standings, Up Next, DVD Bounce, Keys to the Series, CIHA Lower Third, Style Guide,
+Roster PDFs) physically live in sibling repos (`nzihl-broadcast-assets`,
+`hockeyrosters`) or the local project folder, not in this repo's code. **Don't
+treat README.md as documentation of this repo's own contents — it documents the
+whole estate.** Read *this* file (memory.md) for how the code in THIS repo actually
+works. README's images live in `images/` and are real captures, not mockups — they
+will go stale as pages evolve; refreshing them is a manual re-capture job, not
+something that happens automatically.
 
 Part 1 below is the technical reference (read this first when touching any page's
 code). Part 2 is the project history — decisions, fixes, and what's in flight,
@@ -1009,15 +1023,19 @@ findings table. Changes made in this repo:
 ## Maintenance note
 This file used to be split across README.md + memory.md (technical reference vs. AI
 self-context) — merged 2026-07-20 at Mat's request, since both files were already
-AI-facing and the split just created a two-file sync burden. **README.md is now a
-short, human-facing overview** (what this project is, a quick tour, links to the
-live pages) — it is NOT kept in lockstep with this file anymore and doesn't need
-parallel updates for every technical change. This file (memory.md) is the single
-source of truth for how the code works AND the running history of decisions/fixes.
-When you change a parser, a data contract, or a convention, update the relevant
-Reference section below in the same commit. When you ship something Mat would want
-a human visitor to know about (a new page, a meaningfully different capability),
-consider a short README.md update too, but it's secondary.
+AI-facing and the split just created a two-file sync burden. This file (memory.md)
+is the single source of truth for how the code in this repo works AND the running
+history of decisions/fixes — when you change a parser, a data contract, or a
+convention, update the relevant Reference section above in the same commit.
+
+**README.md's role changed again the same day** — an initial short human-facing
+overview was replaced, at Mat's explicit follow-up request, with a full real-
+screenshot visual inventory of the ENTIRE broadcast estate (see the top-of-file
+note above). README.md is NOT kept in sync with this file and does not describe
+this repo's code — don't confuse edits to one for the other. If a NEW page/overlay
+ships in this repo, it should probably get an entry (with a real screenshot) added
+to README.md's inventory too, but that's a separate, manual, estate-wide document —
+check with Mat before assuming its structure/scope should change.
 
 ## Broadcast Graphics QA (2026-07-13)
 New sibling page to `preflight/`: `graphicstests/index.html`. Preflight answers "will the data
