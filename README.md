@@ -219,16 +219,7 @@ These don't appear on screen themselves — they're the automatic data-gathering
 - **Season Data Warehouse** (`matchavez/nzihl-season-data`) — a nightly scrape that saves every completed game into a permanent record, plus computed extras like win/loss streaks, head-to-head history between any two teams, and per-player game logs. This is what lets the Ticker mention "these two teams last played on..." or "Team X leads the season series."
 - **Roster & Schedule Pipeline** (`matchavez/nzihl-broadcast-rosters`, `matchavez/nzwihl-broadcast-rosters`) — the daily automatic job that builds the roster PDFs (shown on the Roster PDFs page above) and keeps a short-term schedule file up to date for the upcoming games.
 - **Player Photo Warehouse** (`matchavez/nzihl-player-photos`) — a weekly automatic scrape that saves a permanent, versioned copy of every player's and coach's headshot (visible throughout the Game Summary, Player Lower Thirds, and Warehouse pages above), so broadcast graphics have a reliable photo to pull from instead of depending on the league website being up during a live show.
-
----
-
-## 5. Broadcast quality & hardware
-
-Not digital assets, but investigative work done to improve the actual broadcast picture — no on-screen graphic to capture here, just research and test procedures:
-
-- **Camera selection** — research and buying criteria for the main broadcast camera (autofocus reliability was the top priority, since it's operated by a non-professional).
-- **Signal quality testing kit** — a reusable test video and measurement method for diagnosing softness/quality issues anywhere in the broadcast chain (camera → encoder → stream).
-- **Framerate/cadence investigation** — diagnosed and resolved an earlier issue where the stream looked "jumpy" due to a frame-rate mismatch in the broadcast chain.
+- **Live Data Proxy** — the live overlays above (Scorebug, Activity Banner, Ticker, Live Game Summary, Team Scoring Leaders) can't reach the league's website directly from inside a web browser, so their real-time reads are scraped by a small Cloudflare agent sitting quietly in between, checked every few seconds during a game.
 
 ---
 
